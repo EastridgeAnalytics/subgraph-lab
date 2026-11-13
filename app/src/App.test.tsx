@@ -4,6 +4,7 @@ import App, { SCREENS } from "./App";
 import { api, setMock } from "./api/client";
 
 test("the nav lists the seven screens in the order of the loop", () => {
+  setMock(true);
   render(<MemoryRouter initialEntries={["/connect"]}><App /></MemoryRouter>);
   expect(SCREENS.map((s) => s.label)).toEqual(
     ["Connect", "Slice", "Models", "Run", "Results", "Review and push", "Timeline"]);

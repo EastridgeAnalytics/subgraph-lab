@@ -62,6 +62,9 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
     `community_summary`, created after every pull with `LAB_EMBEDDING_DIM` dimensions.
 30. **The Connect screen can switch the master graph for this session.** `POST /api/connect/use` keeps the
     credentials in the lab's memory only, never on disk and never in a response; `.env` stays the default.
+31. **A search slice reads a run store whose first pass is done.** The estimate names its run, or uses the newest
+    such run; with none, it says to pull a schema slice first. A run whose recipe has a search slices its own
+    store after its first pass.
 
 ## Open
 

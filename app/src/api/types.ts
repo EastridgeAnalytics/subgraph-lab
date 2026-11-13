@@ -18,11 +18,16 @@ export interface PullSpec {
   query?: string | null; params?: Record<string, unknown>;
 }
 export interface SearchSpec { text?: string | null; account?: string | null; k?: number | null; hops?: number | null }
+export interface IdentifierLink { rel_type: string; label: string; key: string; kind: "device" | "email" | "address" | "phone" | "other" }
+export interface GraphMapping {
+  account_label: string; account_key: string; account_opened?: string | null; payment_type: string; payment_key: string;
+  payment_amount: string; payment_time: string; identifiers: IdentifierLink[];
+}
 export interface Recipe {
-  name: string; pull: PullSpec; search?: SearchSpec | null; models: string[];
+  name: string; graph?: GraphMapping; pull: PullSpec; search?: SearchSpec | null; models: string[];
   summaries: boolean; write_back?: Record<string, boolean>;
 }
-export interface SliceRequest { recipe?: Recipe; pull?: PullSpec | null; search?: SearchSpec | null }
+export interface SliceRequest { run_id?: string | null; recipe?: Recipe; pull?: PullSpec | null; search?: SearchSpec | null }
 export interface Hit { key: string; rrf: number; found_by: ("vector" | "fulltext")[] }
 export interface SliceEstimate {
   mode: "schema" | "cypher" | "search"; hits: Hit[]; hops?: number | null; nodes: number; relationships: number;

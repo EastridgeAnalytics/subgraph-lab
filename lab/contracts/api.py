@@ -58,6 +58,10 @@ class ConnectResult(BaseModel):
 
 
 class SliceRequest(BaseModel):
+    """A search estimate reads a run store whose first pass is done (decision 31): `run_id`, or else the newest such
+    run. With neither, the estimate says a schema slice must be pulled first."""
+
+    run_id: str | None = None
     recipe: Recipe = Field(default_factory=Recipe)
     pull: PullSpec | None = None  # overrides recipe.pull
     search: SearchSpec | None = None  # overrides recipe.search

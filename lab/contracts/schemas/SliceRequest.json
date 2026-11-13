@@ -322,6 +322,7 @@
       "type": "object"
     }
   },
+  "description": "A search estimate reads a run store whose first pass is done (decision 31): `run_id`, or else the newest such\nrun. With neither, the estimate says a schema slice must be pulled first.",
   "properties": {
     "pull": {
       "anyOf": [
@@ -336,6 +337,18 @@
     },
     "recipe": {
       "$ref": "#/$defs/Recipe"
+    },
+    "run_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Run Id"
     },
     "search": {
       "anyOf": [
