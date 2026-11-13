@@ -38,7 +38,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 1, from 13 November | Contracts. Generator and seed. `relate pull` from Aura. The table and PyG adapters. The app with Connect and Slice | A slice pulled from Aura and visible in the app |
 | 2 | Indexes and first pass. Search-defined slice. TGN and Node2Vec examples. The factor file and account scores. Review and push. MCP tools | Search a slice, score it, push to Aura after a dry run |
 | 3, Thanksgiving week | Communities and the community score. The evidence schema and summaries. The velocity factor. Models, Results and Review screens. Timeline slider | The full loop, end to end |
-| 4 | Measured numbers. README. Video. Fixes only after 7 December | Done: the indexes after every pull (1b); Node2Vec embeddings and template summaries on every account (2a) |
+| 4 | Measured numbers. README. Video. Fixes only after 7 December | Freeze 9 December, submit 11 December |
 
 ## How the work runs
 
