@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     seed: int = Field(42, alias="LAB_SEED")
     delta_sample: int = Field(1_000, alias="LAB_DELTA_SAMPLE")
     embedding_dim: int = Field(64, alias="LAB_EMBEDDING_DIM")
+    shared_max: int = Field(50, alias="LAB_SHARED_MAX")
 
     # Where things live
     data_dir: Path = Field(Path("data"), alias="LAB_DATA_DIR")

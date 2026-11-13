@@ -35,7 +35,8 @@ def main() -> int:
         if old.name not in files:
             old.unlink()
     for name, text in files.items():
-        (OUT / name).write_text(text, encoding="utf-8")
+        with (OUT / name).open("w", encoding="utf-8", newline="\n") as f:
+            f.write(text)
     print(f"wrote {len(files)} schemas to {OUT}")
     return 0
 
