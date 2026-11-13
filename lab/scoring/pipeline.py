@@ -100,7 +100,7 @@ def attach_communities(
     Takes the account scores and the slice (and the factor run, so the community's `speed` part reads the factor's rows
     and does not run its query again); returns the scores with `risk_community_key` added (null for an account in no
     community) and the counts for the manifest step `communities`: the communities, their members, the largest, and how
-    many formed by shared identifier and how many by payment. Communities under the policy's `min_size` are dropped. Each
+    many formed by shared identifier, by fast money and by payment. Communities under the policy's `min_size` are dropped. Each
     community goes into the run store with the mean of its members' embeddings, and `artifacts/communities.parquet` holds
     them with their members and how each `formed`, for track 3b. Nothing is staged here: `attach_summaries` adds the
     evidence and the summaries to the rows, and `score` stages them once.
@@ -112,7 +112,7 @@ def attach_communities(
     run.save()
     try:
         policy = load_policy(run)
-        groups = cm.find_communities(run, keys, policy.community.min_size)
+        groups = cm.find_communities(run, keys, policy.community.min_size, factor_run)
         found = cm.embed_communities(run, score_communities(run, groups, scores, policy, factor_run))
         cm.write_communities(run, found)
         run.paths.artifacts.mkdir(parents=True, exist_ok=True)
@@ -123,17 +123,20 @@ def attach_communities(
         run.save()
         raise
     by_identifier = int((found["formed"] == cm.IDENTIFIER).sum())
+    by_flow = int((found["formed"] == cm.FLOW).sum())
     counts = {
         "communities": found.height,
         "community_members": int(found["size"].sum() or 0),
         "largest": int(found["size"].max() or 0),
         "by_identifier": by_identifier,
-        "by_payment": found.height - by_identifier,
+        "by_flow": by_flow,
+        "by_payment": found.height - by_identifier - by_flow,
     }
     note = f"{len(groups) - found.height} under min_size {policy.community.min_size}"
     run.manifest.finish("communities", counts, note=note)
     run.save()
-    log.info("%d communities, %d members, largest %d; %d by identifier, %d by payment", *counts.values())
+    log.info("%d communities, %d members, largest %d; %d by identifier, %d by fast money, %d by payment",
+             *counts.values())
     return scores, counts
 
 

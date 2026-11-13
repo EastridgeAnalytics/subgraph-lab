@@ -262,18 +262,47 @@ def test_the_planted_ring_outscores_the_look_alike_and_an_ordinary_group(fixture
 
 
 # ---- the score -----------------------------------------------------------------------------------------------------
-def test_the_score_is_the_weighted_mean_of_the_parts_with_the_policys_weights(fixture_run, accounts):
+def test_the_shipped_score_is_the_noisy_or_of_the_parts_with_the_policys_weights(fixture_run, accounts):
     policy = load_policy(fixture_run)
+    assert policy.community.combine == "noisy_or"  # decision 45
     w = policy.community.weights
     risk = {a: 0.7 for a in R1[:4]}
     df = score_communities(fixture_run, [set(R1), set(R2), set(L1)], scores_frame(accounts, risk), policy)
     for r in df.iter_rows(named=True):
         parts = json.loads(r["score_parts"])
-        assert r["score"] == pytest.approx(sum(w[p] * parts[p] for p in PARTS) / sum(w.values()))
+        left = 1.0
+        for p in PARTS:
+            left *= 1 - w[p] * parts[p]
+        assert r["score"] == pytest.approx(1 - left)
     ring = parts_of(df, R1)
     assert df.filter(pl.col("size") == 6)["score"][0] == pytest.approx(
-        0.35 * ring["member_risk"] + 0.2 * ring["shared_identifiers"] + 0.15 * (ring["cycles"] + ring["new_accounts"] + ring["speed"])
+        1 - (1 - 0.65 * ring["member_risk"]) * (1 - 0.2 * ring["shared_identifiers"]) * (1 - 0.2 * ring["cycles"])
+        * (1 - 0.2 * ring["new_accounts"]) * (1 - 0.2 * ring["speed"])
     )
+
+
+def test_the_weighted_mean_is_still_there_when_the_policy_asks_for_it(fixture_run, accounts):
+    w = {"member_risk": 0.35, "shared_identifiers": 0.2, "cycles": 0.15, "new_accounts": 0.15, "speed": 0.15}
+    policy = Policy(community=CommunityPolicy(combine="weighted_mean", min_size=3, weights=w))
+    df = score_communities(fixture_run, [set(R1), set(R2)], scores_frame(accounts, {a: 0.7 for a in R1[:4]}), policy)
+    for r in df.iter_rows(named=True):
+        parts = json.loads(r["score_parts"])
+        assert r["score"] == pytest.approx(sum(w[p] * parts[p] for p in PARTS) / sum(w.values()))
+
+
+def test_under_noisy_or_a_part_at_zero_changes_nothing_and_a_weight_over_one_is_an_error(fixture_run, accounts):
+    scores = scores_frame(accounts, {a: 0.9 for a in R1})
+    base = {"member_risk": 0.65, "cycles": 0.2}
+    one = score_communities(fixture_run, [set(R1)], scores, Policy(community=CommunityPolicy(combine="noisy_or", weights=base)))
+    parts = parts_of(one, R1)
+    assert one["score"][0] == pytest.approx(1 - (1 - 0.65 * parts["member_risk"]) * (1 - 0.2 * parts["cycles"]))
+    # adding a part's weight can only raise the score, and a part at 0 leaves it where it was
+    more = score_communities(fixture_run, [set(R1)], scores,
+                             Policy(community=CommunityPolicy(combine="noisy_or", weights={**base, "speed": 0.2})))
+    assert more["score"][0] >= one["score"][0] - 1e-12
+    with pytest.raises(ValueError, match=r"noisy_or needs every weight in \[0, 1\]; out of range: cycles \(1.5\)"):
+        score_communities(fixture_run, [set(R1)], scores,
+                          Policy(community=CommunityPolicy(combine="noisy_or", weights={"cycles": 1.5})))
 
 
 def test_other_weights_make_another_score_and_they_need_not_add_to_one(fixture_run, accounts):

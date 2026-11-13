@@ -20,6 +20,7 @@ from lab.scoring.signals import (
     IN_AND_OUT_FACTOR,
     account_opened,
     cycles_by_group,
+    fast_money_links,
     in_and_out_within_a_day,
     new_accounts,
     payment_cycles,
@@ -205,3 +206,26 @@ def test_a_factor_file_without_the_factor_counts_nobody_and_says_so(fixture_run,
         got = in_and_out_within_a_day(fixture_run)
     assert got.height == 0 and got.schema == {"key": pl.Utf8, "count": pl.Int64}
     assert "in_and_out_within_a_day" in caplog.text
+
+
+# ---- fast money (decision 44) --------------------------------------------------------------------------------------
+def test_fast_money_links_join_only_accounts_the_factor_fired_on_by_the_payments_it_matched(fixture_run):
+    fired = set(in_and_out_within_a_day(fixture_run)["key"])
+    links = fast_money_links(fixture_run)
+    assert links.columns == ["u", "v"] and links.height > 0
+    linked = set(links["u"]) | set(links["v"])
+    assert linked <= fired and set(R1) <= linked  # the ring forwards money within a day, hop by hop
+    assert (links["u"] < links["v"]).all() and links.unique().height == links.height
+    pay = reads.payments(fixture_run, sorted(linked))
+    pairs = {tuple(sorted(p)) for p in pay.select("src", "dst").iter_rows()}
+    assert {tuple(r) for r in links.iter_rows()} <= pairs  # every link is a payment between the two
+
+
+def test_fast_money_links_follow_the_factor_run_and_the_scope(fixture_run):
+    factor_run = run_factors(fixture_run, None)
+    assert fast_money_links(fixture_run, None, factor_run).equals(fast_money_links(fixture_run))
+    inside = fast_money_links(fixture_run, list(R1))
+    assert set(inside["u"]) | set(inside["v"]) <= set(R1)
+    assert fast_money_links(fixture_run, []).height == 0
+    nobody = FactorRun(path=factor_run.path, file=factor_run.file, results=factor_run.results.clear(), status=[], keys=None)
+    assert fast_money_links(fixture_run, None, nobody).height == 0

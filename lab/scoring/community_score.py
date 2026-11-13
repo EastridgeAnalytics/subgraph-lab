@@ -1,8 +1,10 @@
 """The community score (page 04, level three; decision 36): a community's score from its members and its shape.
 
 `score_communities(run, communities, scores, policy)` gives each community five parts, each in [0, 1], named as the
-policy's `community.weights`. The score is their weighted mean with those weights, so it is in [0, 1] too. Every
-number is read from the run store or from the account scores; nothing is guessed.
+policy's `community.weights`. The policy's `community.combine` says how they make the score, which is in [0, 1] either
+way: `noisy_or` (decision 45, shipped) is 1 - Π(1 - wᵢ·partᵢ), so a part that is 0 changes nothing and each part alone
+can raise the score up to its weight; `weighted_mean` (decision 36) divides by the total weight, so an absent part pulls
+the score down. Every number is read from the run store or from the account scores; nothing is guessed.
 
 | Part | How it is worked out |
 |---|---|
@@ -18,7 +20,7 @@ and the three of them, the factor, the phrase and this part, share one definitio
 out and shown in `score_parts`, and adds nothing to the score; a weight that names no part is an error.
 
 `score_parts` also names how the community formed (`formed_by_identifier`: 1 for a community made of accounts that share
-an identifier, 0 for one made of payments), so a reader of the staged node can tell the kinds apart. It is not a part of
+an identifier, 0 for one made of payments, fast money included), so a reader of the staged node can tell the kinds apart. It is not a part of
 the score and takes no weight. The same fact is the `formed` column of `communities.parquet`, which is not staged.
 """
 from __future__ import annotations
@@ -76,6 +78,10 @@ def score_communities(
     unknown = sorted(set(cp.weights) - set(PARTS))
     if unknown:
         raise ValueError(f"community.weights names {unknown}; the parts are {list(PARTS)}")
+    if cp.combine == "noisy_or":
+        bad = [f"{p} ({w:g})" for p, w in cp.weights.items() if not 0 <= w <= 1]
+        if bad:
+            raise ValueError(f"community.combine: noisy_or needs every weight in [0, 1]; out of range: {', '.join(bad)}")
     kept = [({str(m) for m in c}, getattr(c, "formed", PAYMENT)) for c in communities]
     kept = sorted((k for k in kept if len(k[0]) >= cp.min_size), key=lambda k: min(k[0]))
     if not kept:
@@ -97,7 +103,7 @@ def score_communities(
     rows = []
     for i, (members, formed) in enumerate(kept):
         mine = {p: _unit(parts[p][i]) for p in PARTS}
-        score = sum(w * mine[p] for p, w in cp.weights.items()) / total if total > 0 else 0.0
+        score = _combine(cp.combine, cp.weights, mine, total)
         rows.append({
             "community_key": community_key(run.id, members), "member_keys": sorted(members), "score": _unit(score),
             "size": len(members), "score_parts": canonical_json({**mine, FORMED_PART: float(formed == IDENTIFIER)}),
@@ -106,6 +112,15 @@ def score_communities(
     return pl.DataFrame(rows, schema=SCHEMA).sort(
         pl.col("score"), pl.col("size"), pl.col("community_key"), descending=[True, True, False]
     )
+
+
+def _combine(combine: str, weights: dict[str, float], parts: dict[str, float], total: float) -> float:
+    if combine == "noisy_or":
+        left = 1.0
+        for p, w in weights.items():
+            left *= 1.0 - w * parts[p]
+        return 1.0 - left
+    return sum(w * parts[p] for p, w in weights.items()) / total if total > 0 else 0.0
 
 
 def _unit(x: float) -> float:

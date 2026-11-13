@@ -107,30 +107,43 @@ score is `1 - Π(1 - wᵢ·sᵢ)` over the factors.** `risk_score_rules` is that
 
 ## Communities
 
-Inside each slice the lab groups accounts in two steps (decision 42), and NetworkX does the second.
+Inside each slice the lab groups accounts in three steps (decisions 42 and 44), and NetworkX does the last.
 
 - **Shared identifiers first.** Accounts joined by a device, an email or an address that at most `LAB_SHARED_MAX` accounts
   of the slice use are linked. Each connected component of at least the policy's `community.min_size` accounts is a
   community as it stands. A planted ring on one device is one community of its members, whatever else they pay. An
   identifier used by more accounts than that links none, and a component under `min_size` goes on to the next step.
-- **Then payments, among the accounts left.** A payment links two accounts once, either way. Connected components come
+- **Then fast money, among the accounts left** (decision 44). Two accounts the `in_and_out_within_a_day` factor fired
+  on are linked by a payment the factor matched for either of them. Each connected component of at least `min_size`
+  accounts is a community as it stands: a chain that forwards money hop by hop within a day, which shares no
+  identifier and which Louvain would merge into a big payment group.
+- **Then payments, among the accounts still left.** A payment links two accounts once, either way. Connected components come
   first, and Louvain runs only on the big pieces (more than `LAB_COMPONENT_MIN` accounts). **Louvain is seeded, so a
   re-run gives the same groups.** Louvain never sees an identifier community, because maximising modularity merges small
   clusters inside big graphs (the resolution limit), and fraud rings are small clusters.
-- Each community is tagged by how it formed, `identifier` or `payment`: the `formed` column of `communities.parquet`, and
-  `formed_by_identifier` (1 or 0) among the `score_parts`. It is not a staged column and not a part of the score. The
+- Each community is tagged by how it formed, `identifier`, `flow` or `payment`: the `formed` column of
+  `communities.parquet`, and `formed_by_identifier` (1 or 0) among the `score_parts`. It is not a staged column and not a part of the score. The
   measured page reports ring recall for each kind. To measure.
 - On the seed slice (run `run-20261113T082716Z-52f819`, 6,546 accounts), the first communities came out as 29 with the
   largest at 758 accounts and a median of 112. Grouped by identifier first they come out as 65 (45 by identifier, 20 by
-  payment) with the largest at 651 and a median of 6. A ring with no shared identifier still depends on Louvain on
-  payments; the measured page says how many such rings come out whole.
+  payment) with the largest at 651 and a median of 6. With the fast-money step, 7 more come out by flow. The rest of
+  the pass-through rings had members outside the search slice, so their chains were cut before grouping. The
+  measured page says how many rings of each kind come out whole.
 - Community keys are `sha1(run_id | lowest member key)`. A later run makes new communities and leaves the old
   ones as history.
 - Whole-graph communities with GDS Leiden on Aura Graph Analytics are release 1.1.
 
 The community score's five parts are `member_risk` (the policy's `community.member_risk_share` mixes the share of members
-at the alert threshold with their mean score), `shared_identifiers`, `cycles`, `new_accounts` and `speed`. Three of them
-use the shared definitions in `lab/scoring/signals.py`, which the first pass's summary phrases and the evidence use too:
+at the alert threshold with their mean score), `shared_identifiers`, `cycles`, `new_accounts` and `speed`.
+
+- **The parts combine as a noisy-or too** (decision 45): `community.combine: noisy_or` in the policy file. A part at 0
+  changes nothing, so a ring that shows one shape strongly is not pulled down by the shapes it lacks.
+- **The shipped weights are two tiers.** 0.65 for `member_risk` and 0.20 for each shape. Members who alert reach 0.6 only
+  with one more shape, and the four shapes without alerting members reach at most 0.59. They are set for the demo data.
+- `combine: weighted_mean` is still available for communities, as it is for accounts.
+
+Three of the parts use the shared definitions in `lab/scoring/signals.py`, which the first pass's summary phrases and the
+evidence use too:
 
 - **Cycles are time-respecting.** A cycle is a loop of at most `LAB_CYCLE_MAX_LENGTH` accounts where each pays the next and
   each payment comes after the one before it. A loop paid in the wrong order is not money that came back. Cycles are

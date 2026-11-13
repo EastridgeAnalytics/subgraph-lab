@@ -7,6 +7,7 @@ copy of its own.
 |---|---|---|
 | `new_accounts` | An account opened within `LAB_NEW_ACCOUNT_DAYS` of the newest payment among the payments it is given | the first pass's summary phrase (`lab/slice/summaries.py`), the community's `new_accounts` part |
 | `in_and_out_within_a_day` | The `in_and_out_within_a_day` factor's own query and threshold (`factors/in_and_out_within_a_day.cypher`: an outgoing payment within 24 hours after an incoming one, within 20 percent of its amount), run through the factor runner's reader, per account, with how many outgoing payments matched. Nothing here restates the 24 hours or the 20 percent | the first pass's summary phrase, the community's `speed` part |
+| `fast_money_links` | A payment the `in_and_out_within_a_day` factor matched (among its evidence for the payer or the payee) between two accounts the factor fired on. Money forwarded hop by hop within a day is a chain of these links | the communities' flow step (decision 44) |
 | `payment_cycles` | A loop of at most `LAB_CYCLE_MAX_LENGTH` accounts, each paying the next and the last paying the first, whose payments run forward in time: each payment comes strictly after the one before it. Distinct loops are counted by their accounts (two accounts that pay each other once or fifty times are one cycle), up to `LAB_CYCLE_COUNT_CAP` | the community's `cycles` part, the evidence's cycle count, the NetworkX example |
 
 A cycle with its payments in the wrong order, such as a to b on 3 October, b to c on 2 October and c to a on 1 October, is
@@ -80,17 +81,51 @@ def in_and_out_within_a_day(run: Run, keys: list[str] | None = None, factor_run:
     a Cypher factor, gives none and says so in the log: the definition is the factor's, and there is no second one here.
     A query that returns a `score` and no `value` counts each account once.
     """
-    if factor_run is not None:
-        rows = factor_run.results.filter(pl.col("factor_id") == IN_AND_OUT_FACTOR).select("key", "evidence")
-    else:
-        path, factors = load_factor_file(run)
-        factor = next((f for f in factors.factors if f.id == IN_AND_OUT_FACTOR), None)
-        if factor is None or factor.kind != "cypher":
-            log.warning("no Cypher factor %s in %s: nothing counts as money in and out within a day", IN_AND_OUT_FACTOR, path)
-            return pl.DataFrame(schema=IN_AND_OUT_SCHEMA)
-        rows = run_cypher(run, factor, path.parent, None if keys is None else list(dict.fromkeys(keys)))
+    rows = _in_and_out_rows(run, keys, factor_run)
     counts = [_matched(evidence) for evidence in rows["evidence"]]
     return pl.DataFrame({"key": rows["key"], "count": counts}, schema=IN_AND_OUT_SCHEMA).sort("key")
+
+
+def _in_and_out_rows(run: Run, keys: list[str] | None, factor_run: FactorRun | None) -> pl.DataFrame:
+    """The factor's rows, `key` and `evidence`: from `factor_run` when given (kept to `keys`), else from the factor's own
+    query on `keys`. No such Cypher factor: no rows, and the log says so."""
+    if factor_run is not None:
+        rows = factor_run.results.filter(pl.col("factor_id") == IN_AND_OUT_FACTOR).select("key", "evidence")
+        return rows if keys is None else rows.filter(pl.col("key").is_in(list(keys)))
+    path, factors = load_factor_file(run)
+    factor = next((f for f in factors.factors if f.id == IN_AND_OUT_FACTOR), None)
+    if factor is None or factor.kind != "cypher":
+        log.warning("no Cypher factor %s in %s: nothing counts as money in and out within a day", IN_AND_OUT_FACTOR, path)
+        return pl.DataFrame(schema={"key": pl.Utf8, "evidence": pl.Utf8})
+    keys = None if keys is None else list(dict.fromkeys(keys))
+    return run_cypher(run, factor, path.parent, keys).select("key", "evidence")
+
+
+def fast_money_links(run: Run, keys: list[str] | None = None, factor_run: FactorRun | None = None) -> pl.DataFrame:
+    """`u`, `v` (u < v, each pair once): two accounts in scope that the in-and-out factor fired on, joined by a payment
+    the factor matched for either of them (decision 44). The payments are the factor's evidence ids, so the 24 hours and
+    the 20 percent stay in the factor's query. A chain that forwards money hop by hop within a day is linked end to end;
+    the outsider who pays in or is paid out is not, unless the factor fired on it too.
+    """
+    rows = _in_and_out_rows(run, keys, factor_run)
+    empty = pl.DataFrame(schema={"u": pl.Utf8, "v": pl.Utf8})
+    if rows.is_empty():
+        return empty
+    matched: set[str] = set()
+    for evidence in rows["evidence"]:
+        try:
+            body: Any = json.loads(evidence) if evidence else None
+        except ValueError:
+            continue
+        ids = body.get("evidence_ids") if isinstance(body, dict) else None
+        matched.update(str(i) for i in ids or [] if i is not None)
+    if not matched:
+        return empty
+    fired = sorted(set(rows["key"].to_list()))
+    pay = reads.payments(run, fired).filter(pl.col("tx_id").is_in(sorted(matched)) & (pl.col("src") != pl.col("dst")))
+    lo = pl.when(pl.col("src") < pl.col("dst")).then(pl.col("src")).otherwise(pl.col("dst"))
+    hi = pl.when(pl.col("src") < pl.col("dst")).then(pl.col("dst")).otherwise(pl.col("src"))
+    return pay.select(u=lo, v=hi).unique().sort("u", "v")
 
 
 def _matched(evidence: str | None) -> int:

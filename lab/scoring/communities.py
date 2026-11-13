@@ -1,12 +1,16 @@
 """Communities (page 04, level three): who is grouped with whom inside the slice, and how to put the groups in the run store.
 
-`find_communities(run, keys)` groups the slice's accounts in two steps (decision 42):
+`find_communities(run, keys)` groups the slice's accounts in three steps (decisions 42 and 44):
 
 1. Shared identifiers first. Accounts joined by a device, an email or an address that at most `LAB_SHARED_MAX` accounts of
    the slice use are linked, and each connected component of at least the policy's `community.min_size` accounts is a
    community as it stands (`formed` is `"identifier"`). A planted ring on one device is one community of exactly its
    members, whatever else its accounts pay.
-2. Then payments. Louvain's resolution limit merges small clusters into big ones, so it only sees the accounts the first
+2. Then fast money (decision 44). Among the accounts left, two accounts the `in_and_out_within_a_day` factor fired on are
+   linked by a payment the factor matched for either of them (`signals.fast_money_links`). Each connected component of
+   at least `min_size` accounts is a community as it stands (`formed` is `"flow"`): a chain that forwards money hop by
+   hop within a day, which shares no identifier and which Louvain would merge into a big payment group.
+3. Then payments. Louvain's resolution limit merges small clusters into big ones, so it only sees the accounts the first
    step left. Those are grouped on their payment graph: a payment links two accounts once, either way
    (`LAB_WEIGHT_PAYMENT`). A connected component with no more than `LAB_COMPONENT_MIN` accounts is one community as it
    stands, and a bigger one is cut by seeded Louvain (`LAB_SEED`, `LAB_LOUVAIN_RESOLUTION`). These have `formed`
@@ -45,39 +49,45 @@ from lab.contracts.graph import COMMUNITY_KEY, COMMUNITY_LABEL, EMBEDDING_PROP, 
 from lab.roundtrip.indexes import COMMUNITY_EMBEDDING_PROP
 from lab.roundtrip.loader import load_rows
 from lab.roundtrip.queries import ident
+from lab.scoring import signals
 from lab.scoring.policy import _EDGE, load_policy
 from lab.settings import get_settings
 
 if TYPE_CHECKING:
     from lab.runs import Run
+    from lab.scoring.factors import FactorRun
 
 log = get_logger("scoring.communities")
 
 COMMUNITIES_FILE = "communities.parquet"  # in the run's artifacts: every scored community with its members, for 3b
-IDENTIFIER, PAYMENT = "identifier", "payment"  # how a community formed: `formed` in the file, a part in `score_parts`
+IDENTIFIER, FLOW, PAYMENT = "identifier", "flow", "payment"  # how a community formed: `formed` in the file
+FORMED = (IDENTIFIER, FLOW, PAYMENT)
 
 
 class Community(frozenset):
     """A community: its account keys (a frozen set, equal to a plain set of the same keys) and `formed`, which is
-    `"identifier"` or `"payment"`. A plain set that gets scored is taken to have formed by payment."""
+    `"identifier"`, `"flow"` or `"payment"`. A plain set that gets scored is taken to have formed by payment."""
 
     formed: str
 
     def __new__(cls, members: Iterable[str] = (), formed: str = PAYMENT) -> Community:
-        if formed not in (IDENTIFIER, PAYMENT):
-            raise ValueError(f"a community forms by {IDENTIFIER!r} or {PAYMENT!r}, not {formed!r}")
+        if formed not in FORMED:
+            raise ValueError(f"a community forms by one of {FORMED}, not {formed!r}")
         self = super().__new__(cls, members)
         self.formed = formed
         return self
 
 
 # ---- finding ---------------------------------------------------------------------------------------------------
-def find_communities(run: Run, keys: list[str] | None = None, min_size: int | None = None) -> list[Community]:
+def find_communities(
+    run: Run, keys: list[str] | None = None, min_size: int | None = None, factor_run: FactorRun | None = None
+) -> list[Community]:
     """The communities of the slice (`keys`; None is every account in the run store), as `Community` sets of account keys.
 
-    Identifier communities first, then payment communities among the accounts they leave (see the module docstring).
-    `min_size` is the size an identifier component needs to be a community: the policy's `community.min_size`
-    unless given. Biggest first, ties by lowest member key. Every set has at least two accounts; the payment ones
+    Identifier communities first, then fast-money communities, then payment communities among the accounts left (see the
+    module docstring). `min_size` is the size an identifier or a flow component needs to be a community: the policy's
+    `community.min_size` unless given. `factor_run` gives the in-and-out factor's rows when scoring has them; without it
+    the factor's query runs here. Biggest first, ties by lowest member key. Every set has at least two accounts; the payment ones
     are not yet cut to the policy's `min_size`, which `score_communities` applies.
     """
     s = get_settings()
@@ -86,19 +96,31 @@ def find_communities(run: Run, keys: list[str] | None = None, min_size: int | No
     first, too_shared = identifier_groups(reads.identifiers(run, keys), s.shared_max, min_size)
     taken = set().union(*first) if first else set()
     left = [a for a in accounts if a not in taken]
-    G = payment_graph(run, left)
-    second = split_graph(G)
+    flow = flow_groups(signals.fast_money_links(run, left, factor_run), min_size)
+    flowing = set().union(*flow) if flow else set()
+    rest = [a for a in left if a not in flowing]
+    G = payment_graph(run, rest)
+    third = split_graph(G)
     groups = sorted(
-        [Community(g, IDENTIFIER) for g in first] + [Community(g, PAYMENT) for g in second],
+        [Community(g, IDENTIFIER) for g in first] + [Community(g, FLOW) for g in flow]
+        + [Community(g, PAYMENT) for g in third],
         key=lambda c: (-len(c), min(c)),
     )
     log.info(
         "communities: %d accounts; %d by shared identifier (%d accounts, %d identifiers too shared to link); "
-        "%d by payment (%d accounts of the %d left, %d links)",
-        len(accounts), len(first), len(taken), too_shared, len(second), sum(len(g) for g in second), len(left),
-        G.number_of_edges(),
+        "%d by fast money (%d accounts); %d by payment (%d accounts of the %d left, %d links)",
+        len(accounts), len(first), len(taken), too_shared, len(flow), len(flowing), len(third),
+        sum(len(g) for g in third), len(rest), G.number_of_edges(),
     )
     return groups
+
+
+def flow_groups(links: pl.DataFrame, min_size: int) -> list[set[str]]:
+    """The connected components of the fast-money links (`u`, `v`) with at least `min_size` accounts."""
+    G = nx.Graph()
+    G.add_edges_from(zip(links["u"], links["v"], strict=True))
+    groups = [set(c) for c in nx.connected_components(G) if len(c) >= min_size]
+    return sorted(groups, key=lambda c: (-len(c), min(c)))
 
 
 def identifier_groups(links: pl.DataFrame, shared_max: int, min_size: int) -> tuple[list[set[str]], int]:

@@ -1,8 +1,17 @@
 {
   "$defs": {
     "CommunityPolicy": {
-      "description": "How a community's score is built from its members and its shape (page 04, level three). Each part is in\n[0, 1]; the score is their weighted mean. A community smaller than `min_size` is not scored or staged.",
+      "description": "How a community's score is built from its members and its shape (page 04, level three). Each part is in [0, 1].\n\nWith combine noisy_or (decision 45, shipped): the score is 1 - prod(1 - weight * part) over the parts; a part that is\n0 changes nothing, and weights must be in [0, 1]. With combine weighted_mean (decision 36): the weighted mean of the\nparts. A community smaller than `min_size` is not scored or staged.",
       "properties": {
+        "combine": {
+          "default": "weighted_mean",
+          "enum": [
+            "weighted_mean",
+            "noisy_or"
+          ],
+          "title": "Combine",
+          "type": "string"
+        },
         "member_risk_share": {
           "default": 0.5,
           "maximum": 1,

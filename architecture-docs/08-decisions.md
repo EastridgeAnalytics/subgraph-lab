@@ -101,6 +101,16 @@ Decisions 39 to 42 come from the wave 4 review ([mvp-review](reviews/mvp-review.
 43. **The Models screen shows real code.** `GET /api/models/{name}/source` returns a factor's Cypher or Python, or a
     model's example, read only, from paths inside the lab's own folders.
 
+Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wave-5.md)).
+
+44. **Fast money is a third way to form a community.** Between the identifier step and the payment step, two
+    accounts the `in_and_out_within_a_day` factor fired on are linked by a payment the factor matched, and each
+    component of at least `min_size` accounts is a community. The factor's evidence names the payments, so the
+    pattern keeps one definition.
+45. **The community score is a noisy-or of its parts**, like the account score: `community.combine: noisy_or`, each
+    weight in [0, 1]. The shipped weights are 0.65 for the members' risk and 0.20 for each shape. The weighted
+    mean stays available.
+
 ## Open
 
 | Question | What depends on it | Who |

@@ -29,6 +29,7 @@ from lab.runs import Run
 from lab.scoring import score
 from lab.scoring.communities import (
     COMMUNITIES_FILE,
+    FLOW,
     IDENTIFIER,
     PAYMENT,
     Community,
@@ -166,7 +167,10 @@ def test_an_identifier_shared_by_more_than_the_maximum_links_nobody(fixture_run,
     reload_settings()
     groups = find_communities(fixture_run)
     assert {frozenset(g) for g in groups if g.formed == IDENTIFIER} == {frozenset(L1)}  # the family's four are within the maximum
-    assert all(g.formed == PAYMENT for g in groups if g & set(R1) or g & set(R2))  # the others' accounts go to the payments step
+    # the others' accounts go on: R1, a fast cycle of new accounts, forwards money within a day, so it forms by fast money
+    # (decision 44); R2's accounts go to the payments step
+    assert [g.formed for g in groups if g == set(R1)] == [FLOW]
+    assert all(g.formed == PAYMENT for g in groups if g & set(R2))
 
 
 def test_an_identifier_component_under_min_size_is_not_a_community_and_goes_to_payments(fixture_run):
@@ -371,7 +375,7 @@ def test_attach_communities_scores_and_stores_the_communities_and_stages_nothing
     assert kept.filter(pl.col("community_key") == community_key(fixture_run.id, R2))["embedding"][0] is None
 
     # the counts, and the scores with the community each account is in
-    assert counts == {"communities": 10, "community_members": 200, "largest": 39, "by_identifier": 3, "by_payment": 7}
+    assert counts == {"communities": 10, "community_members": 200, "largest": 39, "by_identifier": 3, "by_flow": 0, "by_payment": 7}
     assert out.columns == [*scores.columns, "risk_community_key"] and out.height == scores.height
     by_account = dict(zip(out[KEY], out["risk_community_key"], strict=True))
     assert {by_account[a] for a in R1} == {community_key(fixture_run.id, R1)}
@@ -409,7 +413,7 @@ def test_what_stage_takes_leaves_out_formed_and_the_embedding_only_when_it_shoul
 def test_attach_communities_drops_a_community_under_min_size_and_nulls_who_is_in_none(fixture_run, staged):
     keys = [*R1, R2[0], R2[1]]  # the two R2 accounts link to each other (one email) and are under min_size 3
     out, counts = attach_communities(fixture_run, scores_frame(fixture_run, keys=keys), keys)
-    assert counts == {"communities": 1, "community_members": 6, "largest": 6, "by_identifier": 1, "by_payment": 0}
+    assert counts == {"communities": 1, "community_members": 6, "largest": 6, "by_identifier": 1, "by_flow": 0, "by_payment": 0}
     assert out.filter(pl.col(KEY).is_in(R2[:2]))["risk_community_key"].null_count() == 2
     assert out.schema["risk_community_key"] == pl.Utf8
     assert "under min_size 3" in reread(fixture_run).manifest.step("communities").note
@@ -418,7 +422,7 @@ def test_attach_communities_drops_a_community_under_min_size_and_nulls_who_is_in
 def test_attach_communities_on_a_slice_of_nothing(fixture_run, staged):
     empty = scores_frame(fixture_run, keys=[])
     out, counts = attach_communities(fixture_run, empty, [])
-    assert counts == {"communities": 0, "community_members": 0, "largest": 0, "by_identifier": 0, "by_payment": 0}
+    assert counts == {"communities": 0, "community_members": 0, "largest": 0, "by_identifier": 0, "by_flow": 0, "by_payment": 0}
     assert out.height == 0 and out.schema["risk_community_key"] == pl.Utf8
     assert fixture_run.table("MATCH (c:RiskCommunity) RETURN count(c) AS n")["n"][0] == 0
 

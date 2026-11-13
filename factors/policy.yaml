@@ -11,11 +11,16 @@ version: "1"
 combine: noisy_or
 alert_threshold: 0.6
 window: P30D
+# community.combine: noisy_or (decision 45), the same rule for a community's five parts: 1 - the product of
+# (1 - weight * part). A part that is 0 changes nothing. member_risk at 0.65 is the members alerting; it reaches 0.6 only
+# with one more shape (a shared identifier, cycles, new accounts or speed, 0.20 each). The four shapes together without
+# alerting members reach at most 0.59. Set for the demo data; on real data the team that owns the review sets them.
 community:
+  combine: noisy_or
   min_size: 3
   weights:
-    member_risk: 0.35
+    member_risk: 0.65
     shared_identifiers: 0.2
-    cycles: 0.15
-    new_accounts: 0.15
-    speed: 0.15
+    cycles: 0.2
+    new_accounts: 0.2
+    speed: 0.2

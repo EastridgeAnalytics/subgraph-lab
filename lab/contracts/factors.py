@@ -67,9 +67,13 @@ class FactorFile(BaseModel):
 
 
 class CommunityPolicy(BaseModel):
-    """How a community's score is built from its members and its shape (page 04, level three). Each part is in
-    [0, 1]; the score is their weighted mean. A community smaller than `min_size` is not scored or staged."""
+    """How a community's score is built from its members and its shape (page 04, level three). Each part is in [0, 1].
 
+    With combine noisy_or (decision 45, shipped): the score is 1 - prod(1 - weight * part) over the parts; a part that is
+    0 changes nothing, and weights must be in [0, 1]. With combine weighted_mean (decision 36): the weighted mean of the
+    parts. A community smaller than `min_size` is not scored or staged."""
+
+    combine: Literal["weighted_mean", "noisy_or"] = "weighted_mean"  # decision 45: the shipped policy is noisy_or
     min_size: int = Field(3, ge=2)
     member_risk_share: float = Field(0.5, ge=0, le=1)  # in `member_risk`: the share at the threshold vs the mean score
     weights: dict[str, float] = Field(default_factory=lambda: {
