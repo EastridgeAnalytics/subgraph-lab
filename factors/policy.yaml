@@ -1,4 +1,8 @@
 # How factors become account scores (page 04, lab/contracts/factors.py Policy).
+# risk_score is the weighted mean of every factor in factors.yaml. A factor that is missing, skipped or did not fire
+# counts 0 and keeps its weight in the divisor, so an account tops out at the weight of the factors that ran: with
+# no model output, at the rules' share (0.85 of 1.0 as factors.yaml ships). Adding a factor lowers every score by
+# its share of the total, so set alert_threshold again when the file changes.
 version: "1"
 combine: weighted_mean
 alert_threshold: 0.6
