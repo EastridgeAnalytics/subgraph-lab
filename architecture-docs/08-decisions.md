@@ -76,6 +76,8 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
     store against the master graph over Bolt and refuses the whole push when any is missing.
 36. **The community score's weights live in the policy file** (`community.weights`, `community.min_size`), beside
     the account policy. Each part is in [0, 1] and the score is their weighted mean.
+37. **A push from the API or an agent needs a review newer than the last thing staged** (A2). Without one the
+    route and the `apply_push` tool answer 409 and nothing is sent. `apply` itself still runs a dry run first.
 
 ## Open
 

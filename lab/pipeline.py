@@ -95,6 +95,7 @@ def resume(run: Run) -> Run:
         if step not in wanted(run) and run.manifest.step(step).status is StepStatus.PENDING:
             run.manifest.step(step).status = StepStatus.SKIPPED
             run.manifest.step(step).note = "the recipe does not ask for it"
+    run.manifest.status = StepStatus.DONE  # the loop is done up to the review; the push waits for a person
     run.save()
     return run
 

@@ -9,7 +9,6 @@ started. This is the only place that reads it.
 """
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from lab.api.relate_server import in_container, serve_ports
@@ -21,7 +20,7 @@ log = get_logger("api.server")
 
 def app_dist() -> Path | None:
     """The folder with the built app, or None (with a warning) when there is no `index.html` in it."""
-    dist = Path(os.environ.get("LAB_APP_DIST", "app/dist"))
+    dist = Path(get_settings().app_dist)
     if (dist / "index.html").is_file():
         return dist
     log.warning("no built app at %s: only /api and /mcp are served. Run `npm run build` in app/ or set LAB_APP_DIST.", dist)

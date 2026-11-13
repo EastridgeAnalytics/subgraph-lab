@@ -189,9 +189,22 @@ def push(state: LabState, run_id: str, confirm: bool) -> PushResult:
     with state.worker.exclusive(run_id):
         run = load_run(run_id)
         try:
+            require_fresh_review(run)
             return run.apply_push(confirm=True)
         finally:
             run.close()
+
+
+def require_fresh_review(run) -> None:
+    """Decision 37 (A2): a push follows a review someone has seen, and nothing was staged after it."""
+    from lab.contracts.manifest import StepStatus
+
+    review, stage = run.manifest.step("review"), run.manifest.step("stage")
+    if review.status is not StepStatus.DONE or not review.finished_at:
+        raise ApiError(409, "open the review first: a push follows a dry run someone has seen. Nothing was sent.")
+    if stage.finished_at and stage.finished_at > review.finished_at:
+        raise ApiError(409, "something was staged after the review: open the review again before pushing. "
+                            "Nothing was sent.")
 
 
 def disposition(state: LabState, run_id: str, request: DispositionRequest) -> DispositionResult:

@@ -112,10 +112,21 @@ class RunManifest(BaseModel):
         self.fallbacks.append(Fallback(step=step, route=route, reason=reason))
 
     def save(self, path: Path) -> None:
+        """Write, then replace atomically. On Windows a reader holding the file makes the replace fail for a moment,
+        so it is retried briefly before the error is raised."""
+        import time
+
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(".tmp")
         tmp.write_text(self.model_dump_json(indent=2), encoding="utf-8")
-        tmp.replace(path)
+        for attempt in range(40):
+            try:
+                tmp.replace(path)
+                return
+            except PermissionError:
+                if attempt == 39:
+                    raise
+                time.sleep(0.05)
 
     @classmethod
     def load(cls, path: Path) -> RunManifest:

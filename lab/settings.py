@@ -60,6 +60,7 @@ class Settings(BaseSettings):
     relate_bin: str = Field("relate", alias="LAB_RELATE_BIN")
     factors_file: Path = Field(Path("factors/factors.yaml"), alias="LAB_FACTORS_FILE")
     policy_file: Path = Field(Path("factors/policy.yaml"), alias="LAB_POLICY_FILE")
+    app_dist: Path = Field(Path("app/dist"), alias="LAB_APP_DIST")
 
     # Ports
     port: int = Field(8000, alias="LAB_PORT")

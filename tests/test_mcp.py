@@ -149,6 +149,7 @@ def test_apply_push_is_refused_without_confirm_and_nothing_runs(served, data_dir
 
 def test_apply_push_with_confirm_pushes_and_answers_with_its_model(served, data_dir, relate, master):
     run = staged(data_dir)
+    assert not call(served, "preview_push", run_id=run.id).is_error  # decision 37: the review comes first
     result = call(served, "apply_push", run_id=run.id, confirm=True)
     assert not result.is_error, text(result)
     pushed = contract.PushResult.model_validate(result.structured_content)
@@ -156,11 +157,12 @@ def test_apply_push_with_confirm_pushes_and_answers_with_its_model(served, data_
     assert RunManifest.load(run.paths.manifest).step("push").status is StepStatus.DONE
 
 
-def test_an_agent_that_never_previews_can_still_push_with_confirm(served, data_dir, relate, master):
-    """Confirm is the gate (A5), not a prior preview."""
+def test_an_agent_that_never_previews_cannot_push(served, data_dir, relate, master):
+    """Decision 37: confirm is not enough; the agent must preview first (A2 and A5)."""
     run = staged(data_dir)
     assert RunManifest.load(run.paths.manifest).step("review").status is StepStatus.PENDING
-    assert not call(served, "apply_push", run_id=run.id, confirm=True).is_error
+    result = call(served, "apply_push", run_id=run.id, confirm=True)
+    assert result.is_error and "review" in text(result) and relate.real_pushes == []
 
 
 def test_preview_push_is_the_plan_and_the_delta_and_sends_nothing(served, data_dir, relate, master):

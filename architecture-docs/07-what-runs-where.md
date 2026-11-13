@@ -73,6 +73,7 @@ inline in code.
 | `LAB_NEW_ACCOUNT_DAYS` · `LAB_PASS_THROUGH_HOURS` · `LAB_ROUND_THRESHOLD` · `LAB_JUST_UNDER` | 60 · 24 · 10,000 · 0.05 | The account summary's phrases: "new account", "money in and out within a day", "payments just under 10,000" (the share below the round number) |
 | `LAB_DELTA_SAMPLE` | 1,000 | Accounts sampled from the master graph for the review's delta |
 | `LAB_DATA_DIR` | `data` | Run stores, push stores and manifests |
+| `LAB_APP_DIST` | `app/dist` | The built app the lab serves at `/`; `/srv/app/dist` in the image |
 | `LAB_PORT` · `LAB_RELATE_BOLT_PORT` · `LAB_RELATE_HTTP_PORT` · `LAB_RELATE_MCP_PORT` | 8000 · 7687 · 7474 · 7475 | Host ports for the lab and Relate |
 | `LAB_NEO4J_BOLT_PORT` · `LAB_NEO4J_HTTP_PORT` | 17687 · 17474 | Host ports for the bundled Neo4j |
 | `DO_NOT_TRACK` | `1` | Relate's telemetry switch. Set in every container and every call |

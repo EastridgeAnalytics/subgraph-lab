@@ -536,12 +536,28 @@ def test_a_push_without_confirm_is_400_and_writes_nothing(client, scored_run, mo
 
 
 def test_a_confirmed_push_lands_every_entity_and_the_labrun(client, scored_run, relate, master):
+    assert client.get(f"/api/runs/{scored_run.id}/review").status_code == 200  # decision 37: the review comes first
     r = client.post(f"/api/runs/{scored_run.id}/push", json={"confirm": True})
     assert r.status_code == 200, r.text
     result = contract.PushResult.model_validate(r.json())
     assert result.pushed and all(e.landed for e in result.entities) and "LabRun" in {e.entity for e in result.entities}
     assert len(relate.real_pushes) == 2  # everything, then the LabRun
     assert RunManifest.load(scored_run.paths.manifest).step("push").status is StepStatus.DONE
+
+
+def test_a_push_without_a_fresh_review_is_refused(client, scored_run, relate, master):
+    """Decision 37 (A2): no review, or something staged after it, is a 409 and nothing is sent."""
+    r = client.post(f"/api/runs/{scored_run.id}/push", json={"confirm": True})
+    assert r.status_code == 409 and "review" in r.json()["detail"] and relate.real_pushes == []
+    assert client.get(f"/api/runs/{scored_run.id}/review").status_code == 200
+    scored_run.reload()
+    key = scored_run.table("MATCH (a:Account) RETURN a.account_id AS k LIMIT 1")["k"][0]
+    scored_run.close()  # Relate connections belong to the thread that opened them; the API runs on another
+    d = client.post(f"/api/runs/{scored_run.id}/dispositions",
+                    json={"kind": "account", "key": key, "disposition": "needs_more", "by": "laura"})
+    assert d.status_code == 200, d.text
+    r = client.post(f"/api/runs/{scored_run.id}/push", json={"confirm": True})
+    assert r.status_code == 409 and "after the review" in r.json()["detail"] and relate.real_pushes == []
 
 
 # ---- the timeline ----------------------------------------------------------------------------------------------
@@ -737,6 +753,7 @@ def test_serve_listens_where_the_settings_say(monkeypatch, data_dir):
     server.serve()
     assert seen == {"host": "0.0.0.0", "port": 8000}
     monkeypatch.setenv("LAB_APP_DIST", "/nowhere")
+    reload_settings()
     assert server.app_dist() is None
 
 

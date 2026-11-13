@@ -17,6 +17,7 @@ the facade never grows a second way to do the same job.
 from __future__ import annotations
 
 import os
+import threading
 from pathlib import Path
 
 import polars as pl
@@ -28,7 +29,9 @@ from lab.common.store import RunPaths, list_runs, open_store, run_paths
 from lab.contracts.manifest import RunManifest
 from lab.contracts.recipe import Recipe, SearchSpec
 
-_OPEN: dict[str, object] = {}  # one writable connection per store path per process (Relate allows one writer)
+# One writable connection per (thread, store path). Relate connections are thread-affine (DB-API threadsafety 1) and a
+# store has one writer at a time, so a thread must close its stores before another thread opens them.
+_OPEN: dict[tuple[int, str], object] = {}
 
 
 class Run:
@@ -82,14 +85,15 @@ class Run:
     def _open(self, path: Path, read_only: bool):
         if read_only:
             return open_store(path, read_only=True)
-        key = str(path.resolve())
+        key = (threading.get_ident(), str(path.resolve()))
         if key not in _OPEN:
             _OPEN[key] = open_store(path)
         return _OPEN[key]
 
     def close(self) -> None:
+        """Close this thread's connections to the run's two stores."""
         for path in (self.paths.store, self.paths.push_store):
-            conn = _OPEN.pop(str(path.resolve()), None)
+            conn = _OPEN.pop((threading.get_ident(), str(path.resolve())), None)
             if conn is not None:
                 conn.close()
 
