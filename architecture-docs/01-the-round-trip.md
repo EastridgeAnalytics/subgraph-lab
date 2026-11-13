@@ -34,9 +34,14 @@ Relate store over Neo4j's HTTP Query API v2. The uniqueness constraints on the p
 - One checkpoint, after the last statement.
 - Relate reads `NEO4J_URI` as an `http(s)` Query API address. The lab passes it `NEO4J_QUERY_URI`, derived from
   the Bolt `NEO4J_URI` when unset, and adds `--allow-plaintext` only for an `http://` address.
+- A schema pull takes the payments in the window (`since` inclusive, `until` exclusive) and the identifier links of
+  the accounts that paid in it.
+- A failed pull removes the run store, so the run can pull again.
 - No batching or timings are documented. A pull at 100k and at 1M relationships is measured in wave 6. To measure.
-- The fallback is parallel Bolt reads, used when the Query API is not reachable. The route taken is recorded on
-  the run.
+- The fallback is parallel Bolt reads over disjoint account-key ranges. It runs when the Query API cannot be
+  reached (refused, DNS, timeout, TLS, a 5xx, or a 404 that is not a Neo4j error), never on a 401, a Cypher error
+  or a missing database. The route taken and the reason are recorded on the run. A Cypher-mode fallback uses one
+  reader and needs relationships returned with their end nodes.
 
 ## Stage
 

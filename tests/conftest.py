@@ -69,6 +69,11 @@ def live_neo4j():
     from lab.settings import get_settings
     from tests.fixtures.graph_loader import CONSTRAINTS, GRAPH, LOADS
 
+    # Live tests run against the `neo4j-test` service, never the bundled demo Neo4j (which holds the seed).
+    bolt = os.environ.get("LAB_TEST_NEO4J_BOLT_PORT", "27697")
+    http = os.environ.get("LAB_TEST_NEO4J_HTTP_PORT", "27484")
+    os.environ["NEO4J_URI"] = f"bolt://localhost:{bolt}"
+    os.environ["NEO4J_QUERY_URI"] = f"http://localhost:{http}"
     s = reload_settings()
     host = urlparse(s.neo4j_uri).hostname
     if host not in LOCAL_HOSTS:
@@ -84,5 +89,5 @@ def live_neo4j():
                 rows = pl.read_csv(GRAPH / name, infer_schema=False).to_dicts()
                 session.run(stmt, rows=rows).consume()
     except Exception as e:  # noqa: BLE001
-        pytest.fail(f"live tests need the local Neo4j (docker compose --profile local up -d --no-deps neo4j): {e}")
+        pytest.fail(f"live tests need the test Neo4j (docker compose --profile test up -d neo4j-test): {e}")
     return get_settings()

@@ -31,6 +31,7 @@ flowchart LR
 | `generate` | The lab image running `python -m generator` once: the import CSVs, `ground_truth.parquet` and `generator.json`, written to a volume. `LAB_SEED_SIZE` picks `small` or `1m`, `LAB_SEED` the seed | Profile `local` |
 | `seed` | `generator/import.sh`: `neo4j-admin database import full` of those CSVs into the Neo4j data volume, once, before Neo4j first starts. A marker file on the volume makes every later start a no-op | Profile `local` |
 | `neo4j` | `neo4j:2026.08.1` community with the seed | 17687, 17474. Profile `local` |
+| `neo4j-test` | A second `neo4j:2026.08.1` for live tests only, in memory; the tests wipe it | 27697, 27484. Profile `test` |
 | `seed-schema` | `cypher-shell -f generator/schema.cypher` once the bundled Neo4j is healthy: a uniqueness constraint on each node key, `IF NOT EXISTS` | Profile `local` |
 
 Volumes are named, not bind mounts. No Relate server image is published, so the lab carries the binary itself
