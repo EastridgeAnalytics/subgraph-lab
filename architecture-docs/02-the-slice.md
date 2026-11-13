@@ -12,7 +12,7 @@ flowchart TB
   vec["Vector search<br/>top k by meaning"]
   ft["Full-text search<br/>top k by words"]
   rrf["Rank fusion<br/>1 / (60 + rank), summed"]
-  hops["h hops out from each hit"]
+  hops["h account-to-account steps out from each hit"]
   size["Size and memory shown<br/>cap enforced"]
   slice["The slice<br/>what the models, the reviewer and the agent see"]
   pull --> first --> idx
@@ -42,11 +42,16 @@ The first two are ordinary `relate pull` queries. The third is the one this page
    template summary on each account from its recent activity.
 3. Create the vector index on the embeddings and the full-text index on the summaries.
 4. Search: vector and full-text in one statement, fused by rank, top `k` hits.
-5. Expand `h` hops from each hit. Show the size and the memory before going further.
+5. Expand `h` account-to-account steps from each hit. Show the size and the memory before going further.
 6. Enrich that subgraph. Then review and push.
 
 - **Search is not offered until the first pass has run. The Slice screen says so.**
-- **`k` defaults to 50 and `h` to 2. Both are knobs. How big two hops get on real data is to measure.**
+- **A hop is one account-to-account step** (decision 41): to an account that paid or was paid by this one, or to one
+  that shares an identifier with it. An identifier shared by more than `LAB_SHARED_MAX` accounts is no step. The
+  identifier nodes are not steps; they come into the slice with the accounts that use them.
+- **`k` defaults to 50 and `h` to 1. Both are knobs.** Measured in wave 5c on the store of run
+  `run-20261113T082716Z-52f819` (9,932 accounts), for the demo query: `h` 1 from the 50 hits reaches 821 accounts
+  and `h` 2 reaches 6,555. The payment graph is dense, so a second step is most of the store.
 
 ## The shape of the query
 
@@ -81,8 +86,9 @@ expansion. The memory it will take. Then the button.
 - A vector search can filter only on properties declared on its index.
 - Full-text has no stemming. "transfer" does not match "transfers". The vector list covers that.
 - One search per `MATCH`.
-- Two hops from 50 hits in a dense graph can be large. The screen shows the size first and enforces a cap. Lower
-  `k` or `h`.
+- Two steps from 50 hits in a dense graph can be most of it (6,555 of 9,932 accounts on the seed, run
+  `run-20261113T082716Z-52f819`). The screen shows the size first and enforces a cap. Lower `k` or `h`.
+- A search can return fewer than `k` hits when fewer accounts match. The estimate's note says so.
 
 ## Where it goes next
 

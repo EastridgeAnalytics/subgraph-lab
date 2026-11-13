@@ -7,8 +7,10 @@
    its own embedding and its own summary's words. Given both, each contributes its words and its vector.
 2. The hybrid statement from page 02, run in the run store: a vector branch and a full-text branch, each ranked
    on its own, fused as `1 / (60 + rank)`, the top `k`.
-3. `hops` hops out from the hits over the payment and identifier relationships, one round at a time in batches
-   of `LAB_KEY_BATCH` keys (Relate 1.0.1's `IN $keys` slows with the square of the list).
+3. `hops` account-to-account steps out from the hits (decision 41): a step is a payment in either direction, or an
+   identifier the two accounts share, and an identifier shared by more than `LAB_SHARED_MAX` accounts is no step.
+   One round per hop, keys sent in batches of `LAB_KEY_BATCH` (Relate 1.0.1's `IN $keys` slows with the square of
+   the list).
 4. The size, counted the way the adapters will build the slice: its accounts, the identifier nodes those accounts
    link to, the payments between those accounts and their identifier links. Memory comes from `estimate_memory`.
 
@@ -19,7 +21,6 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -93,6 +94,8 @@ def search_slice(run: Run, spec: SearchSpec) -> SliceEstimate:
                 "lower k or hops")
     elif over:
         note = f"more than the cap of {settings.slice_cap:,} nodes: lower k or hops"
+    elif len(hits) < k:
+        note = f"the search found {len(hits):,} accounts, fewer than the k of {k:,} asked for"
     est = SliceEstimate(
         mode="search", hits=hits, hops=hops, nodes=nodes, relationships=rels,
         memory_bytes=estimate_memory(nodes, rels), over_cap=over, cap=settings.slice_cap, note=note,
@@ -241,65 +244,72 @@ def _account(run: Run, key: str) -> tuple[list[float], str]:
 
 
 # ---- the hops and the size -----------------------------------------------------------------------------------
-@dataclass
-class _Frontier:
-    accounts: set[str]
-    identifiers: set[tuple[str, str]]  # (label, key) of an identifier node
-
-
 def _expand(run: Run, seeds: list[str], hops: int, cap: int) -> tuple[list[str], int, int, bool]:
-    """Accounts within `hops` hops of `seeds`, then the size of what the adapters will build from them.
+    """Accounts within `hops` account-to-account steps of `seeds`, then the size of what the adapters will build.
 
-    A hop crosses a payment (either way) or an identifier link (either way), so an account's other accounts on a
-    device are two hops away. Returns the sorted account keys, nodes, relationships, and whether the expansion
-    stopped early past `cap`. When it did, the counts are of what was found so far.
+    One step (decision 41) goes from an account to an account it paid or was paid by, or to one that shares an
+    identifier with it; an identifier shared by more than `LAB_SHARED_MAX` accounts is no step, because a crowd on one
+    address says nothing about any two of them. The identifier nodes themselves are not steps: they come into the
+    slice with the accounts that use them. Returns the sorted account keys, nodes, relationships, and whether the
+    expansion stopped early past `cap`. When it did, the counts are of what was found so far.
     """
+    shared_max = get_settings().shared_max
     seen = set(seeds)
-    seen_ids: set[tuple[str, str]] = set()
-    front = _Frontier(set(seeds), set())
+    front = sorted(seen)
+    front_links = reads.identifiers(run, front)  # the identifier links of the accounts the next step leaves from
+    all_links = [front_links]
+    identifiers = _identifier_nodes(front_links)
     capped = False
     for _ in range(hops):
-        if not (front.accounts or front.identifiers):
+        if not front:
             break
-        links = reads.identifiers(run, sorted(front.accounts))
-        new_ids = set(zip(links["label"], links["identifier"], strict=True)) - seen_ids
-        new_accounts = (_neighbours(run, front.accounts) | _members(run, front.identifiers)) - seen
-        seen |= new_accounts
-        seen_ids |= new_ids
-        front = _Frontier(new_accounts, new_ids)
-        if len(seen) + len(seen_ids) > cap:
+        new = (_neighbours(run, front) | _identifier_mates(run, front_links, shared_max)) - seen
+        front = sorted(new)
+        seen |= new
+        front_links = reads.identifiers(run, front)
+        all_links.append(front_links)
+        identifiers |= _identifier_nodes(front_links)
+        if len(seen) + len(identifiers) > cap:
             capped = True
             break
     accounts = sorted(seen)
-    links = reads.identifiers(run, accounts)
+    links = pl.concat(all_links, how="vertical_relaxed").unique()
     nodes = len(accounts) + links.select("label", "identifier").unique().height
     rels = links.height + _payments_among(run, accounts)
     return accounts, nodes, rels, capped
 
 
-def _neighbours(run: Run, keys: set[str]) -> set[str]:
+def _identifier_nodes(links: pl.DataFrame) -> set[tuple[str, str]]:
+    """`(label, key)` of every identifier node in a frame of `reads.identifiers`."""
+    return set(zip(links["label"], links["identifier"], strict=True))
+
+
+def _neighbours(run: Run, keys: list[str]) -> set[str]:
     """Accounts one payment away from `keys`, in either direction."""
     g = run.recipe.graph
     account, key = ident(g.account_label), ident(g.account_key)
     query = (f"MATCH (s:{account})-[:{ident(g.payment_type)}]-(d:{account}) WHERE s.{key} IN $keys "
              f"RETURN DISTINCT d.{key} AS key")
     out: set[str] = set()
-    for batch in reads.key_batches(sorted(keys)):
+    for batch in reads.key_batches(keys):
         out.update(str(k) for k in run.table(query, {"keys": batch})["key"].drop_nulls())
     return out
 
 
-def _members(run: Run, identifiers: set[tuple[str, str]]) -> set[str]:
-    """Accounts linked to the identifier nodes `(label, key)`."""
+def _identifier_mates(run: Run, links: pl.DataFrame, shared_max: int) -> set[str]:
+    """Accounts that share an identifier with the accounts in `links` (a frame of `reads.identifiers`), leaving out
+    every identifier that more than `shared_max` accounts use."""
     g = run.recipe.graph
     account = ident(g.account_label)
     out: set[str] = set()
     for link in g.identifiers:
-        mine = sorted(k for label, k in identifiers if label == link.label)
+        mine = sorted(set(links.filter(pl.col("label") == link.label)["identifier"].to_list()))
         query = (f"MATCH (i:{ident(link.label)})<-[:{ident(link.rel_type)}]-(a:{account}) "
-                 f"WHERE i.{ident(link.key)} IN $keys RETURN DISTINCT a.{ident(g.account_key)} AS key")
+                 f"WHERE i.{ident(link.key)} IN $keys "
+                 f"WITH i, collect(DISTINCT a.{ident(g.account_key)}) AS members WHERE size(members) <= $max "
+                 "UNWIND members AS member RETURN DISTINCT member AS key")
         for batch in reads.key_batches(mine):
-            out.update(str(k) for k in run.table(query, {"keys": batch})["key"].drop_nulls())
+            out.update(str(k) for k in run.table(query, {"keys": batch, "max": shared_max})["key"].drop_nulls())
     return out
 
 

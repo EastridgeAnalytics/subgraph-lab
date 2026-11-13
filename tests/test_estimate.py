@@ -46,6 +46,23 @@ def test_search_with_no_run_says_to_pull_a_schema_slice_first(data_dir):
     assert not est.over_cap and "pull a schema slice first" in est.note
 
 
+def test_a_search_with_no_hops_asked_for_is_one_account_step(data_dir, first_passed, monkeypatch):
+    """Decision 41: LAB_SEARCH_HOPS defaults to 1, and the estimate says so with or without a run to search."""
+    assert estimate(SliceRequest(search=SearchSpec(text="new accounts"))).hops == 1
+    run = first_passed[0]
+    monkeypatch.setenv("LAB_DATA_DIR", str(run.paths.root.parent.parent))
+    reload_settings()
+    try:
+        unset = estimate(SliceRequest(run_id=run.id, search=SearchSpec(account="A0011", k=1)))
+        one = estimate(SliceRequest(run_id=run.id, search=SearchSpec(account="A0011", k=1, hops=1)))
+        zero = estimate(SliceRequest(run_id=run.id, search=SearchSpec(account="A0011", k=1, hops=0)))
+        assert unset.hops == 1 and (unset.nodes, unset.relationships) == (one.nodes, one.relationships)
+        assert zero.nodes < unset.nodes  # the default reaches one step past the hit
+    finally:
+        monkeypatch.undo()
+        reload_settings()
+
+
 def test_search_uses_the_newest_run_whose_first_pass_is_done(data_dir, monkeypatch):
     make_run(data_dir, "run-20261101T000000Z-aaaaaa", True)
     newest_done = make_run(data_dir, "run-20261102T000000Z-bbbbbb", True)

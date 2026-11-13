@@ -376,6 +376,8 @@ def test_pull_by_relate(make_run, fake_relate):
     assert saved.routes["pull"] is Route.RELATE and saved.fallbacks == []
     assert saved.step("pull").status is StepStatus.DONE
     assert saved.step("pull").counts["nodes"] == 777 and saved.step("pull").counts["relationships"] == 2600
+    # relate's reused counts (470 here) are unreliable, so the step does not carry them: only the log does
+    assert saved.step("pull").counts == {"nodes": 777, "relationships": 2600, "constraints": 4}
     assert saved.step("indexes").status is StepStatus.DONE and saved.step("indexes").counts["indexes"] == 4
     names = {r["name"] for r in rows(run.store(), "SHOW INDEXES")}
     assert set(INDEX_NAMES) <= names

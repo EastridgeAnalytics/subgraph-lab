@@ -199,6 +199,9 @@ def test_dispositions_are_staged_on_accounts_alerts_and_communities(fixture_run)
     assert accounts["A0001"]["risk_score"] == 0.9  # the score is still there
     assert accounts["A0777"]["risk_disposition"] == "needs_more"
     assert accounts["A0001"]["risk_disposition_at"].endswith("Z")
+    # an account this run never scored carries the run's id too, which is what `retract` finds accounts by
+    assert accounts["A0777"]["risk_run_id"] == accounts["A0001"]["risk_run_id"] == fixture_run.id
+    assert "risk_score" not in accounts["A0777"]
     al = staged(fixture_run, "MATCH (n:Alert) RETURN properties(n) AS p")[0]["p"]
     assert (al["risk_disposition"], al["risk_disposition_by"]) == ("false_positive", "laura")
     co = staged(fixture_run, "MATCH (n:RiskCommunity) RETURN properties(n) AS p")[0]["p"]

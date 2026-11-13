@@ -444,8 +444,9 @@ def stage_disposition(run: Run, kind: str, key: Any, disposition: str, by: str) 
     """The reviewer's decision, staged to travel with the next push (page 04).
 
     Sets `risk_disposition`, `risk_disposition_by` and `risk_disposition_at` on the account, alert or community
-    in the push store. An account is MERGEd by key when it is not there yet; an alert or community must already be
-    staged. The decision reaches the master graph only with a push.
+    in the push store. An account is MERGEd by key when it is not there yet, and carries this run's `risk_run_id`
+    either way, so `retract` finds an account whose only result is a disposition; an alert or community must already
+    be staged (they have their own `run_id`). The decision reaches the master graph only with a push.
     """
     kind = StagedKind(kind)
     if disposition not in DISPOSITIONS:
@@ -457,11 +458,11 @@ def stage_disposition(run: Run, kind: str, key: Any, disposition: str, by: str) 
              StagedKind.COMMUNITY: COMMUNITY_SHAPE}[kind]
     conn = run.push_store()
     ensure_push_constraints(conn, mapping)
-    params = {"key": key, "d": disposition, "by": str(by), "at": iso_utc()}
+    params = {"key": key, "d": disposition, "by": str(by), "at": iso_utc(), "run": run.id}
     sets = "n.risk_disposition = $d, n.risk_disposition_by = $by, n.risk_disposition_at = $at"
     label, prop = ident(shape.label), ident(shape.key)
     if kind is StagedKind.ACCOUNT:
-        conn.execute(f"MERGE (n:{label} {{{prop}: $key}}) SET {sets}", params)
+        conn.execute(f"MERGE (n:{label} {{{prop}: $key}}) SET {sets}, n.risk_run_id = $run", params)
     else:
         hit = rows(conn, f"MATCH (n:{label} {{{prop}: $key}}) SET {sets} RETURN count(n) AS c", params)[0]["c"]
         if not hit:

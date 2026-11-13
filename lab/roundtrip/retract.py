@@ -4,7 +4,9 @@
 
 - it deletes the lab's own nodes whose `run_id` is this run: `Alert`, `RiskCommunity` and `LabRun`, with the
   `ALERT_ON` and `IN_RISK_COMMUNITY` links attached to them;
-- it removes every `risk_*` property from the accounts whose `risk_run_id` is this run, and leaves the account.
+- it removes every `risk_*` property from the accounts whose `risk_run_id` is this run, and leaves the account. An
+  account the run never scored but a reviewer gave a disposition carries the run's `risk_run_id` too
+  (`stage_disposition` stamps it), so it is cleaned with the rest.
 
 It never deletes an account, any other customer node or any customer relationship. An account that a push created
 because the master graph did not have its key stays, bare. The lab's constraints stay too.
