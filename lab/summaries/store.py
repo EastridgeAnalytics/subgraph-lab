@@ -31,7 +31,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common import alert_key as make_alert_key
 from lab.common import canonical_json, get_logger, iso_utc
 from lab.contracts.evidence import Evidence, Summary
@@ -233,10 +233,10 @@ def _store_accounts(run: Run) -> IsAccount:
 
     def lookup(tokens):
         found: set[str] = set()
-        for batch in _read.key_batches(sorted(tokens)):
+        for batch in reads.key_batches(sorted(tokens)):
             df = run.table(
-                f"MATCH (a:{_read.q(g.account_label)}) WHERE a.{_read.q(g.account_key)} IN $keys "
-                f"RETURN a.{_read.q(g.account_key)} AS key",
+                f"MATCH (a:{reads.q(g.account_label)}) WHERE a.{reads.q(g.account_key)} IN $keys "
+                f"RETURN a.{reads.q(g.account_key)} AS key",
                 {"keys": batch},
             )
             found |= {str(k) for k in df["key"].to_list()}

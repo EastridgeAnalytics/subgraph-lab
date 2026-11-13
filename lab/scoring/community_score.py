@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 import networkx as nx
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common import canonical_json, community_key, get_logger, iso_utc
 from lab.contracts.factors import Policy
 from lab.scoring.policy import _EDGE
@@ -118,15 +118,15 @@ def _member_risk(scores: pl.DataFrame, key: str, groups: list[set[str]], alert_t
 
 def _shape_parts(run: Run, scope: list[str], groups: list[set[str]], member_of: dict[str, int]) -> dict[str, list[float]]:
     """The four parts that come from the run store: identifiers, cycles, new accounts, speed."""
-    pay = _read.payments(run, scope, detail=True)
-    pay = pay.with_columns(ts=_read.utc_naive(pay["ts"]))
+    pay = reads.payments(run, scope, detail=True)
+    pay = pay.with_columns(ts=reads.utc_naive(pay["ts"]))
     acc = _accounts(run, scope)
     as_of = pay["ts"].max() if pay.height else None
     new = _new_accounts(acc, as_of)
     fast = set(_pass_through(pay)["key"]) if pay.height else set()
     n = [len(g) for g in groups]
 
-    covered = _identifier_cover(_read.identifiers(run, scope), member_of)
+    covered = _identifier_cover(reads.identifiers(run, scope), member_of)
     on_cycles = _cycle_share(pay, member_of, len(groups))
     return {
         "shared_identifiers": [covered.get(i, 0) / n[i] for i in range(len(groups))],

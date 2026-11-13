@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common import canonical_json, get_logger
 from lab.contracts.factors import FACTOR_RESULT_COLUMNS, Factor, FactorFile
 from lab.settings import get_settings
@@ -158,7 +158,7 @@ def _run_cypher(run: Run, factor: Factor, base: Path, keys: list[str] | None) ->
     query = _query_text(factor, base)
     # LAB_KEY_BATCH keys at a time, as the adapters send them (a long IN list is slow in Relate 1.0.1). Each row
     # belongs to the account the query anchors on, so the batches never overlap.
-    frames = [run.table(query, {"threshold": factor.threshold, "keys": batch}) for batch in _read.key_batches(keys)]
+    frames = [run.table(query, {"threshold": factor.threshold, "keys": batch}) for batch in reads.key_batches(keys)]
     if not frames:  # keys == []
         return _no_rows()
     return _cypher_rows(pl.concat(frames, how="vertical_relaxed"), factor)
@@ -270,7 +270,7 @@ def _result_frame(df: Any, keys: list[str] | None, default_evidence: dict[str, A
     df = pl.DataFrame({"key": df["key"], "score": scores, "evidence": evidence}, schema={
         c: RESULT_SCHEMA[c] for c in FACTOR_RESULT_COLUMNS})
     df = df.sort("score", "key", descending=[True, False]).unique("key", keep="first", maintain_order=True)
-    return _read.inside(df, "key", keys).sort("key")
+    return reads.inside(df, "key", keys).sort("key")
 
 
 def _evidence_json(text: str | None, default: str) -> str:

@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.roundtrip.queries import ident
 from lab.settings import get_settings
 
@@ -45,8 +45,8 @@ def account_summaries(run: Run, keys: list[str] | None = None) -> pl.DataFrame:
     """
     g = run.recipe.graph
     acc = _accounts(run, keys)
-    pay = _read.payments(run, keys, detail=True)
-    pay = pay.with_columns(ts=_read.utc_naive(pay["ts"]))
+    pay = reads.payments(run, keys, detail=True)
+    pay = pay.with_columns(ts=reads.utc_naive(pay["ts"]))
 
     as_of = pay["ts"].max() if pay.height else None
     new = _new_accounts(acc, as_of)
@@ -98,13 +98,13 @@ def _accounts(run: Run, keys: list[str] | None) -> pl.DataFrame:
         ret += f", a.{ident(g.account_opened)} AS opened"
     where = "" if keys is None else f"WHERE a.{ident(g.account_key)} IN $keys"
     query = f"MATCH (a:{ident(g.account_label)}) {where} RETURN {ret}"
-    frames = [run.table(query, {} if b is None else {"keys": b}) for b in _read.key_batches(keys)]
+    frames = [run.table(query, {} if b is None else {"keys": b}) for b in reads.key_batches(keys)]
     if not frames:  # keys == []
         return pl.DataFrame(schema={"key": pl.Utf8, "opened": pl.Datetime("us")})
     df = pl.concat(frames, how="vertical_relaxed")
     if "opened" not in df.columns:
         df = df.with_columns(opened=pl.lit(None, dtype=pl.Datetime("us")))
-    df = df.select(pl.col("key").cast(pl.Utf8), opened=_read.utc_naive(df["opened"]))
+    df = df.select(pl.col("key").cast(pl.Utf8), opened=reads.utc_naive(df["opened"]))
     return df.drop_nulls("key").unique("key").sort("key")
 
 
@@ -143,7 +143,7 @@ def _shared(run: Run, keys: list[str] | None) -> dict[str, list[str]]:
     """account key -> its "shares a device with N other accounts" clauses, in the mapping's order."""
     g = run.recipe.graph
     cap = get_settings().shared_max
-    links = _read.identifiers(run, keys)
+    links = reads.identifiers(run, keys)
     if links.is_empty():
         return {}
     noun = pl.when(pl.col("kind") == "other").then(pl.col("label").str.to_lowercase()).otherwise(pl.col("kind"))

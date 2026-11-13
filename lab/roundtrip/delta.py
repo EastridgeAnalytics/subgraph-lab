@@ -24,6 +24,7 @@ import numpy as np
 import polars as pl
 
 from lab.common.arrow import query_frame
+from lab.common.batching import key_batches
 from lab.common.log import get_logger
 from lab.common.neo4j import neo4j_session
 from lab.common.store import rows
@@ -83,17 +84,13 @@ def read_remote(session, query: str, **params) -> list[dict]:
     return session.execute_read(work)
 
 
-def _chunks(items: list, size: int) -> Iterator[list]:
-    size = max(1, size)
-    for i in range(0, len(items), size):
-        yield items[i : i + size]
 
 
 def missing_on_master(session, label: str, key: str, keys: list, batch: int) -> list:
     """The keys in `keys` that no node labelled `label` has on the master graph, in their given order."""
     found: set = set()
     query = f"MATCH (n:{ident(label)}) WHERE n.{ident(key)} IN $keys RETURN n.{ident(key)} AS k"
-    for part in _chunks(keys, batch):
+    for part in key_batches(keys, batch):
         found.update(r["k"] for r in read_remote(session, query, keys=part))
     return [k for k in keys if k not in found]
 
@@ -164,7 +161,7 @@ def compute(run: Run, *, session=None) -> Delta:
                 "RETURN k AS key, a IS NOT NULL AS found, a.risk_score AS score"
             )
             local = dict(zip(sampled["key"].to_list(), sampled["score"].to_list(), strict=True))
-            for part in _chunks(list(local), settings.key_batch):
+            for part in key_batches(list(local), settings.key_batch):
                 for r in read_remote(s, query, keys=part):
                     mine = local[r["key"]]
                     if not r["found"]:

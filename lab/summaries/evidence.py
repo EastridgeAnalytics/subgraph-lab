@@ -40,7 +40,7 @@ import jsonschema
 import networkx as nx
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common import alert_key as make_alert_key
 from lab.contracts.evidence import Comparison, Evidence, FactorHit, MemberScore, Money, SharedIdentifier
 from lab.scoring.communities import COMMUNITIES_FILE
@@ -129,7 +129,7 @@ class EvidenceContext:
     def links(self) -> pl.DataFrame:
         """Account-to-identifier links of the slice with `used_by`, the accounts of the slice on that identifier."""
         if self._links is None:
-            links = _read.identifiers(self.run, self.scope)
+            links = reads.identifiers(self.run, self.scope)
             keys = ["kind", "label", "identifier"]
             if links.is_empty():
                 self._links = links.with_columns(used_by=pl.lit(0, dtype=pl.UInt32))
@@ -146,19 +146,19 @@ class EvidenceContext:
 
 
 def _fetch(run: Run, query: str, keys: list[str]) -> pl.DataFrame:
-    frames = [run.table(query, {"keys": batch}) for batch in _read.key_batches(keys)]
+    frames = [run.table(query, {"keys": batch}) for batch in reads.key_batches(keys)]
     if not frames:
         return pl.DataFrame(schema=_PAY_SCHEMA)
     df = pl.concat(frames, how="vertical_relaxed")
     return df.select(
         pl.col("src").cast(pl.Utf8), pl.col("dst").cast(pl.Utf8), pl.col("amount").cast(pl.Float64),
-        ts=_read.utc_naive(df["ts"]),
+        ts=reads.utc_naive(df["ts"]),
     )
 
 
 def _touching(run: Run, keys: list[str]) -> pl.DataFrame:
     """Payments out of `keys`, then payments into `keys` from accounts that are not in `keys`: each payment once."""
-    g, q = run.recipe.graph, _read.q
+    g, q = run.recipe.graph, reads.q
     match = f"MATCH (s:{q(g.account_label)})-[t:{q(g.payment_type)}]->(d:{q(g.account_label)})"
     ret = (f"RETURN s.{q(g.account_key)} AS src, d.{q(g.account_key)} AS dst, "
            f"t.{q(g.payment_amount)} AS amount, t.{q(g.payment_time)} AS ts")

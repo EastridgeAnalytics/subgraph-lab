@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common.log import get_logger
 
 if TYPE_CHECKING:
@@ -40,15 +40,15 @@ def to_temporal(run: Run, keys: list[str] | None = None) -> TemporalGraph:
     """
     from torch_geometric.data import TemporalData
 
-    acc = _read.accounts(run, keys).with_row_index("idx").with_columns(pl.col("idx").cast(pl.Int64))
-    pay = _read.payments(run, keys)
+    acc = reads.accounts(run, keys).with_row_index("idx").with_columns(pl.col("idx").cast(pl.Int64))
+    pay = reads.payments(run, keys)
     no_time = pay["ts"].null_count()
     if no_time:
         log.warning("to_temporal: %d of %d payments have no time and are left out", no_time, pay.height)
     pay = pay.filter(pl.col("ts").is_not_null())
     pay = (
         pay.with_columns(
-            t=_read.utc_naive(pay["ts"]).dt.epoch("s"),
+            t=reads.utc_naive(pay["ts"]).dt.epoch("s"),
             m=pl.col("amount").fill_null(0.0).clip(lower_bound=0.0).log1p().cast(pl.Float32),
         )
         .join(acc.rename({"key": "src", "idx": "s"}), on="src")

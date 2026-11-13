@@ -40,7 +40,7 @@ import polars as pl
 from statsforecast import StatsForecast
 from statsforecast.models import CrostonClassic
 
-from lab.adapters import _read, to_series
+from lab.adapters import reads, to_series
 from lab.common import canonical_json
 
 if TYPE_CHECKING:
@@ -112,10 +112,10 @@ def score(run: Run, factor: Factor | None = None, keys: list[str] | None = None)
 def _to_the_end_of_the_run(run: Run, series: pl.DataFrame) -> pl.DataFrame:
     """Zeros from the slice's last day to the last day of any payment in the run store, for every series."""
     g = run.recipe.graph
-    latest = run.table(f"MATCH ()-[t:{_read.q(g.payment_type)}]->() RETURN max(t.{_read.q(g.payment_time)}) AS last")["last"]
+    latest = run.table(f"MATCH ()-[t:{reads.q(g.payment_type)}]->() RETURN max(t.{reads.q(g.payment_time)}) AS last")["last"]
     if latest.is_null().all():
         return series
-    end, last = series["ds"].max(), _read.utc_naive(latest).dt.truncate("1d").item()
+    end, last = series["ds"].max(), reads.utc_naive(latest).dt.truncate("1d").item()
     if last <= end:
         return series
     days = pl.datetime_range(end + timedelta(days=1), last, interval="1d", eager=True).cast(pl.Datetime("us")).alias("ds")

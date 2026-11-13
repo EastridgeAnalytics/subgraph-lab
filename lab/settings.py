@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     # Judgment numbers (page 07)
     search_k: int = Field(50, alias="LAB_SEARCH_K")
-    search_hops: int = Field(2, alias="LAB_SEARCH_HOPS")
+    search_hops: int = Field(1, alias="LAB_SEARCH_HOPS")  # decision 41: one account-to-account step
     slice_cap: int = Field(200_000, alias="LAB_SLICE_CAP")
     push_batch: int = Field(5_000, alias="LAB_PUSH_BATCH")
     load_start_rows: int = Field(20_000, alias="LAB_LOAD_START_ROWS")
@@ -54,6 +54,15 @@ class Settings(BaseSettings):
     pass_through_hours: int = Field(24, alias="LAB_PASS_THROUGH_HOURS")
     round_threshold: float = Field(10_000, alias="LAB_ROUND_THRESHOLD")
     just_under: float = Field(0.05, alias="LAB_JUST_UNDER")
+    cycle_max_length: int = Field(6, alias="LAB_CYCLE_MAX_LENGTH")
+    cycle_count_cap: int = Field(1000, alias="LAB_CYCLE_COUNT_CAP")
+    velocity_holdout_days: int = Field(14, alias="LAB_VELOCITY_HOLDOUT_DAYS")
+    velocity_min_history_days: int = Field(28, alias="LAB_VELOCITY_MIN_HISTORY_DAYS")
+    velocity_min_active_days: int = Field(3, alias="LAB_VELOCITY_MIN_ACTIVE_DAYS")
+    summary_small_group: int = Field(8, alias="LAB_SUMMARY_SMALL_GROUP")
+    evidence_top_members: int = Field(5, alias="LAB_EVIDENCE_TOP_MEMBERS")
+    evidence_max_identifiers: int = Field(10, alias="LAB_EVIDENCE_MAX_IDENTIFIERS")
+    evidence_max_ids: int = Field(10, alias="LAB_EVIDENCE_MAX_IDS")
 
     # Where things live
     data_dir: Path = Field(Path("data"), alias="LAB_DATA_DIR")

@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 
 if TYPE_CHECKING:
     from lab.runs import Run
@@ -23,10 +23,10 @@ def to_series(run: Run, keys: list[str] | None = None, freq: str = "1d") -> pl.D
     regular and statsforecast takes it as it is. An account with no payment out has no series. A payment with no
     time is left out; a missing amount counts as zero.
     """
-    pay = _read.outflow(run, keys).filter(pl.col("ts").is_not_null())
+    pay = reads.outflow(run, keys).filter(pl.col("ts").is_not_null())
     if pay.is_empty():
         return pl.DataFrame(schema=SCHEMA)
-    pay = pay.with_columns(ds=_read.utc_naive(pay["ts"]).dt.truncate(freq))
+    pay = pay.with_columns(ds=reads.utc_naive(pay["ts"]).dt.truncate(freq))
     per_period = pay.group_by("unique_id", "ds").agg(y=pl.col("amount").fill_null(0.0).sum())
     window = pl.datetime_range(pay["ds"].min(), pay["ds"].max(), interval=freq, eager=True).alias("ds")
     grid = pl.DataFrame({"unique_id": per_period["unique_id"].unique()}).join(window.to_frame(), how="cross")

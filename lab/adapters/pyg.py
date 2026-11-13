@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 
 if TYPE_CHECKING:
     from torch_geometric.data import Data
@@ -42,12 +42,12 @@ def to_pyg(run: Run, keys: list[str] | None = None, nodes: Literal["all", "accou
     from torch_geometric.utils import to_undirected
 
     g = run.recipe.graph
-    acc = _indexed(_read.accounts(run, keys))
+    acc = _indexed(reads.accounts(run, keys))
     n_acc = acc.height
     node_keys = [f"{g.account_label}:{k}" for k in acc["key"]]
     node_labels = [g.account_label] * n_acc
 
-    pairs = _read.payments(run, keys, detail=False)
+    pairs = reads.payments(run, keys, detail=False)
     edges = [
         pairs.join(acc.rename({"key": "src", "idx": "s"}), on="src")
         .join(acc.rename({"key": "dst", "idx": "d"}), on="dst")
@@ -55,7 +55,7 @@ def to_pyg(run: Run, keys: list[str] | None = None, nodes: Literal["all", "accou
     ]
 
     if nodes == "all":
-        links = _read.identifiers(run, keys)
+        links = reads.identifiers(run, keys)
         ident = _indexed(links.select("label", "identifier").unique().sort("label", "identifier"), offset=n_acc)
         node_keys += [f"{lab}:{k}" for lab, k in zip(ident["label"], ident["identifier"], strict=True)]
         node_labels += ident["label"].to_list()

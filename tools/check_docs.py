@@ -21,6 +21,7 @@ TELLS = re.compile(
     re.I,
 )
 FENCE = re.compile(r"```.*?```", re.S)
+INLINE_CODE = re.compile("`[^`\\n]*`")
 LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 
@@ -29,6 +30,7 @@ def check(path: pathlib.Path, mermaid_blocks: list) -> list:
     for m in re.finditer(r"```mermaid\n(.*?)```", text, re.S):
         mermaid_blocks.append({"file": path.name, "src": m.group(1)})
     prose = FENCE.sub("", text)
+    prose = INLINE_CODE.sub("code", prose)  # inline code is not prose
     lines = [ln for ln in prose.splitlines() if not re.match(r"^\|[-|: ]+\|$", ln)]
     prose = "\n".join(lines)
     prose_nolist = re.sub(r"(?m)^\s*(-|\d+\.)\s+", "", prose)

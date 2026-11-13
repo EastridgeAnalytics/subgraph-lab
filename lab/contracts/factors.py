@@ -71,6 +71,7 @@ class CommunityPolicy(BaseModel):
     [0, 1]; the score is their weighted mean. A community smaller than `min_size` is not scored or staged."""
 
     min_size: int = Field(3, ge=2)
+    member_risk_share: float = Field(0.5, ge=0, le=1)  # in `member_risk`: the share at the threshold vs the mean score
     weights: dict[str, float] = Field(default_factory=lambda: {
         "member_risk": 0.35,  # the share of members at or above the alert threshold, and their mean score
         "shared_identifiers": 0.2,  # how many identifiers members share, relative to the community's size
@@ -89,7 +90,7 @@ class Policy(BaseModel):
     """
 
     version: str = "1"
-    combine: Literal["weighted_mean"] = "weighted_mean"
+    combine: Literal["weighted_mean", "noisy_or"] = "weighted_mean"  # decision 39: the shipped policy is noisy_or
     alert_threshold: float = Field(0.6, ge=0, le=1)
     window: str = "P30D"
     community: CommunityPolicy = Field(default_factory=CommunityPolicy)

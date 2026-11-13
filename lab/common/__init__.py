@@ -2,6 +2,7 @@
 these does is a review finding.
 """
 from lab.common.arrow import arrow_to_polars, query_frame
+from lab.common.batching import key_batches
 from lab.common.ids import (
     alert_key,
     canonical_json,
@@ -26,7 +27,7 @@ from lab.common.store import (
 from lab.settings import get_settings, reload_settings
 
 __all__ = [
-    "arrow_to_polars", "query_frame", "alert_key", "canonical_json", "community_key", "content_hash",
+    "arrow_to_polars", "query_frame", "key_batches", "alert_key", "canonical_json", "community_key", "content_hash",
     "evidence_hash", "iso_utc", "run_id", "get_logger", "master_rows", "neo4j_driver", "neo4j_session",
     "CliResult", "RelateError", "credentials_file", "plaintext_flag", "relate_cli", "RunPaths",
     "estimate_memory", "list_runs", "open_store", "rows", "run_paths", "summary_cache_path", "get_settings",

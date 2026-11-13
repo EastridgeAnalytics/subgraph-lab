@@ -29,7 +29,7 @@ import networkx as nx
 import numpy as np
 import polars as pl
 
-from lab.adapters import _read, to_networkx
+from lab.adapters import reads, to_networkx
 from lab.common import get_logger
 from lab.contracts.factors import Policy
 from lab.contracts.graph import COMMUNITY_KEY, COMMUNITY_LABEL, EMBEDDING_PROP, IN_COMMUNITY
@@ -193,7 +193,7 @@ def embed_communities(run: Run, df: pl.DataFrame) -> pl.DataFrame:
     g = run.recipe.graph
     members = sorted({m for keys in df["member_keys"].to_list() for m in keys})
     vectors: dict[str, np.ndarray] = {}
-    for batch in _read.key_batches(members):
+    for batch in reads.key_batches(members):
         found = run.table(
             f"MATCH (a:{ident(g.account_label)}) WHERE a.{ident(g.account_key)} IN $keys "
             f"AND a.{ident(EMBEDDING_PROP)} IS NOT NULL "

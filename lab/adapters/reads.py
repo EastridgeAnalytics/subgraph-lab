@@ -11,13 +11,11 @@ in Polars, where a semi join is linear.
 """
 from __future__ import annotations
 
-from collections.abc import Iterator
 from typing import TYPE_CHECKING
 
 import polars as pl
 
 from lab.contracts.graph import GraphMapping, IdentifierLink
-from lab.settings import get_settings
 
 if TYPE_CHECKING:
     from lab.runs import Run
@@ -29,15 +27,7 @@ def q(name: str) -> str:
     return "`" + name.replace("`", "``") + "`"
 
 
-def key_batches(keys: list[str] | None) -> Iterator[list[str] | None]:
-    """The key lists to send, one statement each: the distinct keys in batches, or one None for no restriction."""
-    if keys is None:
-        yield None
-        return
-    distinct = list(dict.fromkeys(keys))
-    size = get_settings().key_batch
-    for i in range(0, len(distinct), size):
-        yield distinct[i : i + size]
+from lab.common.batching import key_batches  # noqa: E402,F401 (the one batching helper; re-exported for the readers)
 
 
 def _read(run: Run, query: str, keys: list[str] | None, columns: list[str]) -> pl.DataFrame:

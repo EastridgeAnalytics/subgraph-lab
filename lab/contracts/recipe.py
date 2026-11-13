@@ -60,6 +60,7 @@ class Recipe(BaseModel):
     pull: PullSpec = Field(default_factory=PullSpec)
     search: SearchSpec | None = None
     models: list[ModelName] = Field(default_factory=lambda: ["node2vec", "tgn", "communities", "velocity"])
+    factors: list[str] | None = None  # decision 40: the factor ids this run scores with; None means every factor
     factors_file: str | None = None  # None means LAB_FACTORS_FILE
     policy_file: str | None = None
     summaries: bool = True

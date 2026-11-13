@@ -250,6 +250,21 @@
     }
   },
   "properties": {
+    "factors": {
+      "anyOf": [
+        {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Factors"
+    },
     "factors_file": {
       "anyOf": [
         {

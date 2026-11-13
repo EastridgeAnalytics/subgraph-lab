@@ -12,7 +12,7 @@ import torch
 from torch_geometric.data import Data, TemporalData
 
 import lab.adapters as adapters
-from lab.adapters import PygGraph, TemporalGraph, _read, table, to_networkx, to_pyg, to_series, to_temporal
+from lab.adapters import PygGraph, TemporalGraph, reads, table, to_networkx, to_pyg, to_series, to_temporal
 from lab.contracts.graph import GraphMapping, IdentifierLink
 from lab.contracts.recipe import Recipe
 from lab.runs import Run
@@ -388,10 +388,10 @@ def test_a_slice_longer_than_one_batch_reads_the_same(fixture_run: Run, monkeypa
 
 def test_key_batches(data_dir):
     size = get_settings().key_batch
-    assert list(_read.key_batches(None)) == [None]
-    assert list(_read.key_batches([])) == []
-    assert [len(b) for b in _read.key_batches([str(i) for i in range(size * 2 + 1)])] == [size, size, 1]
-    assert list(_read.key_batches(["a", "b", "a"])) == [["a", "b"]]
+    assert list(reads.key_batches(None)) == [None]
+    assert list(reads.key_batches([])) == []
+    assert [len(b) for b in reads.key_batches([str(i) for i in range(size * 2 + 1)])] == [size, size, 1]
+    assert list(reads.key_batches(["a", "b", "a"])) == [["a", "b"]]
 
 
 # ---- the adapters read the recipe's mapping, not the generator's names ------------------------------------------

@@ -84,6 +84,20 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
     blocking call longer than an agent's tool timeout left half-done runs behind (wave 2). `run_status` takes
     `wait_seconds` (up to 240) and answers early when the run stops running, so an agent waits without spinning.
 
+Decisions 39 to 42 come from the wave 4 review ([mvp-review](reviews/mvp-review.md)).
+
+39. **The account score is a noisy-or of weighted factors** (R1): `1 - Π(1 - wᵢ·sᵢ)`, over the rule factors for
+    `risk_score_rules`, the model factors for `risk_score_model`, and all of them for `risk_score`. A factor that does
+    not fire changes nothing and a new factor can only add. The policy file says `combine: noisy_or`; the weighted
+    mean stays available. The shipped weights and threshold are re-set for the demo data.
+40. **A recipe can choose its factors.** `factors` lists factor ids; unset means every factor in the file.
+41. **Hops count accounts** (R2). One hop is one account-to-account step, by a payment or by a shared identifier;
+    an identifier shared by more than `LAB_SHARED_MAX` accounts is no step. `LAB_SEARCH_HOPS` defaults to 1.
+42. **Communities start from shared identifiers** (R6). Accounts joined by an identifier shared by at most
+    `LAB_SHARED_MAX` accounts form the first communities; Louvain runs on the payment graph of the accounts left.
+    Cycles count only when each payment comes after the one before it, and "money in and out within a day" has one
+    definition (similar amounts) used by the factor, the summary phrase and the community's speed (R3).
+
 ## Open
 
 | Question | What depends on it | Who |

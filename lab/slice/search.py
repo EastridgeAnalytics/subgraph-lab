@@ -25,7 +25,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common.log import get_logger
 from lab.common.store import estimate_memory
 from lab.contracts.api import Hit, SliceEstimate
@@ -218,7 +218,7 @@ def _embeddings(run: Run, keys: list[str]) -> dict[str, list[float]]:
     query = (f"MATCH (a:{ident(g.account_label)}) WHERE a.{ident(g.account_key)} IN $keys "
              f"RETURN a.{ident(g.account_key)} AS key, a.{ident(EMBEDDING_PROP)} AS v")
     out: dict[str, list[float]] = {}
-    for batch in _read.key_batches(keys):
+    for batch in reads.key_batches(keys):
         for key, v in run.table(query, {"keys": batch}).iter_rows():
             if v is not None:
                 out[str(key)] = v
@@ -261,7 +261,7 @@ def _expand(run: Run, seeds: list[str], hops: int, cap: int) -> tuple[list[str],
     for _ in range(hops):
         if not (front.accounts or front.identifiers):
             break
-        links = _read.identifiers(run, sorted(front.accounts))
+        links = reads.identifiers(run, sorted(front.accounts))
         new_ids = set(zip(links["label"], links["identifier"], strict=True)) - seen_ids
         new_accounts = (_neighbours(run, front.accounts) | _members(run, front.identifiers)) - seen
         seen |= new_accounts
@@ -271,7 +271,7 @@ def _expand(run: Run, seeds: list[str], hops: int, cap: int) -> tuple[list[str],
             capped = True
             break
     accounts = sorted(seen)
-    links = _read.identifiers(run, accounts)
+    links = reads.identifiers(run, accounts)
     nodes = len(accounts) + links.select("label", "identifier").unique().height
     rels = links.height + _payments_among(run, accounts)
     return accounts, nodes, rels, capped
@@ -284,7 +284,7 @@ def _neighbours(run: Run, keys: set[str]) -> set[str]:
     query = (f"MATCH (s:{account})-[:{ident(g.payment_type)}]-(d:{account}) WHERE s.{key} IN $keys "
              f"RETURN DISTINCT d.{key} AS key")
     out: set[str] = set()
-    for batch in _read.key_batches(sorted(keys)):
+    for batch in reads.key_batches(sorted(keys)):
         out.update(str(k) for k in run.table(query, {"keys": batch})["key"].drop_nulls())
     return out
 
@@ -298,7 +298,7 @@ def _members(run: Run, identifiers: set[tuple[str, str]]) -> set[str]:
         mine = sorted(k for label, k in identifiers if label == link.label)
         query = (f"MATCH (i:{ident(link.label)})<-[:{ident(link.rel_type)}]-(a:{account}) "
                  f"WHERE i.{ident(link.key)} IN $keys RETURN DISTINCT a.{ident(g.account_key)} AS key")
-        for batch in _read.key_batches(mine):
+        for batch in reads.key_batches(mine):
             out.update(str(k) for k in run.table(query, {"keys": batch})["key"].drop_nulls())
     return out
 
@@ -309,11 +309,11 @@ def _payments_among(run: Run, accounts: list[str]) -> int:
     account, key = ident(g.account_label), ident(g.account_key)
     query = (f"MATCH (s:{account})-[t:{ident(g.payment_type)}]->(d:{account}) WHERE s.{key} IN $keys "
              f"RETURN d.{key} AS dst, count(t) AS n")
-    frames = [run.table(query, {"keys": batch}) for batch in _read.key_batches(accounts)]
+    frames = [run.table(query, {"keys": batch}) for batch in reads.key_batches(accounts)]
     if not frames:
         return 0
     df = pl.concat(frames, how="vertical_relaxed").with_columns(pl.col("dst").cast(pl.Utf8))
-    return int(_read.inside(df, "dst", accounts)["n"].sum() or 0)
+    return int(reads.inside(df, "dst", accounts)["n"].sum() or 0)
 
 
 # ---- the saved slice -----------------------------------------------------------------------------------------

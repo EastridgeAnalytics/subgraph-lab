@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common import alert_key, canonical_json
 from lab.contracts.factors import Policy
 from lab.scoring.factors import FactorRun
@@ -50,7 +50,7 @@ def account_scores(run: Run, factor_run: FactorRun, policy: Policy, accounts: li
     key = run.recipe.graph.account_key
     factors = factor_run.file.factors
     if accounts is None:
-        accounts = _read.accounts(run, factor_run.keys)["key"].to_list()
+        accounts = reads.accounts(run, factor_run.keys)["key"].to_list()
     wide = pl.DataFrame({"__key": pl.Series(list(dict.fromkeys(accounts)), dtype=pl.Utf8)})
     for f in factors:
         scored = factor_run.results.filter(pl.col("factor_id") == f.id).select(

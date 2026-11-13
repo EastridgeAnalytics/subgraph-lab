@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Literal
 
 import polars as pl
 
-from lab.adapters import _read
+from lab.adapters import reads
 from lab.common.log import get_logger
 from lab.settings import get_settings
 
@@ -51,8 +51,8 @@ def _communities(run: Run, keys: list[str] | None) -> nx.Graph:
                "phone": s.weight_phone, "other": s.weight_other}
     ident_key = ["kind", "label", "identifier"]
 
-    acc = _read.accounts(run, keys)
-    links = _read.identifiers(run, keys)
+    acc = reads.accounts(run, keys)
+    links = reads.identifiers(run, keys)
     unweighted = sorted(set(links["kind"]) - set(weights))
     if unweighted:
         log.warning("to_networkx: no link weight for identifier kinds %s; they link nothing", unweighted)
@@ -70,7 +70,7 @@ def _communities(run: Run, keys: list[str] | None) -> nx.Graph:
     )
 
     # A payment links its two accounts once, whichever way it went and however many there were.
-    pairs = _read.payments(run, keys, detail=False).filter(pl.col("src") != pl.col("dst"))
+    pairs = reads.payments(run, keys, detail=False).filter(pl.col("src") != pl.col("dst"))
     by_payment = (
         pairs.select(
             u=pl.when(pl.col("src") < pl.col("dst")).then(pl.col("src")).otherwise(pl.col("dst")),
@@ -99,21 +99,21 @@ def _raw(run: Run, keys: list[str] | None) -> nx.MultiDiGraph:
     import networkx as nx
 
     g = run.recipe.graph
-    A, key = _read.q(g.account_label), _read.q(g.account_key)
+    A, key = reads.q(g.account_label), reads.q(g.account_key)
     keyset = None if keys is None else set(keys)
     store = run.store()
     G = nx.MultiDiGraph()
-    for batch in _read.key_batches(keys):
+    for batch in reads.key_batches(keys):
         params = {} if batch is None else {"keys": batch}
         where = "" if batch is None else f"WHERE a.{key} IN $keys"
         # The accounts of this batch with the payments they send, then each kind of identifier link.
-        queries = [f"MATCH (a:{A}) {where} OPTIONAL MATCH (a)-[r:{_read.q(g.payment_type)}]->(x:{A}) RETURN a, r, x"] + [
-            f"MATCH (a:{A})-[r:{_read.q(link.rel_type)}]->(x:{_read.q(link.label)}) {where} RETURN a, r, x"
+        queries = [f"MATCH (a:{A}) {where} OPTIONAL MATCH (a)-[r:{reads.q(g.payment_type)}]->(x:{A}) RETURN a, r, x"] + [
+            f"MATCH (a:{A})-[r:{reads.q(link.rel_type)}]->(x:{reads.q(link.label)}) {where} RETURN a, r, x"
             for link in g.identifiers
         ]
         for i, query in enumerate(queries):
             rg = store.execute(query, params).graph()
-            # A payment to an account outside the slice is not in the slice (the lookup stays small: see _read).
+            # A payment to an account outside the slice is not in the slice (the lookup stays small: see reads).
             keep = {n.id for n in rg.nodes if i > 0 or keyset is None or n.properties.get(g.account_key) in keyset}
             G.add_nodes_from((n.id, {"labels": n.labels, **n.properties}) for n in rg.nodes if n.id in keep)
             G.add_edges_from(
