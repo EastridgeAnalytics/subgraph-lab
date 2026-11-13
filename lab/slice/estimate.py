@@ -64,13 +64,11 @@ def estimate_pull(spec: PullSpec, mapping: GraphMapping) -> SliceEstimate:
         nodes, rels, note = _cypher_counts(spec)
     else:
         nodes, rels, note = _schema_counts(spec, mapping)
-    cap = get_settings().slice_cap
-    over = nodes > cap
-    if over:
-        note += f". More than the cap of {cap:,} nodes: narrow the window or the labels"
+    # LAB_SLICE_CAP bounds a search slice (page 07), not a pull: a pull shows its size and memory and is never
+    # refused for it.
     return SliceEstimate(
         mode=spec.mode, nodes=nodes, relationships=rels, memory_bytes=estimate_memory(nodes, rels),
-        over_cap=over, cap=cap, note=note,
+        over_cap=False, cap=get_settings().slice_cap, note=note,
     )
 
 

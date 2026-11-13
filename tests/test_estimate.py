@@ -215,11 +215,11 @@ def test_a_query_with_no_graph_elements_counts_none(live_neo4j):
 
 
 @pytest.mark.live
-def test_a_pull_past_the_cap_is_flagged(live_neo4j, restore_settings):
+def test_a_pull_is_never_refused_for_the_search_cap(live_neo4j, restore_settings):
     restore_settings.setenv("LAB_SLICE_CAP", "100")
     reload_settings()
     est = estimate_pull(PullSpec(), GraphMapping())
-    assert est.over_cap and est.cap == 100 and "cap of 100" in est.note
+    assert est.nodes > 100 and not est.over_cap and est.cap == 100 and est.memory_bytes > 0
 
 
 @pytest.mark.live

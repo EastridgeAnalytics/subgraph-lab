@@ -6,7 +6,7 @@ is read from the run store. The phrases:
 
 | Phrase | When |
 |---|---|
-| `new account` | opened no more than `NEW_ACCOUNT_DAYS` before the newest payment in the store |
+| `new account` | opened no more than `LAB_NEW_ACCOUNT_DAYS` before the newest payment in the store |
 | `money in and out within a day (N times)` | N payments out each came within 24 hours after a payment in |
 | `shares a device with N other accounts` | one clause per identifier kind: device, email, address, phone, or the label |
 | `shares a device with 50 or more other accounts` | the same, when an identifier is shared by more than `LAB_SHARED_MAX` |
@@ -30,11 +30,9 @@ if TYPE_CHECKING:
     from lab.runs import Run
 
 # The thresholds behind the phrases. Judgment numbers: to move into settings if the project owner wants them tuned.
-NEW_ACCOUNT_DAYS = 60  # "new account": opened this many days or fewer before the newest payment in the store
-PASS_THROUGH_HOURS = 24  # "money in and out within a day": an outgoing payment this soon after an incoming one
-ROUND_THRESHOLD = 10_000  # "just under 10,000"
-JUST_UNDER = 0.05  # just under: within this share below the round threshold (9,500 up to 10,000)
 
+# The phrases' thresholds are settings (page 07): LAB_NEW_ACCOUNT_DAYS, LAB_PASS_THROUGH_HOURS,
+# LAB_ROUND_THRESHOLD, LAB_JUST_UNDER.
 NEW_ACCOUNT = "new account"
 PASS_THROUGH = "money in and out within a day"
 
@@ -75,7 +73,7 @@ def account_summaries(run: Run, keys: list[str] | None = None) -> pl.DataFrame:
             clauses.append(f"{PASS_THROUGH} ({r['passes']} {_plural(r['passes'], 'time')})")
         clauses += shared.get(key, [])
         if r["under"]:
-            clauses.append(f"{r['under']} {_plural(r['under'], 'payment')} just under {ROUND_THRESHOLD:,}")
+            clauses.append(f"{r['under']} {_plural(r['under'], 'payment')} just under {get_settings().round_threshold:,.0f}")
         clauses.append(f"{r['n_in']} {_plural(r['n_in'], 'payment')} in, {r['n_out']} out")
         opened = f" opened {r['opened'].date().isoformat()}" if r["opened"] is not None else ""
         out.append((key, f"{g.account_label} {key}{opened}: " + "; ".join(clauses) + "."))
@@ -113,7 +111,7 @@ def _accounts(run: Run, keys: list[str] | None) -> pl.DataFrame:
 def _new_accounts(acc: pl.DataFrame, as_of) -> set[str]:
     if as_of is None:
         return set()
-    cutoff = as_of - timedelta(days=NEW_ACCOUNT_DAYS)
+    cutoff = as_of - timedelta(days=get_settings().new_account_days)
     return set(acc.filter(pl.col("opened") >= cutoff)["key"])
 
 
@@ -127,15 +125,16 @@ def _pass_through(pay: pl.DataFrame) -> pl.DataFrame:
     outs = pay.select(key="src", ts="ts").sort("ts")
     matched = outs.join_asof(
         ins, left_on="ts", right_on="ts_in", by="key", strategy="backward",
-        tolerance=timedelta(hours=PASS_THROUGH_HOURS), check_sortedness=False,  # both sorted by time above
+        tolerance=timedelta(hours=get_settings().pass_through_hours), check_sortedness=False,  # both sorted by time above
     )
     return matched.filter(pl.col("ts_in").is_not_null()).group_by("key").len(name="passes")
 
 
 def _just_under(pay: pl.DataFrame) -> pl.DataFrame:
     """`key` and `under`: the payments, in or out, just under the round threshold, per account."""
-    low = ROUND_THRESHOLD * (1 - JUST_UNDER)
-    near = pay.filter((pl.col("amount") >= low) & (pl.col("amount") < ROUND_THRESHOLD))
+    top = get_settings().round_threshold
+    low = top * (1 - get_settings().just_under)
+    near = pay.filter((pl.col("amount") >= low) & (pl.col("amount") < top))
     both = pl.concat([near.select(key="src"), near.select(key="dst")])
     return both.group_by("key").len(name="under")
 

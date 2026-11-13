@@ -244,3 +244,18 @@ def test_communities_and_summaries_join_through_named_functions(fixture_run, sta
     assert set(staged["alert"][0]["summary_source"]) == {"template"}
     assert counts["communities"] == 3 and counts["summaries"] == counts["alerts"]
     assert reread(fixture_run).manifest.step("score").counts["communities"] == 3
+
+
+def test_embeddings_go_back_with_the_scores_when_the_first_pass_ran(fixture_run, monkeypatch):
+    from lab.contracts.graph import EMBEDDING_PROP
+    from lab.contracts.staged import staged_errors
+    from lab.scoring.pipeline import attach_embeddings
+
+    fixture_run.store().execute(f"MATCH (a:Account) WHERE a.account_id IN ['A0011', 'A0012'] SET a.{EMBEDDING_PROP} = [0.5, 0.25]")
+    scores = pl.DataFrame({"account_id": ["A0011", "A0012", "A0013"], "risk_score": [0.9, 0.8, 0.1]})
+    out = attach_embeddings(fixture_run, scores)
+    assert out.filter(pl.col("account_id") == "A0011")[EMBEDDING_PROP].to_list() == [[0.5, 0.25]]
+    assert out.filter(pl.col("account_id") == "A0013")[EMBEDDING_PROP].to_list() == [None]
+    assert staged_errors(out, "account_id") == []
+    fixture_run.recipe.write_back.vectors = False
+    assert EMBEDDING_PROP not in attach_embeddings(fixture_run, scores).columns

@@ -70,6 +70,7 @@ inline in code.
 | `LAB_EMBEDDING_DIM` | 64 | Node2Vec's embedding size, and the vector indexes' dimensions |
 | `LAB_SHARED_MAX` | 50 | An identifier shared by more accounts than this links none of them for communities, and is counted |
 | `LAB_KEY_BATCH` | 500 | Account keys per Relate statement. Relate 1.0.1's `IN $keys` slows with the square of the list |
+| `LAB_NEW_ACCOUNT_DAYS` · `LAB_PASS_THROUGH_HOURS` · `LAB_ROUND_THRESHOLD` · `LAB_JUST_UNDER` | 60 · 24 · 10,000 · 0.05 | The account summary's phrases: "new account", "money in and out within a day", "payments just under 10,000" (the share below the round number) |
 | `LAB_DELTA_SAMPLE` | 1,000 | Accounts sampled from the master graph for the review's delta |
 | `LAB_DATA_DIR` | `data` | Run stores, push stores and manifests |
 | `LAB_PORT` · `LAB_RELATE_BOLT_PORT` · `LAB_RELATE_HTTP_PORT` · `LAB_RELATE_MCP_PORT` | 8000 · 7687 · 7474 · 7475 | Host ports for the lab and Relate |

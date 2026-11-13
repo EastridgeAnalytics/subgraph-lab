@@ -50,6 +50,10 @@ class Settings(BaseSettings):
     embedding_dim: int = Field(64, alias="LAB_EMBEDDING_DIM")
     shared_max: int = Field(50, alias="LAB_SHARED_MAX")
     key_batch: int = Field(500, alias="LAB_KEY_BATCH")
+    new_account_days: int = Field(60, alias="LAB_NEW_ACCOUNT_DAYS")
+    pass_through_hours: int = Field(24, alias="LAB_PASS_THROUGH_HOURS")
+    round_threshold: float = Field(10_000, alias="LAB_ROUND_THRESHOLD")
+    just_under: float = Field(0.05, alias="LAB_JUST_UNDER")
 
     # Where things live
     data_dir: Path = Field(Path("data"), alias="LAB_DATA_DIR")

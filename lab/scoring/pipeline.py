@@ -51,6 +51,7 @@ def score(run: Run) -> dict[str, int]:
         scores, community_counts = attach_communities(run, scores, keys)
         found, summary_counts = attach_summaries(run, found, factor_run)
         scores, found = stamp(run, scores, found)
+        scores = attach_embeddings(run, scores)
         _keep_factor_results(run, factor_run)
         key = run.recipe.graph.account_key
         run.stage(scores, key, "account")
@@ -106,6 +107,27 @@ def attach_summaries(run: Run, found: pl.DataFrame, factor_run: FactorRun) -> tu
     the summary columns on `ALERT_PROPS` filled in, and the counts for the manifest step.
     """
     return found, {}
+
+
+def attach_embeddings(run: Run, scores: pl.DataFrame) -> pl.DataFrame:
+    """The first pass's embedding on each scored account, so it goes back with the scores (R11, `write_back.vectors`).
+
+    Nothing is added when the recipe does not write vectors back or the first pass has not run.
+    """
+    from lab.contracts.graph import EMBEDDING_PROP
+    from lab.roundtrip.queries import ident
+
+    if not run.recipe.write_back.vectors or scores.is_empty():
+        return scores
+    m = run.recipe.graph
+    emb = run.table(
+        f"MATCH (a:{ident(m.account_label)}) WHERE a.{ident(EMBEDDING_PROP)} IS NOT NULL "
+        f"RETURN a.{ident(m.account_key)} AS {ident(m.account_key)}, a.{ident(EMBEDDING_PROP)} AS {EMBEDDING_PROP}"
+    )
+    if emb.is_empty():
+        return scores
+    emb = emb.with_columns(pl.col(EMBEDDING_PROP).cast(pl.List(pl.Float64)))
+    return scores.join(emb, on=m.account_key, how="left")
 
 
 def stamp(run: Run, scores: pl.DataFrame, found: pl.DataFrame) -> tuple[pl.DataFrame, pl.DataFrame]:
