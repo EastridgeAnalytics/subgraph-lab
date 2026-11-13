@@ -6,6 +6,7 @@ import Connect from "./screens/Connect";
 import Review from "./screens/Review";
 import Run from "./screens/Run";
 import Slice from "./screens/Slice";
+import Timeline from "./screens/Timeline";
 import { RunProvider } from "./state/run";
 
 // The seven MVP screens (page 06). Each screen lives in src/screens/<Name>.tsx and is filled in by its track.
@@ -26,6 +27,7 @@ const BUILT: Record<string, ReactElement> = {
   "/slice": <Slice />,
   "/run": <Run />,
   "/review": <Review />,
+  "/timeline": <Timeline />,
 };
 
 function Placeholder({ label }: { label: string }) {
