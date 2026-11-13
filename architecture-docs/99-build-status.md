@@ -8,7 +8,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 0 · pins, scaffold, contracts | Done, 12 November 2026 | [wave-0](reviews/wave-0.md), [Relate 1.0.1](reviews/wave-0-relate-1.0.1.md) |
 | 1 · the data and the way in | Done, 13 November 2026 | [wave-1](reviews/wave-1.md) |
 | 2 · find and score | Done, 13 November 2026 | [wave-2](reviews/wave-2.md) |
-| 3 · communities, summaries, the rest of the app | Not started | |
+| 3 · communities, summaries, the rest of the app | Done, 13 November 2026 | [wave-3](reviews/wave-3.md) |
 | 4 · the director's review | Not started | |
 | 5 · fix and redesign | Not started | |
 | 6 · measured numbers, packaging | Not started | |
@@ -23,12 +23,12 @@ that lands. Each wave's report goes in `reviews/`.
 | 4 | Indexes and first pass | Node2Vec embeddings and account summaries, with vector and full-text indexes created in Relate | Adapters | Done: the indexes after every pull (1b); Node2Vec embeddings and template summaries on every account (2a) |
 | 5 | Search-defined slice | Hybrid search plus hops, the size and memory shown before expansion, the cap enforced | Data plane | Done (2a): `lab/slice/search.py`, `estimate.py`. Run on the seed by the loop |
 | 6 | Adapters | Table, PyG graph, PyG event stream in the TGB layout, NetworkX. Each with a test on the seed | Adapters | Done (1c): `lab/adapters/` |
-| 7 | Examples | TGN scores, Node2Vec similar accounts, NetworkX communities and cycles, the statsforecast velocity factor. Each under 100 lines, each ending in stage and push | Adapters | Partly: Node2Vec (2a) and TGN (2c). Velocity and NetworkX are wave 3 |
-| 8 | Risk scores and communities | The factor file with five rule factors, the policy that makes account scores, communities found per slice, the community score, ring recall against the planted rings | Scoring | Partly: five rule factors, the policy, account scores and alerts (2b). Communities are wave 3 |
-| 9 | Summaries | The evidence schema and hash. Community and account summaries through the Anthropic API or the agent, the template otherwise. The number, member and wording checks. The cache | Scoring | Not started |
+| 7 | Examples | TGN scores, Node2Vec similar accounts, NetworkX communities and cycles, the statsforecast velocity factor. Each under 100 lines, each ending in stage and push | Adapters | Done: Node2Vec (2a), TGN (2c), velocity and NetworkX (3c), each under 100 lines and ending in stage and push |
+| 8 | Risk scores and communities | The factor file with five rule factors, the policy that makes account scores, communities found per slice, the community score, ring recall against the planted rings | Scoring | Done: five rule factors, the policy, account scores and alerts (2b); communities and the community score (3a). Ring recall is reported (A11); see the wave 4 review on community size |
+| 9 | Summaries | The evidence schema and hash. Community and account summaries through the Anthropic API or the agent, the template otherwise. The number, member and wording checks. The cache | Scoring | Done (3b): `lab/summaries/`. The API writer is tested against a mocked client; the template writes every summary until a key is set |
 | 10 | Review and push | The dry-run plan plus the delta. `relate push` keyed, with a manifest and resume, creating `RiskCommunity` nodes and their links. Dispositions written back. The `LabRun` marker written last. Bolt as the fallback | Data plane | Done (1e): `lab/roundtrip/stage.py`, `push.py`, `delta.py`, `ledger.py`, `retract.py`; a push never creates a customer node (decision 35). Tested live, and on the seed by the loop |
 | 11 | API and agent | FastAPI routes, the eight tools, Relate's skill and MCP wired for the agent | API | Done (2d): `lab/api/`. Nine MCP tools (decision 38); a push needs a fresh review (decision 37). An agent ran the loop through both MCP servers |
-| 12 | The app | The seven MVP screens, with accounts and communities on Results and the decision buttons. The 15-minute test, measured | App | Partly: shell, Connect, Slice (1d), Run, Review and push (2e), against the mock API and served at `/`. Models, Results and Timeline are wave 3 |
+| 12 | The app | The seven MVP screens, with accounts and communities on Results and the decision buttons. The 15-minute test, measured | App | Built: all seven screens (1d, 2e, 3d, 3e), walked against the real lab in wave 4. The 15-minute test (A1) is wave 6 |
 | 13 | Compose, README, numbers, video | An `.env` for Aura and one command for the bundled Neo4j. AI use disclosed. A measured-numbers page. A video of two minutes or less | Docs | Not started |
 
 ## Four weeks
