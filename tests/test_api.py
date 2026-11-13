@@ -21,7 +21,6 @@ from lab.api.app import create_app
 from lab.api.connection import ConnectionState, check_connection
 from lab.api.errors import ApiError
 from lab.api.ops import LabState, check_run_id
-from lab.api.view import keep_saving
 from lab.api.worker import RunBusy, Worker
 from lab.contracts import api as contract
 from lab.contracts.api import ROUTES
@@ -329,8 +328,8 @@ def test_a_step_left_running_by_a_stopped_lab_is_marked_failed(data_dir):
 
 def test_polling_a_run_never_makes_the_workers_save_fail(data_dir, client):
     """On Windows a poll of manifest.json can make the next `os.replace` fail, even with share-delete. The worker saves
-    through `keep_saving`, which tries again, and the poll holds the file for far less time than the retries span."""
-    run = keep_saving(Run.create(Recipe(), data_dir=data_dir))
+    through `RunManifest.save`, which tries again, and the poll holds the file for far less time than the retries span."""
+    run = Run.create(Recipe(), data_dir=data_dir)
     errors: list[Exception] = []
     done = threading.Event()
 

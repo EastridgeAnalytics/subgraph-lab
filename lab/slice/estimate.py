@@ -16,7 +16,6 @@ from lab.common.neo4j import neo4j_driver
 from lab.common.store import estimate_memory
 from lab.contracts.api import SliceEstimate, SliceRequest
 from lab.contracts.graph import GraphMapping
-from lab.contracts.manifest import RunManifest, StepStatus
 from lab.contracts.recipe import PullSpec
 from lab.roundtrip.queries import SINCE, UNTIL, cypher_statements, ident, schema_statements, selected_links
 from lab.runs import Run
@@ -46,15 +45,10 @@ def estimate(request: SliceRequest) -> SliceEstimate:
 
 def _search_run(run_id: str | None) -> Run | None:
     """The run named, or the newest whose first pass is done, or None."""
-    from lab.common.store import list_runs, run_paths
+    from lab.common.store import newest_run_with
 
-    if run_id:
-        return Run(run_id)
-    for rid in list_runs():  # newest first
-        manifest = RunManifest.load(run_paths(rid).manifest)
-        if manifest.step("first_pass").status is StepStatus.DONE:
-            return Run(rid)
-    return None
+    rid = run_id or newest_run_with("first_pass")
+    return Run(rid) if rid else None
 
 
 # ---- the pull -------------------------------------------------------------------------------------------------

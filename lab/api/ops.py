@@ -20,9 +20,9 @@ from lab.api import results
 from lab.api.connection import ConnectionState
 from lab.api.errors import ApiError, BadRunId, NotFound, NotReady
 from lab.api.relate_server import RelateServer
-from lab.api.view import RunView, keep_saving, read_manifest
+from lab.api.view import RunView, read_manifest
 from lab.api.worker import Worker
-from lab.common.store import list_runs, run_paths
+from lab.common.store import list_runs, newest_run_with, run_paths
 from lab.contracts.api import (
     DispositionRequest,
     DispositionResult,
@@ -71,7 +71,7 @@ def load_run(run_id: str) -> Run:
     """The run with its manifest, for work that writes to it. Claim it (`worker.exclusive`) before calling this."""
     check_run_id(run_id)
     try:
-        return keep_saving(Run(run_id))
+        return Run(run_id)
     except FileNotFoundError as e:
         raise NotFound(f"no run {run_id}") from e
     except (OSError, ValueError) as e:  # a manifest or recipe on disk that cannot be read is the lab's problem
@@ -136,17 +136,6 @@ def resume_run(state: LabState, run_id: str) -> RunStarted:
 
 
 # ---- the slice ---------------------------------------------------------------------------------------------------
-def newest_with_first_pass() -> str | None:
-    """The newest run whose first pass is done: the run a search slices when the request names none (decision 31)."""
-    for run_id in list_runs():  # newest first
-        try:
-            if read_manifest(run_paths(run_id).manifest).step("first_pass").status is StepStatus.DONE:
-                return run_id
-        except Exception:  # noqa: BLE001
-            continue
-    return None
-
-
 def slice_estimate(state: LabState, request: SliceRequest) -> SliceEstimate:
     """`lab.slice.estimate.estimate`. A search slices a run store and records itself on that run's manifest, so the run
     it will use is named first and claimed, and the estimate is asked for that run."""
@@ -154,7 +143,7 @@ def slice_estimate(state: LabState, request: SliceRequest) -> SliceEstimate:
 
     if (request.search or request.recipe.search) is None:
         return estimate(request)  # a pull estimate reads the master graph only
-    run_id = check_run_id(request.run_id) if request.run_id else newest_with_first_pass()
+    run_id = check_run_id(request.run_id) if request.run_id else newest_run_with("first_pass")
     if run_id is None:
         return estimate(request)  # no run to search yet: it says to pull a schema slice first
     with state.worker.exclusive(run_id):
@@ -236,7 +225,7 @@ def egress(state: LabState, request: EgressIn) -> EgressOut:
     from lab.pipeline import wanted
 
     recipe = request.recipe if request.pull is None else request.recipe.model_copy(update={"pull": request.pull})
-    run = keep_saving(Run.create(recipe))
+    run = Run.create(recipe)
     until = "first_pass" if "first_pass" in wanted(run) else "pull"
     run.close()
     state.worker.submit(run.id, until=until)  # decision 38: queued, answered at once; run_status follows it

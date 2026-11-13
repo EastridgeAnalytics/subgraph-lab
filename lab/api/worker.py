@@ -16,7 +16,7 @@ from collections import deque
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 
-from lab.api.view import keep_saving, read_manifest
+from lab.api.view import read_manifest
 from lab.common.log import get_logger
 from lab.common.store import list_runs, run_paths
 from lab.contracts.manifest import StepStatus
@@ -95,7 +95,7 @@ class Worker:
         from lab.runs import Run
 
         try:
-            run = keep_saving(Run(run_id))  # a poll of the manifest must not make the pipeline's save fail
+            run = Run(run_id)  # RunManifest.save retries, so a poll of the manifest never fails the pipeline's save
         except Exception:  # noqa: BLE001
             log.exception("run %s could not be opened; skipped", run_id)
             return
