@@ -130,12 +130,27 @@ def attach_communities(run: Run, scores: pl.DataFrame, keys: list[str] | None) -
 
 
 def attach_summaries(run: Run, found: pl.DataFrame, factor_run: FactorRun) -> tuple[pl.DataFrame, dict[str, int]]:
-    """Track 3b joins here. Today it changes nothing.
+    """Page 05, track 3b: the evidence object and the summary per alert and community (`lab/summaries/store.py`).
 
     Takes the alerts and the factor run, whose results hold every fired factor's evidence; returns the alerts with
-    the summary columns on `ALERT_PROPS` filled in, and the counts for the manifest step.
+    `evidence` (the evidence object's JSON), `evidence_hash` and, for the top `LAB_SUMMARY_ALERTS`, `summary`,
+    `summary_source` and `summary_model`; and the counts for the manifest step `summaries`. The communities were staged
+    by `attach_communities`; their evidence and summaries are restaged here, and each summary goes onto the community's
+    node in the run store. With no `ANTHROPIC_API_KEY` every summary is the template and nothing leaves the container.
     """
-    return found, {}
+    from lab.summaries import summarise
+
+    run.manifest.start("summaries")
+    run.save()
+    try:
+        found, counts, note = summarise(run, found, factor_run)
+    except Exception as e:
+        run.manifest.fail("summaries", f"{type(e).__name__}: {e}"[:500])
+        run.save()
+        raise
+    run.manifest.finish("summaries", counts, note=note)
+    run.save()
+    return found, counts
 
 
 def attach_embeddings(run: Run, scores: pl.DataFrame) -> pl.DataFrame:
