@@ -125,7 +125,7 @@ test("Run this slice starts the run with the recipe on screen, stores the run id
   await screen.findByRole("region", { name: "Estimate" });
   fireEvent.click(runButton());
 
-  expect(await screen.findByText("Run is not built yet.")).toBeInTheDocument(); // navigated to /run
+  expect(await screen.findByRole("list", { name: "Steps" })).toBeInTheDocument(); // navigated to /run, which is built now (2e)
   expect(screen.getByRole("link", { name: "Run" })).toHaveAttribute("aria-current", "page");
   expect(start).toHaveBeenCalledTimes(1);
   const recipe = start.mock.calls[0][0];
