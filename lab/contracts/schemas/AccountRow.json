@@ -1,0 +1,92 @@
+{
+  "properties": {
+    "alert_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Alert Key"
+    },
+    "community_key": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Community Key"
+    },
+    "disposition": {
+      "anyOf": [
+        {
+          "enum": [
+            "confirmed",
+            "false_positive",
+            "needs_more"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Disposition"
+    },
+    "factors": {
+      "items": {
+        "additionalProperties": true,
+        "type": "object"
+      },
+      "title": "Factors",
+      "type": "array"
+    },
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "risk_score": {
+      "title": "Risk Score",
+      "type": "number"
+    },
+    "risk_score_model": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Risk Score Model"
+    },
+    "risk_score_rules": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Risk Score Rules"
+    }
+  },
+  "required": [
+    "key",
+    "risk_score",
+    "factors"
+  ],
+  "title": "AccountRow",
+  "type": "object"
+}

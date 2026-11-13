@@ -1,0 +1,106 @@
+{
+  "$defs": {
+    "Hit": {
+      "properties": {
+        "found_by": {
+          "items": {
+            "enum": [
+              "vector",
+              "fulltext"
+            ],
+            "type": "string"
+          },
+          "title": "Found By",
+          "type": "array"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "rrf": {
+          "title": "Rrf",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "rrf",
+        "found_by"
+      ],
+      "title": "Hit",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "cap": {
+      "title": "Cap",
+      "type": "integer"
+    },
+    "hits": {
+      "items": {
+        "$ref": "#/$defs/Hit"
+      },
+      "title": "Hits",
+      "type": "array"
+    },
+    "hops": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Hops"
+    },
+    "memory_bytes": {
+      "title": "Memory Bytes",
+      "type": "integer"
+    },
+    "mode": {
+      "enum": [
+        "schema",
+        "cypher",
+        "search"
+      ],
+      "title": "Mode",
+      "type": "string"
+    },
+    "nodes": {
+      "title": "Nodes",
+      "type": "integer"
+    },
+    "note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Note"
+    },
+    "over_cap": {
+      "title": "Over Cap",
+      "type": "boolean"
+    },
+    "relationships": {
+      "title": "Relationships",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "mode",
+    "nodes",
+    "relationships",
+    "memory_bytes",
+    "over_cap",
+    "cap"
+  ],
+  "title": "SliceEstimate",
+  "type": "object"
+}

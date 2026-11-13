@@ -1,0 +1,70 @@
+{
+  "properties": {
+    "edition": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Edition"
+    },
+    "message": {
+      "title": "Message",
+      "type": "string"
+    },
+    "neo4j_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Neo4J Version"
+    },
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "pull_route": {
+      "anyOf": [
+        {
+          "enum": [
+            "relate",
+            "bolt"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pull Route"
+    },
+    "query_uri": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Query Uri"
+    }
+  },
+  "required": [
+    "ok",
+    "message"
+  ],
+  "title": "ConnectResult",
+  "type": "object"
+}

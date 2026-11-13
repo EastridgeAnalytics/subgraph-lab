@@ -1,0 +1,64 @@
+{
+  "properties": {
+    "disposition": {
+      "anyOf": [
+        {
+          "enum": [
+            "confirmed",
+            "false_positive",
+            "needs_more"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Disposition"
+    },
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "score": {
+      "title": "Score",
+      "type": "number"
+    },
+    "size": {
+      "title": "Size",
+      "type": "integer"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary"
+    },
+    "summary_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Summary Source"
+    }
+  },
+  "required": [
+    "key",
+    "size",
+    "score"
+  ],
+  "title": "CommunityRow",
+  "type": "object"
+}

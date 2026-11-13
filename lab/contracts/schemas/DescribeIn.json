@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "key",
+    "text"
+  ],
+  "title": "DescribeIn",
+  "type": "object"
+}

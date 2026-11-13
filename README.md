@@ -45,8 +45,8 @@ H) **Demo data.** A generator with planted rings and legitimate look-alikes, so 
 
 ## Status
 
-Nothing is built as of 12 November 2026. The design is in `architecture-docs/`. Code lands in `lab/`, `app/`,
-`examples/`, `factors/` and `generator/`. Every number in the docs comes from a vendor's documentation or is
+The build is under way, wave by wave. [99](architecture-docs/99-build-status.md) says what is built. Code lives in
+`lab/`, `app/`, `examples/`, `factors/` and `generator/`. Every number in the docs comes from a vendor's documentation or is
 marked "to measure".
 
 Built with Relate by Neo4j, for the Relate by Neo4j hackathon, due 11 December 2026. AI agents build the tracks

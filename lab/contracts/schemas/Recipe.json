@@ -1,0 +1,323 @@
+{
+  "$defs": {
+    "GraphMapping": {
+      "properties": {
+        "account_key": {
+          "default": "account_id",
+          "title": "Account Key",
+          "type": "string"
+        },
+        "account_label": {
+          "default": "Account",
+          "title": "Account Label",
+          "type": "string"
+        },
+        "account_opened": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "opened",
+          "title": "Account Opened"
+        },
+        "identifiers": {
+          "items": {
+            "$ref": "#/$defs/IdentifierLink"
+          },
+          "title": "Identifiers",
+          "type": "array"
+        },
+        "payment_amount": {
+          "default": "amount",
+          "title": "Payment Amount",
+          "type": "string"
+        },
+        "payment_key": {
+          "default": "tx_id",
+          "title": "Payment Key",
+          "type": "string"
+        },
+        "payment_time": {
+          "default": "ts",
+          "title": "Payment Time",
+          "type": "string"
+        },
+        "payment_type": {
+          "default": "TX",
+          "title": "Payment Type",
+          "type": "string"
+        }
+      },
+      "title": "GraphMapping",
+      "type": "object"
+    },
+    "IdentifierLink": {
+      "description": "A shared identifier: an account links to it, and accounts that share one are linked for communities.",
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "device",
+            "email",
+            "address",
+            "phone",
+            "other"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "rel_type": {
+          "title": "Rel Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "rel_type",
+        "label",
+        "key",
+        "kind"
+      ],
+      "title": "IdentifierLink",
+      "type": "object"
+    },
+    "PullSpec": {
+      "description": "The broad slice pulled from the master graph into a fresh run store.",
+      "properties": {
+        "labels": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Labels",
+          "type": "array"
+        },
+        "mode": {
+          "default": "schema",
+          "enum": [
+            "schema",
+            "cypher"
+          ],
+          "title": "Mode",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "title": "Params",
+          "type": "object"
+        },
+        "query": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Query"
+        },
+        "since": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Since"
+        },
+        "types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Types",
+          "type": "array"
+        },
+        "until": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Until"
+        }
+      },
+      "title": "PullSpec",
+      "type": "object"
+    },
+    "SearchSpec": {
+      "description": "A search-defined slice inside the run store (page 02). Give text, an account key, or both.",
+      "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Account"
+        },
+        "hops": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Hops"
+        },
+        "k": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "K"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Text"
+        }
+      },
+      "title": "SearchSpec",
+      "type": "object"
+    },
+    "WriteBack": {
+      "properties": {
+        "accounts": {
+          "default": true,
+          "title": "Accounts",
+          "type": "boolean"
+        },
+        "alerts": {
+          "default": true,
+          "title": "Alerts",
+          "type": "boolean"
+        },
+        "communities": {
+          "default": true,
+          "title": "Communities",
+          "type": "boolean"
+        },
+        "dispositions": {
+          "default": true,
+          "title": "Dispositions",
+          "type": "boolean"
+        },
+        "vectors": {
+          "default": true,
+          "title": "Vectors",
+          "type": "boolean"
+        }
+      },
+      "title": "WriteBack",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "factors_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Factors File"
+    },
+    "graph": {
+      "$ref": "#/$defs/GraphMapping"
+    },
+    "models": {
+      "items": {
+        "enum": [
+          "node2vec",
+          "tgn",
+          "communities",
+          "velocity"
+        ],
+        "type": "string"
+      },
+      "title": "Models",
+      "type": "array"
+    },
+    "name": {
+      "default": "default",
+      "title": "Name",
+      "type": "string"
+    },
+    "policy_file": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Policy File"
+    },
+    "pull": {
+      "$ref": "#/$defs/PullSpec"
+    },
+    "search": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SearchSpec"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "summaries": {
+      "default": true,
+      "title": "Summaries",
+      "type": "boolean"
+    },
+    "write_back": {
+      "$ref": "#/$defs/WriteBack"
+    }
+  },
+  "title": "Recipe",
+  "type": "object"
+}

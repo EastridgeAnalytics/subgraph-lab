@@ -1,0 +1,31 @@
+{
+  "properties": {
+    "accounts": {
+      "default": true,
+      "title": "Accounts",
+      "type": "boolean"
+    },
+    "alerts": {
+      "default": true,
+      "title": "Alerts",
+      "type": "boolean"
+    },
+    "communities": {
+      "default": true,
+      "title": "Communities",
+      "type": "boolean"
+    },
+    "dispositions": {
+      "default": true,
+      "title": "Dispositions",
+      "type": "boolean"
+    },
+    "vectors": {
+      "default": true,
+      "title": "Vectors",
+      "type": "boolean"
+    }
+  },
+  "title": "WriteBack",
+  "type": "object"
+}

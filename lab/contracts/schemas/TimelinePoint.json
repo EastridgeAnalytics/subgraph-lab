@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "accounts": {
+      "title": "Accounts",
+      "type": "integer"
+    },
+    "amount": {
+      "title": "Amount",
+      "type": "number"
+    },
+    "at": {
+      "title": "At",
+      "type": "string"
+    },
+    "payments": {
+      "title": "Payments",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "at",
+    "accounts",
+    "payments",
+    "amount"
+  ],
+  "title": "TimelinePoint",
+  "type": "object"
+}

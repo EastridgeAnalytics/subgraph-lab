@@ -1,0 +1,61 @@
+{
+  "description": "One entity line of a `relate push --json` report, or of the Bolt fallback's equivalent.",
+  "properties": {
+    "batches": {
+      "default": 0,
+      "title": "Batches",
+      "type": "integer"
+    },
+    "created": {
+      "default": 0,
+      "title": "Created",
+      "type": "integer"
+    },
+    "entity": {
+      "title": "Entity",
+      "type": "string"
+    },
+    "error": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Error"
+    },
+    "kind": {
+      "default": "node",
+      "title": "Kind",
+      "type": "string"
+    },
+    "landed": {
+      "default": false,
+      "title": "Landed",
+      "type": "boolean"
+    },
+    "skipped": {
+      "default": 0,
+      "title": "Skipped",
+      "type": "integer"
+    },
+    "total": {
+      "default": 0,
+      "title": "Total",
+      "type": "integer"
+    },
+    "updated": {
+      "default": 0,
+      "title": "Updated",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "entity"
+  ],
+  "title": "PushEntity",
+  "type": "object"
+}

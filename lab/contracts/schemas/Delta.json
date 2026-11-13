@@ -1,0 +1,56 @@
+{
+  "properties": {
+    "accounts_scored": {
+      "title": "Accounts Scored",
+      "type": "integer"
+    },
+    "bytes_estimate": {
+      "title": "Bytes Estimate",
+      "type": "integer"
+    },
+    "dispositions": {
+      "title": "Dispositions",
+      "type": "integer"
+    },
+    "missing_remote_keys": {
+      "title": "Missing Remote Keys",
+      "type": "integer"
+    },
+    "new_alerts": {
+      "title": "New Alerts",
+      "type": "integer"
+    },
+    "new_communities": {
+      "title": "New Communities",
+      "type": "integer"
+    },
+    "sampled": {
+      "title": "Sampled",
+      "type": "integer"
+    },
+    "score_changes": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Score Changes",
+      "type": "object"
+    },
+    "vectors": {
+      "title": "Vectors",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "new_alerts",
+    "new_communities",
+    "accounts_scored",
+    "score_changes",
+    "missing_remote_keys",
+    "sampled",
+    "vectors",
+    "dispositions",
+    "bytes_estimate"
+  ],
+  "title": "Delta",
+  "type": "object"
+}

@@ -1,0 +1,68 @@
+{
+  "$defs": {
+    "TimelinePoint": {
+      "properties": {
+        "accounts": {
+          "title": "Accounts",
+          "type": "integer"
+        },
+        "amount": {
+          "title": "Amount",
+          "type": "number"
+        },
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "payments": {
+          "title": "Payments",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "at",
+        "accounts",
+        "payments",
+        "amount"
+      ],
+      "title": "TimelinePoint",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "as_of": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "As Of"
+    },
+    "end": {
+      "title": "End",
+      "type": "string"
+    },
+    "points": {
+      "items": {
+        "$ref": "#/$defs/TimelinePoint"
+      },
+      "title": "Points",
+      "type": "array"
+    },
+    "start": {
+      "title": "Start",
+      "type": "string"
+    }
+  },
+  "required": [
+    "start",
+    "end",
+    "points"
+  ],
+  "title": "Timeline",
+  "type": "object"
+}

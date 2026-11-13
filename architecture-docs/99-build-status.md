@@ -1,14 +1,23 @@
 # 99 · Build status
 
-**Nothing is built as of 12 November 2026.** The design is complete. This page changes in the same commit as any
-piece that lands. The build runs by [97](97-development-plan.md), wave by wave. Each wave's report goes in
-`reviews/`.
+The build runs by [97](97-development-plan.md), wave by wave. This page changes in the same commit as any piece
+that lands. Each wave's report goes in `reviews/`.
+
+| Wave | State | Report |
+|---|---|---|
+| 0 · pins, scaffold, contracts | Done, 12 November 2026 | [wave-0](reviews/wave-0.md), [Relate 1.0.1](reviews/wave-0-relate-1.0.1.md) |
+| 1 · the data and the way in | Not started | |
+| 2 · find and score | Not started | |
+| 3 · communities, summaries, the rest of the app | Not started | |
+| 4 · the director's review | Not started | |
+| 5 · fix and redesign | Not started | |
+| 6 · measured numbers, packaging | Not started | |
 
 ## The MVP, by 11 December 2026
 
 | # | Deliverable | Done means | Track | Status |
 |---|---|---|---|---|
-| 1 | Contracts | The run manifest, the staged-results table, the recipe file, the REST routes, the MCP tool list and the lint config, written and reviewed on day one | Integrator | Not started |
+| 1 | Contracts | The run manifest, the staged-results table, the recipe file, the REST routes, the MCP tool list and the lint config, written and reviewed on day one | Integrator | Done in wave 0: `lab/contracts/`, `lab/common/`, `lab/runs.py` |
 | 2 | Generator and seed | Accounts with devices, emails and addresses. Three planted patterns with ring ids, plus legitimate look-alikes. A small seed that fits Aura Free's smaller published limit, and 1M relationships for the measured page | Data | Not started |
 | 3 | Pull | `relate pull` from Aura into a fresh store per run. Parallel Bolt as the fallback. Both measured at 100k and 1M relationships | Data plane | Not started |
 | 4 | Indexes and first pass | Node2Vec embeddings and account summaries, with vector and full-text indexes created in Relate | Adapters | Not started |

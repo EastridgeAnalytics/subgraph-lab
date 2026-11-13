@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "staged": {
+      "title": "Staged",
+      "type": "boolean"
+    }
+  },
+  "required": [
+    "ok",
+    "staged"
+  ],
+  "title": "DispositionResult",
+  "type": "object"
+}

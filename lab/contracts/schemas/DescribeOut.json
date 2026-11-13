@@ -1,0 +1,83 @@
+{
+  "$defs": {
+    "Summary": {
+      "properties": {
+        "checks": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Checks",
+          "type": "object"
+        },
+        "evidence_hash": {
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "failed_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failed Reason"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "source": {
+          "enum": [
+            "api",
+            "agent",
+            "template"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "text",
+        "source",
+        "evidence_hash"
+      ],
+      "title": "Summary",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "stored": {
+      "title": "Stored",
+      "type": "boolean"
+    },
+    "summary": {
+      "$ref": "#/$defs/Summary"
+    }
+  },
+  "required": [
+    "stored",
+    "summary"
+  ],
+  "title": "DescribeOut",
+  "type": "object"
+}

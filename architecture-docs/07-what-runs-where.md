@@ -1,32 +1,39 @@
 # 07 · What runs where
 
-One image for the lab, Relate's own image serving beside it, and an optional bundled Neo4j for anyone without an
-Aura account.
+One image for the lab, which also serves the current run's store through Relate, and an optional bundled Neo4j
+for anyone without an Aura account.
 
 ```mermaid
 flowchart LR
   subgraph compose["docker compose"]
-    lab["lab<br/>Python 3.11 · FastAPI · Relate's library and CLI · PyTorch and PyG on CPU · the built app · the lab's MCP server<br/>port 8000"]
-    relate["relate<br/>relate serve --read-only=live<br/>Bolt 7687 · HTTP 7474 · MCP 7475"]
-    neo4j["neo4j plus seed<br/>neo4j:5-community with the generator's data<br/>profile local · Bolt 17687 · HTTP 17474"]
-    vol[("Named volume<br/>one store per run")]
+    subgraph labc["lab · one container"]
+      api["The lab<br/>Python 3.12 · FastAPI · the built app · the lab's MCP tools<br/>port 8000"]
+      serve["relate serve --read-only=live<br/>the current run's store<br/>Bolt 7687 · HTTP 7474 · MCP 7475"]
+    end
+    gen["generate<br/>the seed CSVs · profile local"]
+    seed["seed<br/>neo4j-admin import · profile local"]
+    neo4j["neo4j:2026.08.1 community<br/>profile local · Bolt 17687 · HTTP 17474"]
+    vol[("Named volume<br/>run stores · push stores · manifests")]
   end
   aura[("Neo4j Aura<br/>NEO4J_URI in .env")]
-  lab --> vol
-  relate --> vol
-  lab -->|"pull, push"| aura
-  lab -.->|"profile local"| neo4j
+  api --> vol
+  serve --> vol
+  api -->|"pull, push"| aura
+  api -.->|"profile local"| neo4j
+  gen --> seed --> neo4j
 ```
 
 ## Services
 
 | Service | What it is | Ports and profiles |
 |---|---|---|
-| `lab` | Python 3.11, FastAPI, Relate's library and CLI, PyTorch and PyG on CPU, the built React app, the lab's MCP server. One image | 8000. Profile `gpu` adds the NVIDIA device |
-| `relate` | Relate's own image, serving the lab's store with `--read-only=live` over Bolt, HTTP and MCP | 7687, 7474, 7475 |
-| `neo4j` plus `seed` | A bundled `neo4j:5-community` with the generator's data imported before first start. Optional | 17687, 17474. Profile `local` |
+| `lab` | Python 3.12, FastAPI, Relate's library and the checked `relate` binary, PyTorch 2.12 and PyG on CPU, the built React app, the lab's MCP server. It runs one `relate serve --read-only=live` for the current run's store and restarts it when a new run starts | 8000, plus 7687, 7474 and 7475 for Relate. All published on 127.0.0.1 only |
+| `generate` | The lab image running the generator once, writing the seed CSVs to a volume | Profile `local` |
+| `seed` | `neo4j-admin database import` of those CSVs, once, before Neo4j first starts | Profile `local` |
+| `neo4j` | `neo4j:2026.08.1` community with the seed | 17687, 17474. Profile `local` |
 
-Volumes are named, not bind mounts. Relate's image is scratch, with no shell, running as UID 1000.
+Volumes are named, not bind mounts. No Relate server image is published, so the lab carries the binary itself
+(decision 21 on [08](08-decisions.md)).
 
 ## Two ways to run
 
@@ -41,23 +48,36 @@ docker compose --profile local up     # plus the bundled Neo4j and the seed
 
 ## Settings
 
-| `.env` | Values | What it does |
+Every setting lives in `lab/settings.py` and `.env.example`. The judgment numbers are settings too, so none sits
+inline in code.
+
+| `.env` | Default | What it does |
 |---|---|---|
-| `NEO4J_URI` · `NEO4J_USERNAME` · `NEO4J_PASSWORD` · `NEO4J_DATABASE` | Your Aura instance, or the bundled Neo4j | What `relate pull` and `relate push` read and write. The same names Relate's CLI reads |
-| `ANTHROPIC_API_KEY` | A key | Summaries through the Anthropic API. Unset, the agent or the template writes them ([05](05-summaries.md)) |
-| `LAB_MODEL` | A model id | The model behind summaries. Claude Sonnet 5.5 when unset |
-| `LAB_SEARCH_K` · `LAB_SEARCH_HOPS` | Numbers | Defaults for the Slice screen: 50 and 2 |
-| `LAB_SLICE_CAP` | A node count | The size a search slice refuses to pass |
-| `DO_NOT_TRACK` | `1` | Relate's telemetry switch. Set in every container |
+| `NEO4J_URI` · `NEO4J_USERNAME` · `NEO4J_PASSWORD` · `NEO4J_DATABASE` | The bundled Neo4j | The master graph, for the Bolt driver |
+| `NEO4J_QUERY_URI` | Derived from `NEO4J_URI` | The `http(s)` Query API that `relate pull` and `relate push` use. Set it when Neo4j's ports are not the defaults |
+| `ANTHROPIC_API_KEY` | Unset | Summaries through the Anthropic API. Unset, the agent or the template writes them ([05](05-summaries.md)) |
+| `LAB_MODEL` | `claude-sonnet-5-5` | The model behind summaries |
+| `LAB_SEARCH_K` · `LAB_SEARCH_HOPS` | 50 · 2 | Defaults for a search slice |
+| `LAB_SLICE_CAP` | 200,000 nodes | The size a search slice refuses to pass |
+| `LAB_PUSH_BATCH` | 5,000 | Rows per push batch |
+| `LAB_LOAD_START_ROWS` | 20,000 | Where the loader starts before it raises or backs off |
+| `LAB_SUMMARY_COMMUNITIES` · `LAB_SUMMARY_ALERTS` · `LAB_SUMMARY_WORDS` | 20 · 50 · 120 | How many summaries, and how long |
+| `LAB_LOUVAIN_RESOLUTION` · `LAB_COMPONENT_MIN` | 1.0 · 30 | Louvain's resolution, and the component size above which Louvain runs |
+| `LAB_WEIGHT_DEVICE` · `LAB_WEIGHT_EMAIL` · `LAB_WEIGHT_ADDRESS` · `LAB_WEIGHT_PAYMENT` | 3.0 · 2.0 · 1.5 · 1.0 | Link weights for communities |
+| `LAB_SEED` | 42 | The random seed for the generator, Node2Vec and Louvain |
+| `LAB_DATA_DIR` | `data` | Run stores, push stores and manifests |
+| `LAB_PORT` · `LAB_RELATE_BOLT_PORT` · `LAB_RELATE_HTTP_PORT` · `LAB_RELATE_MCP_PORT` | 8000 · 7687 · 7474 · 7475 | Host ports for the lab and Relate |
+| `LAB_NEO4J_BOLT_PORT` · `LAB_NEO4J_HTTP_PORT` | 17687 · 17474 | Host ports for the bundled Neo4j |
+| `DO_NOT_TRACK` | `1` | Relate's telemetry switch. Set in every container and every call |
 
 ## Limits we build around
 
 - Relate's `LOAD CSV` reads files of 8 MiB or less. The lab loads through the library instead.
-- One commit's write-ahead record cannot exceed 64 MiB. A bigger one is refused whole.
+- One commit cannot exceed 64 MiB. A bigger one is refused whole with a `DataError`. Checked in wave 0.
 - Relate uses about 502 bytes per node and 404 bytes per relationship on disk, and a served store runs at 1.2 to
   1.5 times that in memory. From the docs.
 - Relate's WebAssembly build has no Arrow or Parquet, so the in-browser timeline waits for 1.1.
-- `execute_arrow()` returns results as Arrow. It does not take Arrow in.
+- `relate push` 1.0.1 fails on zoned datetime properties, so the push store carries timestamps as strings.
 - Aura Free's limits differ between Neo4j's own pages: 200,000 nodes and 400,000 relationships in the docs,
   50,000 and 175,000 on the product page. The small seed fits the smaller one.
 
@@ -65,11 +85,10 @@ docker compose --profile local up     # plus the bundled Neo4j and the seed
 
 | What | Expectation | Status |
 |---|---|---|
-| Memory at 1M relationships | Relate about 0.6 to 0.8 GB running, PyG training about 0.5 GB, so an 8 GB laptop | To measure |
-| `relate pull` at 100k and 1M relationships | No documented figure | Week one |
-| `relate serve --read-only=live` seeing the lab's commits | From the docs | Week one. Fallback: restart after each write |
-| Image size with CPU PyTorch | Large | To measure, then into the README |
+| Memory at 1M relationships | Relate about 0.6 to 0.8 GB running, PyG training about 0.5 GB, so an 8 GB laptop | To measure in wave 6 |
+| `relate pull` at 100k and 1M relationships | No documented figure | To measure in wave 6 |
+| Image size with CPU PyTorch | Large | To measure in wave 6, then into the README |
 
 ## Where it lives
 
-`compose.yaml`, `Dockerfile`, `.env.example`. Planned.
+`compose.yaml`, `Dockerfile`, `.env.example`, `lab/settings.py`.

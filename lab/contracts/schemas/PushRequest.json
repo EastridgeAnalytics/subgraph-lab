@@ -1,0 +1,11 @@
+{
+  "properties": {
+    "confirm": {
+      "default": false,
+      "title": "Confirm",
+      "type": "boolean"
+    }
+  },
+  "title": "PushRequest",
+  "type": "object"
+}

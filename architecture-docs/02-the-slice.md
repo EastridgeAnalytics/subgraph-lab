@@ -51,23 +51,24 @@ The first two are ordinary `relate pull` queries. The third is the one this page
 ## The shape of the query
 
 ```cypher
-// shape only; exact syntax in Relate's hybrid search guide
 CALL () {
-  MATCH (a:Account)
-  SEARCH a IN (VECTOR INDEX account_embedding FOR $v LIMIT $k) SCORE AS score
-  // rank each hit
+  MATCH (a:Account) SEARCH a IN (VECTOR INDEX account_embedding FOR $v LIMIT $k) SCORE AS score
+  WITH a ORDER BY score DESC WITH collect(a) AS hits
+  UNWIND range(0, size(hits) - 1) AS rank
+  RETURN hits[rank] AS a, rank, 'vector' AS src
   UNION ALL
-  MATCH (a:Account)
-  SEARCH a IN (FULLTEXT INDEX account_summary FOR $q LIMIT $k) SCORE AS score
-  // rank each hit
+  MATCH (a:Account) SEARCH a IN (FULLTEXT INDEX account_summary FOR $q LIMIT $k) SCORE AS score
+  WITH a ORDER BY score DESC WITH collect(a) AS hits
+  UNWIND range(0, size(hits) - 1) AS rank
+  RETURN hits[rank] AS a, rank, 'fulltext' AS src
 }
-WITH a, sum(1.0 / (60 + rank)) AS rrf
+WITH a, sum(1.0 / (60 + rank)) AS rrf, collect(src) AS found_by
 ORDER BY rrf DESC LIMIT $k
-MATCH p = (a)-[:TX*1..2]-(n)
-RETURN p
+RETURN a, rrf, found_by
 ```
 
-Ranks are fused because the two lists' raw scores are not comparable.
+This runs on Relate 1.0.1 as written. Each branch ranks its own hits; the ranks are fused because the two lists'
+raw scores are not comparable. The hop is a second statement over the hits' keys, so the estimate can run first.
 
 ## What the Slice screen shows first
 

@@ -1,0 +1,28 @@
+{
+  "properties": {
+    "props": {
+      "additionalProperties": true,
+      "title": "Props",
+      "type": "object"
+    },
+    "source": {
+      "title": "Source",
+      "type": "string"
+    },
+    "target": {
+      "title": "Target",
+      "type": "string"
+    },
+    "type": {
+      "title": "Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "target",
+    "type"
+  ],
+  "title": "GraphEdge",
+  "type": "object"
+}

@@ -1,0 +1,36 @@
+{
+  "description": "A shared identifier: an account links to it, and accounts that share one are linked for communities.",
+  "properties": {
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "device",
+        "email",
+        "address",
+        "phone",
+        "other"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "label": {
+      "title": "Label",
+      "type": "string"
+    },
+    "rel_type": {
+      "title": "Rel Type",
+      "type": "string"
+    }
+  },
+  "required": [
+    "rel_type",
+    "label",
+    "key",
+    "kind"
+  ],
+  "title": "IdentifierLink",
+  "type": "object"
+}

@@ -1,0 +1,29 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "communities_in_slice": {
+      "title": "Communities In Slice",
+      "type": "integer"
+    },
+    "median_score": {
+      "title": "Median Score",
+      "type": "number"
+    },
+    "median_size": {
+      "title": "Median Size",
+      "type": "number"
+    },
+    "score_rank": {
+      "title": "Score Rank",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "communities_in_slice",
+    "score_rank",
+    "median_size",
+    "median_score"
+  ],
+  "title": "Comparison",
+  "type": "object"
+}

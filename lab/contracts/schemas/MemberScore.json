@@ -1,0 +1,19 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "score": {
+      "title": "Score",
+      "type": "number"
+    }
+  },
+  "required": [
+    "key",
+    "score"
+  ],
+  "title": "MemberScore",
+  "type": "object"
+}

@@ -1,0 +1,23 @@
+{
+  "properties": {
+    "ok": {
+      "title": "Ok",
+      "type": "boolean"
+    },
+    "relate": {
+      "title": "Relate",
+      "type": "string"
+    },
+    "version": {
+      "title": "Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "ok",
+    "version",
+    "relate"
+  ],
+  "title": "Health",
+  "type": "object"
+}

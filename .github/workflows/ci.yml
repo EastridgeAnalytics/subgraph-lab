@@ -1,0 +1,28 @@
+name: ci
+on: [push, pull_request]
+jobs:
+  lab:
+    runs-on: ubuntu-latest
+    env:
+      DO_NOT_TRACK: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - run: uv run python tools/install_relate.py
+      - run: uv run ruff check lab tests tools generator examples
+      - run: uv run pytest -q
+      - run: uv run python tools/check_docs.py
+  app:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - run: npm run typecheck
+      - run: npm test

@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "python": {
+      "title": "Python",
+      "type": "string"
+    },
+    "recipe_yaml": {
+      "title": "Recipe Yaml",
+      "type": "string"
+    }
+  },
+  "required": [
+    "recipe_yaml",
+    "python"
+  ],
+  "title": "ShowCode",
+  "type": "object"
+}

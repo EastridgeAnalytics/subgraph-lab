@@ -1,0 +1,32 @@
+{
+  "properties": {
+    "nodes": {
+      "title": "Nodes",
+      "type": "integer"
+    },
+    "relationships": {
+      "title": "Relationships",
+      "type": "integer"
+    },
+    "route": {
+      "enum": [
+        "relate",
+        "bolt"
+      ],
+      "title": "Route",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "nodes",
+    "relationships",
+    "route"
+  ],
+  "title": "EgressOut",
+  "type": "object"
+}

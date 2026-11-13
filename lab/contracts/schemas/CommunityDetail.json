@@ -1,0 +1,494 @@
+{
+  "$defs": {
+    "CommunityRow": {
+      "properties": {
+        "disposition": {
+          "anyOf": [
+            {
+              "enum": [
+                "confirmed",
+                "false_positive",
+                "needs_more"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Disposition"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "size": {
+          "title": "Size",
+          "type": "integer"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        },
+        "summary_source": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary Source"
+        }
+      },
+      "required": [
+        "key",
+        "size",
+        "score"
+      ],
+      "title": "CommunityRow",
+      "type": "object"
+    },
+    "Comparison": {
+      "additionalProperties": false,
+      "properties": {
+        "communities_in_slice": {
+          "title": "Communities In Slice",
+          "type": "integer"
+        },
+        "median_score": {
+          "title": "Median Score",
+          "type": "number"
+        },
+        "median_size": {
+          "title": "Median Size",
+          "type": "number"
+        },
+        "score_rank": {
+          "title": "Score Rank",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "communities_in_slice",
+        "score_rank",
+        "median_size",
+        "median_score"
+      ],
+      "title": "Comparison",
+      "type": "object"
+    },
+    "Evidence": {
+      "additionalProperties": false,
+      "properties": {
+        "comparison": {
+          "$ref": "#/$defs/Comparison"
+        },
+        "factors": {
+          "items": {
+            "$ref": "#/$defs/FactorHit"
+          },
+          "title": "Factors",
+          "type": "array"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "member_count": {
+          "title": "Member Count",
+          "type": "integer"
+        },
+        "member_keys": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Member Keys",
+          "type": "array"
+        },
+        "money": {
+          "$ref": "#/$defs/Money"
+        },
+        "run_id": {
+          "title": "Run Id",
+          "type": "string"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        },
+        "score_parts": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "title": "Score Parts",
+          "type": "object"
+        },
+        "shared_identifiers": {
+          "items": {
+            "$ref": "#/$defs/SharedIdentifier"
+          },
+          "title": "Shared Identifiers",
+          "type": "array"
+        },
+        "subject": {
+          "enum": [
+            "community",
+            "alert"
+          ],
+          "title": "Subject",
+          "type": "string"
+        },
+        "top_members": {
+          "items": {
+            "$ref": "#/$defs/MemberScore"
+          },
+          "title": "Top Members",
+          "type": "array"
+        }
+      },
+      "required": [
+        "subject",
+        "key",
+        "run_id",
+        "member_count",
+        "member_keys",
+        "score",
+        "score_parts",
+        "shared_identifiers",
+        "money",
+        "factors",
+        "top_members",
+        "comparison"
+      ],
+      "title": "Evidence",
+      "type": "object"
+    },
+    "FactorHit": {
+      "additionalProperties": false,
+      "properties": {
+        "accounts": {
+          "title": "Accounts",
+          "type": "integer"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "factor_id": {
+          "title": "Factor Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "factor_id",
+        "name",
+        "accounts"
+      ],
+      "title": "FactorHit",
+      "type": "object"
+    },
+    "GraphEdge": {
+      "properties": {
+        "props": {
+          "additionalProperties": true,
+          "title": "Props",
+          "type": "object"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "type": {
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "source",
+        "target",
+        "type"
+      ],
+      "title": "GraphEdge",
+      "type": "object"
+    },
+    "GraphNode": {
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "props": {
+          "additionalProperties": true,
+          "title": "Props",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "label"
+      ],
+      "title": "GraphNode",
+      "type": "object"
+    },
+    "MemberScore": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "score": {
+          "title": "Score",
+          "type": "number"
+        }
+      },
+      "required": [
+        "key",
+        "score"
+      ],
+      "title": "MemberScore",
+      "type": "object"
+    },
+    "Money": {
+      "additionalProperties": false,
+      "properties": {
+        "cycles": {
+          "title": "Cycles",
+          "type": "integer"
+        },
+        "first_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "First At"
+        },
+        "inflow": {
+          "title": "Inflow",
+          "type": "number"
+        },
+        "internal": {
+          "title": "Internal",
+          "type": "number"
+        },
+        "last_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last At"
+        },
+        "outflow": {
+          "title": "Outflow",
+          "type": "number"
+        },
+        "span_hours": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Span Hours"
+        }
+      },
+      "required": [
+        "inflow",
+        "outflow",
+        "internal",
+        "cycles"
+      ],
+      "title": "Money",
+      "type": "object"
+    },
+    "SharedIdentifier": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "title": "Kind",
+          "type": "string"
+        },
+        "members_sharing": {
+          "title": "Members Sharing",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kind",
+        "key",
+        "members_sharing"
+      ],
+      "title": "SharedIdentifier",
+      "type": "object"
+    },
+    "Summary": {
+      "properties": {
+        "checks": {
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "title": "Checks",
+          "type": "object"
+        },
+        "evidence_hash": {
+          "title": "Evidence Hash",
+          "type": "string"
+        },
+        "failed_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Failed Reason"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "source": {
+          "enum": [
+            "api",
+            "agent",
+            "template"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "text",
+        "source",
+        "evidence_hash"
+      ],
+      "title": "Summary",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "edges": {
+      "items": {
+        "$ref": "#/$defs/GraphEdge"
+      },
+      "title": "Edges",
+      "type": "array"
+    },
+    "evidence": {
+      "$ref": "#/$defs/Evidence"
+    },
+    "nodes": {
+      "items": {
+        "$ref": "#/$defs/GraphNode"
+      },
+      "title": "Nodes",
+      "type": "array"
+    },
+    "row": {
+      "$ref": "#/$defs/CommunityRow"
+    },
+    "score_parts": {
+      "additionalProperties": {
+        "type": "number"
+      },
+      "title": "Score Parts",
+      "type": "object"
+    },
+    "similar": {
+      "items": {
+        "$ref": "#/$defs/CommunityRow"
+      },
+      "title": "Similar",
+      "type": "array"
+    },
+    "summary": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Summary"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "row",
+    "score_parts",
+    "evidence",
+    "nodes",
+    "edges",
+    "similar"
+  ],
+  "title": "CommunityDetail",
+  "type": "object"
+}

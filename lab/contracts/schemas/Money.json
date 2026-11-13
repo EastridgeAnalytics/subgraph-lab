@@ -1,0 +1,65 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "cycles": {
+      "title": "Cycles",
+      "type": "integer"
+    },
+    "first_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "First At"
+    },
+    "inflow": {
+      "title": "Inflow",
+      "type": "number"
+    },
+    "internal": {
+      "title": "Internal",
+      "type": "number"
+    },
+    "last_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Last At"
+    },
+    "outflow": {
+      "title": "Outflow",
+      "type": "number"
+    },
+    "span_hours": {
+      "anyOf": [
+        {
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Span Hours"
+    }
+  },
+  "required": [
+    "inflow",
+    "outflow",
+    "internal",
+    "cycles"
+  ],
+  "title": "Money",
+  "type": "object"
+}

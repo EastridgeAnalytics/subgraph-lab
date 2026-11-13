@@ -1,0 +1,70 @@
+# subgraph-lab (page 07). `docker compose up` runs the lab against the NEO4J_* in .env (Aura).
+# `docker compose --profile local up` adds the bundled Neo4j with the seed. Every host port is a setting.
+name: subgraph-lab
+
+services:
+  lab:
+    build: .
+    image: subgraph-lab:dev
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DO_NOT_TRACK: "1"
+      LAB_DATA_DIR: /data
+      LAB_RELATE_HOST: 0.0.0.0
+      # Unset NEO4J_URI means the bundled Neo4j, reached by its service name inside compose.
+      NEO4J_URI: ${NEO4J_URI_IN_COMPOSE:-${NEO4J_URI:-bolt://neo4j:7687}}
+      NEO4J_QUERY_URI: ${NEO4J_QUERY_URI_IN_COMPOSE:-${NEO4J_QUERY_URI:-}}
+    ports:
+      - "127.0.0.1:${LAB_PORT:-8000}:8000"
+      - "127.0.0.1:${LAB_RELATE_BOLT_PORT:-7687}:7687"
+      - "127.0.0.1:${LAB_RELATE_HTTP_PORT:-7474}:7474"
+      - "127.0.0.1:${LAB_RELATE_MCP_PORT:-7475}:7475"
+    volumes:
+      - labdata:/data
+
+  generate:
+    image: subgraph-lab:dev
+    profiles: [local]
+    environment:
+      DO_NOT_TRACK: "1"
+    command: ["python", "-m", "generator", "--size", "${LAB_SEED_SIZE:-small}", "--out", "/import"]
+    volumes:
+      - seedcsv:/import
+
+  seed:
+    image: neo4j:2026.08.1
+    profiles: [local]
+    depends_on:
+      generate:
+        condition: service_completed_successfully
+    entrypoint: ["bash", "/seed/import.sh"]
+    volumes:
+      - seedcsv:/import:ro
+      - neo4jdata:/data
+      - ./generator/import.sh:/seed/import.sh:ro
+
+  neo4j:
+    image: neo4j:2026.08.1
+    profiles: [local]
+    depends_on:
+      seed:
+        condition: service_completed_successfully
+    environment:
+      NEO4J_AUTH: "${NEO4J_USERNAME:-neo4j}/${NEO4J_PASSWORD:-subgraph-lab}"
+    ports:
+      - "127.0.0.1:${LAB_NEO4J_BOLT_PORT:-17687}:7687"
+      - "127.0.0.1:${LAB_NEO4J_HTTP_PORT:-17474}:7474"
+    volumes:
+      - neo4jdata:/data
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:7474 || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  labdata:
+  seedcsv:
+  neo4jdata:

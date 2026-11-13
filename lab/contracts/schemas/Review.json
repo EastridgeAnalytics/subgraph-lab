@@ -1,0 +1,149 @@
+{
+  "$defs": {
+    "Delta": {
+      "properties": {
+        "accounts_scored": {
+          "title": "Accounts Scored",
+          "type": "integer"
+        },
+        "bytes_estimate": {
+          "title": "Bytes Estimate",
+          "type": "integer"
+        },
+        "dispositions": {
+          "title": "Dispositions",
+          "type": "integer"
+        },
+        "missing_remote_keys": {
+          "title": "Missing Remote Keys",
+          "type": "integer"
+        },
+        "new_alerts": {
+          "title": "New Alerts",
+          "type": "integer"
+        },
+        "new_communities": {
+          "title": "New Communities",
+          "type": "integer"
+        },
+        "sampled": {
+          "title": "Sampled",
+          "type": "integer"
+        },
+        "score_changes": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Score Changes",
+          "type": "object"
+        },
+        "vectors": {
+          "title": "Vectors",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "new_alerts",
+        "new_communities",
+        "accounts_scored",
+        "score_changes",
+        "missing_remote_keys",
+        "sampled",
+        "vectors",
+        "dispositions",
+        "bytes_estimate"
+      ],
+      "title": "Delta",
+      "type": "object"
+    },
+    "PushEntity": {
+      "description": "One entity line of a `relate push --json` report, or of the Bolt fallback's equivalent.",
+      "properties": {
+        "batches": {
+          "default": 0,
+          "title": "Batches",
+          "type": "integer"
+        },
+        "created": {
+          "default": 0,
+          "title": "Created",
+          "type": "integer"
+        },
+        "entity": {
+          "title": "Entity",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "kind": {
+          "default": "node",
+          "title": "Kind",
+          "type": "string"
+        },
+        "landed": {
+          "default": false,
+          "title": "Landed",
+          "type": "boolean"
+        },
+        "skipped": {
+          "default": 0,
+          "title": "Skipped",
+          "type": "integer"
+        },
+        "total": {
+          "default": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "updated": {
+          "default": 0,
+          "title": "Updated",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entity"
+      ],
+      "title": "PushEntity",
+      "type": "object"
+    }
+  },
+  "properties": {
+    "delta": {
+      "$ref": "#/$defs/Delta"
+    },
+    "plan": {
+      "items": {
+        "$ref": "#/$defs/PushEntity"
+      },
+      "title": "Plan",
+      "type": "array"
+    },
+    "plan_text": {
+      "title": "Plan Text",
+      "type": "string"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "plan",
+    "plan_text",
+    "delta"
+  ],
+  "title": "Review",
+  "type": "object"
+}

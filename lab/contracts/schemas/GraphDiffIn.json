@@ -1,0 +1,18 @@
+{
+  "properties": {
+    "run_a": {
+      "title": "Run A",
+      "type": "string"
+    },
+    "run_b": {
+      "title": "Run B",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_a",
+    "run_b"
+  ],
+  "title": "GraphDiffIn",
+  "type": "object"
+}

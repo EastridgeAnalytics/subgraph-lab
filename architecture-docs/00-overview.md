@@ -27,8 +27,8 @@ flowchart LR
 
   master -->|relate pull| store
   store --> slice --> adapters --> models --> scores --> summaries --> stage --> review
-  review -->|relate push| master
-  stage --> store
+  review -->|"relate push, from the push store"| master
+  stage --> pstore[("Push store<br/>keys and results only")]
   app --> api
   agent -->|acts through| api
   agent -->|reads, read-only| store
@@ -69,10 +69,10 @@ flowchart LR
 | Cypher on the working copy | As-of queries on the Timeline; fan-in and cycle checks |
 | `relate serve --read-only=live` | The app and the agent read while the lab writes |
 | The skill and the MCP server | The agent reads evidence through `read_cypher` |
-| Arrow results | The table adapter |
+| Arrow results, through the cursor's `to_arrow()` | The table adapter |
 | `DO_NOT_TRACK=1` | Every container |
 
-Every row is from Relate's docs. Whether `--read-only=live` follows another writer is to verify in week one.
+Every row was run against Relate 1.0.1 in wave 0 ([review](reviews/wave-0-relate-1.0.1.md)).
 
 ## Words we use
 

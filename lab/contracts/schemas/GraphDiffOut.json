@@ -1,0 +1,41 @@
+{
+  "properties": {
+    "accounts_both": {
+      "title": "Accounts Both",
+      "type": "integer"
+    },
+    "alerts_gone": {
+      "title": "Alerts Gone",
+      "type": "integer"
+    },
+    "alerts_new": {
+      "title": "Alerts New",
+      "type": "integer"
+    },
+    "communities_a": {
+      "title": "Communities A",
+      "type": "integer"
+    },
+    "communities_b": {
+      "title": "Communities B",
+      "type": "integer"
+    },
+    "score_changes": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Score Changes",
+      "type": "object"
+    }
+  },
+  "required": [
+    "accounts_both",
+    "score_changes",
+    "alerts_new",
+    "alerts_gone",
+    "communities_a",
+    "communities_b"
+  ],
+  "title": "GraphDiffOut",
+  "type": "object"
+}

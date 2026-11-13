@@ -27,7 +27,7 @@ Nothing on this page is built. Each wave ends with [99](99-build-status.md) upda
   against; done means; tests; what NOT to do; report back. A brief quotes the lines of the architecture page it
   implements, so the page and the code cannot drift apart silently.
 - **Rules nobody breaks.** The seven rules on [00](00-overview.md) under "What holds everywhere". Plus: every
-  Relate call runs with `DO_NOT_TRACK=1`; no GPL library in the image; Python 3.11 and CPU wheels; nothing merges
+  Relate call runs with `DO_NOT_TRACK=1`; no GPL library in the image; Python 3.12 and CPU wheels; nothing merges
   without its test on the seed; every track owns its folder; only the director changes a contract, and the change
   is a decision on 08; a number nobody measured is tagged "to measure"; docs change only where the code made them
   wrong, in the same commit.
@@ -50,13 +50,13 @@ release that exists.
 
 ### 0a · pins
 
-- `uv python install 3.11`. `relate-db==1.0.1` from PyPI. The Relate CLI 1.0.1 for Windows from the release
+- `uv python install 3.12` (decision 18). `relate-db==1.0.1` from PyPI. The Relate CLI 1.0.1 for Windows from the release
   page, its hash checked against `SHA256SUMS`, on the path for the director; `relate-linux-amd64` the same way in
   the image. `DO_NOT_TRACK=1` in every shell, in `compose.yaml` and in the `Dockerfile`; `relate telemetry status`
   says disabled.
-- The Relate server image: the README names `relate-bolt:latest`. Find the published registry path for 1.0.1, or
-  build it from the repo's Dockerfile at the `v1.0.1` tag, and pin it in `compose.yaml`.
-- A Neo4j community image with the Query API v2, pinned by tag. PyTorch CPU wheels and PyTorch Geometric 2.8,
+- The Relate server image: none is published, so the lab image carries the checked binary and runs
+  `relate serve` itself (decision 21).
+- A Neo4j community image with the Query API v2, pinned by tag. PyTorch 2.12 CPU wheels, pyg-lib 0.7.0 and PyTorch Geometric 2.8 (decision 19),
   statsforecast 2.1, NetworkX 3.7, pyarrow, polars, FastAPI, uvicorn, pydantic, PyYAML, the `anthropic` SDK, the
   `neo4j` driver, the `mcp` SDK, pytest, ruff. Node 22, React 18, Vite, TypeScript, Tailwind, Vitest.
 
@@ -77,12 +77,12 @@ Run each of these and fix the page where 1.0.1 differs, with a decision on 08 fo
 
 ### 0c · scaffold
 
-- `pyproject.toml` (uv, Python 3.11, every dependency pinned), `lab/` with `common/`, `roundtrip/`, `slice/`,
+- `pyproject.toml` (uv, Python 3.12, every dependency pinned), `lab/` with `common/`, `roundtrip/`, `slice/`,
   `adapters/`, `scoring/`, `summaries/`, `api/`, `settings.py`, `contracts/`; `app/` from the Vite React
   TypeScript template with Tailwind, a router, and a mock API switch; `examples/`, `factors/`, `generator/`,
   `tests/` with `acceptance/`; `tools/check_docs.py`.
-- `compose.yaml`: `lab` (port 8000), `relate` (7687, 7474, 7475, read-only serve of the lab's store on a named
-  volume), `neo4j` plus `seed` under profile `local` (17687, 17474). `Dockerfile` for `lab`, CPU. `.env.example`
+- `compose.yaml`: `lab` (port 8000, plus 7687, 7474 and 7475 for the `relate serve` it runs), `generate`, `seed`
+  and `neo4j` under profile `local` (17687, 17474). Every host port is a setting (decision 26). `Dockerfile` for `lab`, CPU. `.env.example`
   with every setting on 07.
 - A tiny fixture graph in `tests/fixtures/`: 200 accounts, 2,000 payments, two planted rings, one look-alike, as
   CSV and as a Relate store builder. Every unit test runs on it; `live` tests need compose.

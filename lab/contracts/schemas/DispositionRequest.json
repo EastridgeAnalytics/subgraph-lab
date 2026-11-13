@@ -1,0 +1,38 @@
+{
+  "properties": {
+    "by": {
+      "title": "By",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "confirmed",
+        "false_positive",
+        "needs_more"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "kind": {
+      "enum": [
+        "account",
+        "alert",
+        "community"
+      ],
+      "title": "Kind",
+      "type": "string"
+    }
+  },
+  "required": [
+    "kind",
+    "key",
+    "disposition",
+    "by"
+  ],
+  "title": "DispositionRequest",
+  "type": "object"
+}

@@ -1,0 +1,5 @@
+# How factors become account scores (page 04, lab/contracts/factors.py Policy).
+version: "1"
+combine: weighted_mean
+alert_threshold: 0.6
+window: P30D

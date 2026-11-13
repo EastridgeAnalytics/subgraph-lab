@@ -1,0 +1,31 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "accounts": {
+      "title": "Accounts",
+      "type": "integer"
+    },
+    "evidence_ids": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Evidence Ids",
+      "type": "array"
+    },
+    "factor_id": {
+      "title": "Factor Id",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "factor_id",
+    "name",
+    "accounts"
+  ],
+  "title": "FactorHit",
+  "type": "object"
+}

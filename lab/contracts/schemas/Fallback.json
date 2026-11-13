@@ -1,0 +1,37 @@
+{
+  "$defs": {
+    "Route": {
+      "enum": [
+        "relate",
+        "bolt"
+      ],
+      "title": "Route",
+      "type": "string"
+    }
+  },
+  "description": "A fallback that ran. Recorded, never silent (page 97, lesson three).",
+  "properties": {
+    "at": {
+      "title": "At",
+      "type": "string"
+    },
+    "reason": {
+      "title": "Reason",
+      "type": "string"
+    },
+    "route": {
+      "$ref": "#/$defs/Route"
+    },
+    "step": {
+      "title": "Step",
+      "type": "string"
+    }
+  },
+  "required": [
+    "step",
+    "route",
+    "reason"
+  ],
+  "title": "Fallback",
+  "type": "object"
+}

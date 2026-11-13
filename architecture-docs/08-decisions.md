@@ -22,7 +22,8 @@ Settled, then open. A later decision can replace an earlier one. The number stay
    template on any failed check. The Anthropic API writes them when a key is set, else the agent, else the
    template.
 10. **Reviewer decisions go back to Aura as `risk_disposition`.** Retraining on them is release 1.2.
-11. **One lab container**, Relate's own image serving read-only beside it, the bundled Neo4j optional.
+11. **One lab container**, serving the store read-only through Relate beside it (decision 21), the bundled
+    Neo4j optional.
 12. **The app is React 18, Vite, TypeScript and Tailwind on FastAPI.** Seven screens in the MVP.
 13. **The agent reads through Relate's MCP server and skill, and acts through the lab's eight tools.**
     `apply_push` with confirm set is the only writer to the master graph.
@@ -33,13 +34,36 @@ Settled, then open. A later decision can replace an earlier one. The number stay
 17. **Moved to 1.1:** the Markdown review pack, the single-file run, the in-browser timeline, a local language
     model, Arrow Flight, whole-graph communities.
 
+Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
+([review](reviews/wave-0-relate-1.0.1.md)).
+
+18. **Python 3.12.** NetworkX 3.7 requires it. Replaces 3.11 on 07 and 97.
+19. **PyTorch 2.12 on CPU, with pyg-lib 0.7.0 from PyG's wheel index.** Node2Vec needs pyg-lib. 2.12 is the
+    newest PyTorch with pyg-lib wheels for both Windows and Linux.
+20. **The bundled Neo4j is `neo4j:2026.08.1` community.** It serves the Query API v2 that pull and push use.
+21. **No separate `relate` service.** No Relate server image is published. The lab image carries the checked
+    `relate` binary and runs one `relate serve --read-only=live` for the current run's store, restarting it when a
+    new run starts. Bolt, HTTP and MCP keep their ports.
+22. **Push runs from a push store, never from the pulled store.** The push store holds only keys, `risk_*`
+    properties, `Alert`, `RiskCommunity` and `LabRun` nodes and their links, with a uniqueness constraint per
+    label. Pushing the pulled store would re-send every pulled property and merge parallel payments.
+23. **Timestamps in the push store are UTC ISO-8601 strings.** `relate push` 1.0.1 fails with HTTP 400 on any
+    zoned datetime property.
+24. **Resume means pushing again what did not land.** `relate push` has no resume flag. The manifest records
+    which entities landed; a resume pushes the rest. Keyed merge makes a resent batch harmless.
+25. **Two URIs.** `NEO4J_URI` is for the Bolt driver; `NEO4J_QUERY_URI` is the `http(s)` Query API for Relate,
+    derived from `NEO4J_URI` when unset. `--allow-plaintext` is added only for an `http://` URI.
+26. **Host ports are settings** with the documented defaults, because a machine may already run Neo4j on them.
+27. **The lab reads through `relate.connect()`.** Its cursor has `data()`, `to_arrow()`, `to_df()` and
+    `graph()`. `relate.Database.execute_arrow()` exists too; the lab does not need it.
+28. **`LabRun` is its own push**, after everything else in the run has landed.
+
 ## Open
 
 | Question | What depends on it | Who |
 |---|---|---|
 | TGB's licence (no licence field on PyPI) | Whether the name goes in the README. The layout works either way | The integrator |
 | `relate pull` speed at 100k and 1M from Aura | Whether Bolt stays a fallback or becomes the default | Data plane, week one |
-| Whether `relate serve --read-only=live` sees the lab's commits | Restart after each write, or not | Data plane, week one |
 | Aura Free's real limit | The seed size | When the seed loads |
 | Whether pushed vectors land the way Neo4j's vector index wants | "Similar accounts" on Aura after the push | Data plane |
 | Cost per summary | The default of 20 communities and 50 alerts | Scoring, measured |

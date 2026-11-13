@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "Fallback": {
+      "description": "A fallback that ran. Recorded, never silent (page 97, lesson three).",
+      "properties": {
+        "at": {
+          "title": "At",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "route": {
+          "$ref": "#/$defs/Route"
+        },
+        "step": {
+          "title": "Step",
+          "type": "string"
+        }
+      },
+      "required": [
+        "step",
+        "route",
+        "reason"
+      ],
+      "title": "Fallback",
+      "type": "object"
+    },
+    "PushEntity": {
+      "description": "One entity line of a `relate push --json` report, or of the Bolt fallback's equivalent.",
+      "properties": {
+        "batches": {
+          "default": 0,
+          "title": "Batches",
+          "type": "integer"
+        },
+        "created": {
+          "default": 0,
+          "title": "Created",
+          "type": "integer"
+        },
+        "entity": {
+          "title": "Entity",
+          "type": "string"
+        },
+        "error": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error"
+        },
+        "kind": {
+          "default": "node",
+          "title": "Kind",
+          "type": "string"
+        },
+        "landed": {
+          "default": false,
+          "title": "Landed",
+          "type": "boolean"
+        },
+        "skipped": {
+          "default": 0,
+          "title": "Skipped",
+          "type": "integer"
+        },
+        "total": {
+          "default": 0,
+          "title": "Total",
+          "type": "integer"
+        },
+        "updated": {
+          "default": 0,
+          "title": "Updated",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "entity"
+      ],
+      "title": "PushEntity",
+      "type": "object"
+    },
+    "Route": {
+      "enum": [
+        "relate",
+        "bolt"
+      ],
+      "title": "Route",
+      "type": "string"
+    },
+    "Step": {
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Counts",
+          "type": "object"
+        },
+        "finished_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Finished At"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Note"
+        },
+        "started_at": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Started At"
+        },
+        "status": {
+          "$ref": "#/$defs/StepStatus",
+          "default": "pending"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "title": "Step",
+      "type": "object"
+    },
+    "StepStatus": {
+      "enum": [
+        "pending",
+        "running",
+        "done",
+        "failed",
+        "skipped"
+      ],
+      "title": "StepStatus",
+      "type": "string"
+    }
+  },
+  "properties": {
+    "counts": {
+      "additionalProperties": {
+        "type": "integer"
+      },
+      "title": "Counts",
+      "type": "object"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "factor_version": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Factor Version"
+    },
+    "fallbacks": {
+      "items": {
+        "$ref": "#/$defs/Fallback"
+      },
+      "title": "Fallbacks",
+      "type": "array"
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "model_hash": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model Hash"
+    },
+    "push": {
+      "items": {
+        "$ref": "#/$defs/PushEntity"
+      },
+      "title": "Push",
+      "type": "array"
+    },
+    "recipe_hash": {
+      "title": "Recipe Hash",
+      "type": "string"
+    },
+    "routes": {
+      "additionalProperties": {
+        "$ref": "#/$defs/Route"
+      },
+      "title": "Routes",
+      "type": "object"
+    },
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/StepStatus",
+      "default": "pending"
+    },
+    "steps": {
+      "items": {
+        "$ref": "#/$defs/Step"
+      },
+      "title": "Steps",
+      "type": "array"
+    }
+  },
+  "required": [
+    "run_id",
+    "recipe_hash"
+  ],
+  "title": "RunManifest",
+  "type": "object"
+}

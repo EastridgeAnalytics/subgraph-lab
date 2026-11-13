@@ -1,0 +1,30 @@
+{
+  "description": "How factors become account scores.\n\nrisk_score_rules is the weighted mean of the cypher and python factors, risk_score_model the weighted mean of\nthe model factors, and risk_score their mean weighted by each side's total weight. A missing factor counts 0.\nAn account at or above alert_threshold gets an Alert for the window.",
+  "properties": {
+    "alert_threshold": {
+      "default": 0.6,
+      "maximum": 1,
+      "minimum": 0,
+      "title": "Alert Threshold",
+      "type": "number"
+    },
+    "combine": {
+      "const": "weighted_mean",
+      "default": "weighted_mean",
+      "title": "Combine",
+      "type": "string"
+    },
+    "version": {
+      "default": "1",
+      "title": "Version",
+      "type": "string"
+    },
+    "window": {
+      "default": "P30D",
+      "title": "Window",
+      "type": "string"
+    }
+  },
+  "title": "Policy",
+  "type": "object"
+}

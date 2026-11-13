@@ -29,7 +29,7 @@ def check(path: pathlib.Path, mermaid_blocks: list) -> list:
     for m in re.finditer(r"```mermaid\n(.*?)```", text, re.S):
         mermaid_blocks.append({"file": path.name, "src": m.group(1)})
     prose = FENCE.sub("", text)
-    lines = [l for l in prose.splitlines() if not re.match(r"^\|[-|: ]+\|$", l)]
+    lines = [ln for ln in prose.splitlines() if not re.match(r"^\|[-|: ]+\|$", ln)]
     prose = "\n".join(lines)
     prose_nolist = re.sub(r"(?m)^\s*(-|\d+\.)\s+", "", prose)
     words = len(re.findall(r"\b\w+\b", prose))
@@ -92,7 +92,7 @@ for (let i = 0; i < blocks.length; i++) {
 }
 window.__results = results;
 document.getElementById('out').textContent = 'DONE ' + JSON.stringify(results);
-</script></body></html>""" % json.dumps(blocks)
+</script></body></html>""" % json.dumps(blocks)  # noqa: UP031 (the page is full of braces)
         out = ROOT / ".tmp" / "mermaid-check.html"
         out.parent.mkdir(exist_ok=True)
         out.write_text(html, encoding="utf-8")

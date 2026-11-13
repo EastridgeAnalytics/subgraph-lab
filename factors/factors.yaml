@@ -1,0 +1,18 @@
+# Risk factors (page 04). Add an entry, re-run the recipe, and it is in every score and summary.
+# The weights and thresholds that ship are set for the demo data. On real data, the review team sets them.
+- id: shared_device_5plus
+  name: Five or more accounts on one device
+  kind: cypher
+  query: shared_device.cypher
+  threshold: 5
+  weight: 0.30
+- id: velocity_anomaly
+  name: Outflow far above the account's own forecast
+  kind: python
+  function: lab.scoring.velocity:score    # statsforecast
+  weight: 0.20
+- id: tgn
+  name: Temporal model score
+  kind: model
+  source: examples/tgn
+  weight: 0.50

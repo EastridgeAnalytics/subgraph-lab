@@ -1,0 +1,30 @@
+{
+  "properties": {
+    "found_by": {
+      "items": {
+        "enum": [
+          "vector",
+          "fulltext"
+        ],
+        "type": "string"
+      },
+      "title": "Found By",
+      "type": "array"
+    },
+    "key": {
+      "title": "Key",
+      "type": "string"
+    },
+    "rrf": {
+      "title": "Rrf",
+      "type": "number"
+    }
+  },
+  "required": [
+    "key",
+    "rrf",
+    "found_by"
+  ],
+  "title": "Hit",
+  "type": "object"
+}
