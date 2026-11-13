@@ -16,7 +16,7 @@ The same evidence always gives the same text, and the text passes `checks.check`
    household or a shared computer; address: people who share a home or an office; email: a shared family or business
    mailbox; phone: a shared phone line; any other kind: a shared resource several customers use legitimately; kinds in
    that order); a factor about fan-in or money in and out within a day (a payroll or collections account); money
-   between members with none of those (relatives or housemates settling shared costs for up to `SMALL_GROUP` members,
+   between members with none of those (relatives or housemates settling shared costs for up to `LAB_SUMMARY_SMALL_GROUP` members,
    a club, a team or a marketplace above that); else ordinary activity from a new business or a busy account. The factor cues are read from the factor's id and name, so a customer's own factor is a cue when it is
    named like one of these; a factor with no cue only shows in sentence one.
 
@@ -30,7 +30,6 @@ from collections.abc import Iterable
 from lab.contracts.evidence import Evidence
 from lab.settings import get_settings
 from lab.summaries.checks import count_words, round_half_up, verdict_words_in
-from lab.summaries.evidence import CYCLE_COUNT_CAP
 
 _INNOCENT = {
     "device": "a household or a shared computer",
@@ -38,7 +37,6 @@ _INNOCENT = {
     "email": "a shared family or business mailbox",
     "phone": "a shared phone line",
 }
-SMALL_GROUP = 8  # up to this many members, money between them reads as a household; more reads as a club or a market
 _KINDS = tuple(_INNOCENT)  # the order the explanations are offered in: the hardest link to fake first
 _SHARED_OTHER = "a shared resource that several customers use legitimately"
 _UNDER = "rent or an instalment plan paid in fixed amounts just below a round number"
@@ -100,7 +98,7 @@ def _shows(e: Evidence) -> list[str]:
             flows = f"took in {_n(m.inflow)} and paid out {_n(m.outflow)}"
         clauses.append(f"{'they' if community else 'it'} {flows}")
     if m.cycles:
-        count = f"{m.cycles:,} or more" if m.cycles >= CYCLE_COUNT_CAP else str(m.cycles)
+        count = f"{m.cycles:,} or more" if m.cycles >= get_settings().cycle_count_cap else str(m.cycles)
         clauses.append(f"money went round {count} payment {_plural(m.cycles, 'cycle')} among them")
     if m.first_at and m.last_at:
         clauses.append(f"payments ran from {m.first_at[:10]} to {m.last_at[:10]}")
@@ -142,7 +140,7 @@ def _innocent(e: Evidence) -> list[str]:
     if _cue(e, "fan_in", "in_and_out", "pass_through"):
         out.append(_PAYROLL)
     if not out and (e.money.internal > 0 or e.money.cycles):
-        out.append(_HOUSEHOLD if e.member_count <= SMALL_GROUP else _CLUB)
+        out.append(_HOUSEHOLD if e.member_count <= get_settings().summary_small_group else _CLUB)
     return (out or [_ORDINARY])[:2]
 
 

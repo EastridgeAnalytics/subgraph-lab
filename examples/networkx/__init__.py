@@ -4,7 +4,7 @@ The names load on first use, so that `python -m examples.networkx.example` does 
 """
 from __future__ import annotations
 
-__all__ = ["MAX_CYCLE", "cycles_by_account", "payment_graph"]
+__all__ = ["cycles_by_account"]
 
 
 def __getattr__(name: str):

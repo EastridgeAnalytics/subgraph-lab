@@ -9,7 +9,7 @@ How it works, in four steps:
    payment in the run store was made, not on the slice's last day, so an account scores the same on any slice that
    holds it. Each account's series is cut to start at its own first payment out: the days before an account first
    paid are not its pattern, and Croston reads leading zeros as one very long gap between payments.
-2. The last `HOLDOUT_DAYS` of the window are held out. Every account with enough history is fitted on the days before
+2. The last `LAB_VELOCITY_HOLDOUT_DAYS` of the window are held out. Every account with enough history is fitted on the days before
    them, all in one `StatsForecast(...).forecast(...)` call, never one call per account.
 3. The model is Croston's classic method (`CrostonClassic`), made for series that are mostly zero: it forecasts a
    payment's usual size divided by the usual gap between payments, with a fixed smoothing of 0.1, so there is nothing
@@ -22,8 +22,8 @@ How it works, in four steps:
    It needs no threshold. The factor's `threshold`, if the file sets one, is not read.
 
 An account has no row, which counts 0 in the policy, when its own history is too short to be a pattern: fewer than
-`MIN_HISTORY_DAYS` days between its first payment out and the start of the held-out days, or fewer than
-`MIN_ACTIVE_DAYS` days on which it paid in that time. A new account that starts paying inside the held-out days has
+`LAB_VELOCITY_MIN_HISTORY_DAYS` days between its first payment out and the start of the held-out days, or fewer than
+`LAB_VELOCITY_MIN_ACTIVE_DAYS` days on which it paid in that time. A new account that starts paying inside the held-out days has
 no forecast to be measured against; the factors that look at new accounts are for that.
 
 The evidence is one JSON object: the model, the held-out days (their number and the first and last date), the
@@ -42,15 +42,13 @@ from statsforecast.models import CrostonClassic
 
 from lab.adapters import reads, to_series
 from lab.common import canonical_json
+from lab.settings import get_settings
 
 if TYPE_CHECKING:
     from lab.contracts.factors import Factor
     from lab.runs import Run
 
-HOLDOUT_DAYS = 14  # the most recent days of the window that are held out: two whole weeks. Not tuned; to measure
-MIN_HISTORY_DAYS = 28  # days from an account's first payment out to the held-out days: two holdouts' worth
-MIN_ACTIVE_DAYS = 3  # days with a payment out in that history: two gaps between payments is the least a rate needs
-MODEL = "CrostonClassic"
+MODEL = "CrostonClassic"  # the days held out and the history an account needs are settings (page 07): LAB_VELOCITY_*
 
 _EMPTY = {"key": pl.Utf8, "score": pl.Float64, "evidence": pl.Utf8}
 
@@ -61,13 +59,15 @@ def score(run: Run, factor: Factor | None = None, keys: list[str] | None = None)
     `keys` is the slice (None is every account in the run store). `factor` is the factor-file entry; nothing of it
     is read, so the example can call this without one.
     """
+    s = get_settings()
+    holdout_days = s.velocity_holdout_days
     series = to_series(run, keys=keys)
     if series.is_empty():
         return pl.DataFrame(schema=_EMPTY)
     if keys is not None:
         series = _to_the_end_of_the_run(run, series)
     last = series["ds"].max()
-    cutoff = last - timedelta(days=HOLDOUT_DAYS - 1)  # the first held-out day
+    cutoff = last - timedelta(days=holdout_days - 1)  # the first held-out day
 
     # each account's own life: from its first payment out. `first` is that day.
     first = series.filter(pl.col("y") > 0).group_by("unique_id").agg(first=pl.col("ds").min())
@@ -76,7 +76,7 @@ def score(run: Run, factor: Factor | None = None, keys: list[str] | None = None)
     enough = (
         history.group_by("unique_id")
         .agg(days=pl.len(), active=(pl.col("y") > 0).sum())
-        .filter((pl.col("days") >= MIN_HISTORY_DAYS) & (pl.col("active") >= MIN_ACTIVE_DAYS))
+        .filter((pl.col("days") >= s.velocity_min_history_days) & (pl.col("active") >= s.velocity_min_active_days))
     )
     if enough.is_empty():
         return pl.DataFrame(schema=_EMPTY)
@@ -84,7 +84,7 @@ def score(run: Run, factor: Factor | None = None, keys: list[str] | None = None)
 
     forecast = (
         StatsForecast(models=[CrostonClassic(alias="forecast")], freq="1d", n_jobs=1)
-        .forecast(df=history, h=HOLDOUT_DAYS)
+        .forecast(df=history, h=holdout_days)
         .group_by("unique_id")
         .agg(forecast_total=pl.col("forecast").sum().clip(lower_bound=0.0))
     )
@@ -99,7 +99,7 @@ def score(run: Run, factor: Factor | None = None, keys: list[str] | None = None)
         ratio=pl.when(pl.col("forecast_total") > 0).then(pl.col("actual_total") / pl.col("forecast_total")),
     ).sort("unique_id")
 
-    window = {"holdout_days": HOLDOUT_DAYS, "holdout_from": cutoff.date().isoformat(),
+    window = {"holdout_days": holdout_days, "holdout_from": cutoff.date().isoformat(),
               "holdout_to": last.date().isoformat(), "model": MODEL}
     evidence = [
         canonical_json({**window, "forecast_total": round(f, 2), "actual_total": round(a, 2),

@@ -5,6 +5,7 @@ import re
 import shutil
 import time
 
+import polars as pl
 import pytest
 
 from lab.contracts.graph import EMBEDDING_PROP, SUMMARY_PROP
@@ -74,6 +75,21 @@ def test_an_r1_summary_says_new_account_and_shares_a_device(run_of):
         assert "money in and out within a day" in s[key]
         assert f"shares a device with {len(R1) - 1} other accounts" in s[key]
         assert f"shares an address with {len(R1) - 1} other accounts" in s[key]
+
+
+def test_the_money_in_and_out_phrase_is_the_in_and_out_factors_definition(run_of):
+    """One definition (decision 42, R3): the phrase is on the accounts the `in_and_out_within_a_day` factor fires on, with
+    the number of outgoing payments its query matched, and on no other. The ring's three rounds are three each."""
+    from lab.scoring.factors import run_factors
+    from lab.scoring.signals import IN_AND_OUT_FACTOR
+
+    s = summaries(run_of)
+    fired = run_factors(run_of, None).results.filter(pl.col("factor_id") == IN_AND_OUT_FACTOR)
+    said = {k for k, v in s.items() if "money in and out within a day" in v}
+    assert said == set(fired["key"]) and set(R1) <= said and not said & set(R2 + L1)
+    for key in R1:
+        assert "money in and out within a day (3 times)" in s[key]
+    assert all(CLAUSE.search(s[k]) for k in said)
 
 
 def test_an_r2_summary_says_email_and_just_under_10000(run_of):

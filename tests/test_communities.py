@@ -1,8 +1,10 @@
-"""Track 3a: communities on the fixture graph, the run store half, `attach_communities`, and ring recall (A11).
+"""Track 3a and 5b: communities on the fixture graph, the run store half, `attach_communities`, and ring recall (A11).
 
 The fixture has 200 accounts, 2,000 payments, the mule ring R1 (six accounts on one device and address), the
 structuring ring R2 (eight accounts on one email) and the family L1 (four accounts on one laptop and address).
-`run.stage` is patched where a test needs to see what would be staged; one test runs the real stage.
+Communities start from shared identifiers (decision 42): R1, R2 and L1 are each one identifier community of exactly
+their members, and Louvain then runs on the payments of the rest. `run.stage` is patched where a test needs to see what
+would be staged; one test runs the real stage.
 """
 from __future__ import annotations
 
@@ -27,8 +29,14 @@ from lab.runs import Run
 from lab.scoring import score
 from lab.scoring.communities import (
     COMMUNITIES_FILE,
+    IDENTIFIER,
+    PAYMENT,
+    Community,
     embed_communities,
     find_communities,
+    for_stage,
+    identifier_groups,
+    payment_graph,
     ring_recall,
     split_graph,
     write_communities,
@@ -122,6 +130,76 @@ def test_communities_never_overlap_and_are_never_one_account(fixture_run):
     assert set(flat) == set(to_networkx(fixture_run).nodes)  # every account of the fixture is linked to someone
 
 
+def test_the_planted_groups_are_identifier_communities_of_exactly_their_members(fixture_run):
+    """Decision 42: R1, R2 and the look-alike L1 each share an identifier, so each is a community of its own members and
+    nothing else, however much its accounts pay the rest."""
+    groups = find_communities(fixture_run)
+    by_members = {frozenset(g): g for g in groups}
+    for name, members in (("R1", R1), ("R2", R2), ("L1", L1)):
+        assert frozenset(members) in by_members, f"{name} is not a community of exactly its members"
+        assert by_members[frozenset(members)].formed == IDENTIFIER
+
+
+def test_a_payment_community_forms_from_the_rest(fixture_run):
+    groups = find_communities(fixture_run)
+    first = [g for g in groups if g.formed == IDENTIFIER]
+    rest = [g for g in groups if g.formed == PAYMENT]
+    assert sorted(len(g) for g in first) == [4, 6, 8]  # the family, the mule ring, the structuring ring, and no other
+    assert len(rest) > 1 and all(len(g) >= 2 for g in rest)
+    taken = set().union(*first)
+    assert not taken & set().union(*rest)  # Louvain only sees the accounts the first step left
+    assert taken | set().union(*rest) == set(to_networkx(fixture_run).nodes)  # between them, every linked account
+
+
+def test_a_community_says_how_it_formed_and_equals_the_plain_set(fixture_run):
+    groups = find_communities(fixture_run)
+    ring = next(g for g in groups if g == set(R1))
+    assert isinstance(ring, Community) and ring == set(R1) and ring == frozenset(R1) and ring.formed == IDENTIFIER
+    assert Community({"a", "b"}).formed == PAYMENT and Community({"a", "b"}, IDENTIFIER).formed == IDENTIFIER
+    with pytest.raises(ValueError, match="forms by"):
+        Community({"a", "b"}, "vibes")
+    assert [g.formed for g in find_communities(fixture_run, keys=[*R1, *L1])] == [IDENTIFIER, IDENTIFIER]
+
+
+def test_an_identifier_shared_by_more_than_the_maximum_links_nobody(fixture_run, restore_settings):
+    restore_settings.setenv("LAB_SHARED_MAX", "5")  # the ring's device and address are used by six, R2's email by eight
+    reload_settings()
+    groups = find_communities(fixture_run)
+    assert {frozenset(g) for g in groups if g.formed == IDENTIFIER} == {frozenset(L1)}  # the family's four are within the maximum
+    assert all(g.formed == PAYMENT for g in groups if g & set(R1) or g & set(R2))  # the others' accounts go to the payments step
+
+
+def test_an_identifier_component_under_min_size_is_not_a_community_and_goes_to_payments(fixture_run):
+    groups = find_communities(fixture_run, min_size=5)  # the family of four is under it
+    assert {frozenset(g) for g in groups if g.formed == IDENTIFIER} == {frozenset(R1), frozenset(R2)}
+    assert not any(g.formed == IDENTIFIER and g & set(L1) for g in groups)
+    assert {m for g in groups for m in g} >= set(L1)  # the family's accounts are not lost: they are in the pool
+    assert [g for g in find_communities(fixture_run, min_size=9) if g.formed == IDENTIFIER] == []
+
+
+def test_identifier_groups_are_the_components_of_the_shared_identifier_graph():
+    links = pl.DataFrame({
+        "account": ["a", "b", "b", "c", "d", "e", "f", "g", "h", "i", "j", "k"],
+        "identifier": ["D1", "D1", "E1", "E1", "D2", "D2", "A9", "A9", "A9", "A9", "X", "Y"],
+        "label": ["Device", "Device", "Email", "Email", "Device", "Device", "Address", "Address", "Address", "Address", "Email", "Email"],
+        "kind": ["device", "device", "email", "email", "device", "device", "address", "address", "address", "address", "email", "email"],
+    })
+    # a-b share a device and b-c an email, so a, b, c are one component; d-e a pair; four accounts on one address; j and k alone
+    groups, too_shared = identifier_groups(links, shared_max=4, min_size=3)
+    assert groups == [{"f", "g", "h", "i"}, {"a", "b", "c"}] and too_shared == 0
+    groups, too_shared = identifier_groups(links, shared_max=3, min_size=2)
+    assert groups == [{"a", "b", "c"}, {"d", "e"}] and too_shared == 1  # the address of four is too shared to link
+    assert identifier_groups(links.head(0), shared_max=4, min_size=2) == ([], 0)
+
+
+def test_the_payment_graph_links_each_paying_pair_once(fixture_run):
+    G = payment_graph(fixture_run, [*R1, *R2])
+    assert set(G.nodes) == {*R1, *R2} and all(d["weight"] == 1.0 for _, _, d in G.edges(data=True))
+    assert G.has_edge(R1[0], R1[1])  # the ring pays round the loop
+    assert not G.has_edge(R2[0], R2[1])  # the eight pay one collector, not each other
+    assert payment_graph(fixture_run, []).number_of_nodes() == 0
+
+
 def test_a_slice_limits_the_communities(fixture_run):
     groups = find_communities(fixture_run, keys=[*R1, *L1])
     assert groups == [set(R1), set(L1)]
@@ -193,7 +271,7 @@ def test_the_settings_reach_the_split(fixture_run, restore_settings):
     default = find_communities(fixture_run)
     restore_settings.setenv("LAB_COMPONENT_MIN", "1000")
     reload_settings()
-    assert sizes(find_communities(fixture_run)) == [200]  # the one component is under the limit: no Louvain
+    assert sizes(find_communities(fixture_run)) == [4, 6, 8, 182]  # the three identifier groups, the 182 left whole: no Louvain
     restore_settings.delenv("LAB_COMPONENT_MIN")
     restore_settings.setenv("LAB_LOUVAIN_RESOLUTION", "0.05")
     reload_settings()
@@ -212,15 +290,27 @@ def test_ring_recall_on_the_fixture(fixture_run, truth):
     got = ring_recall(groups, truth)
     assert (got["rings"], got["whole"], got["mostly_whole"], got["lookalikes"]) == (2, 2, 2, 1)
     assert got["by_ring"]["R1"] == {
-        "members": 6, "together": 6, "share": 1.0, "community_size": 6, "community_score": None,
+        "members": 6, "together": 6, "share": 1.0, "community_size": 6, "community_score": None, "formed": IDENTIFIER,
         "whole": True, "mostly_whole": True,
     }
+    assert got["rings_by_formed"] == {IDENTIFIER: {"rings": 2, "whole": 2, "mostly_whole": 2}}
+    assert got["by_lookalike"]["L1"]["formed"] == IDENTIFIER
     assert got["lookalikes_in_high_scoring_community"] is None and got["alert_threshold"] is None  # no scores given
     print(f"\nring recall on the fixture, {got['whole']} of {got['rings']} rings whole: {json.dumps(got['by_ring'])}")
 
 
 def table(*groups: tuple[set[str] | list[str], float]) -> pl.DataFrame:
     return pl.DataFrame({"member_keys": [sorted(g) for g, _ in groups], "score": [s for _, s in groups]})
+
+
+def test_ring_recall_says_which_kind_of_community_holds_each_ring(truth):
+    df = table((R1, 0.9), (R2[:5], 0.2), (L1, 0.3)).with_columns(formed=pl.Series([IDENTIFIER, PAYMENT, IDENTIFIER]))
+    got = ring_recall(df, truth, alert_threshold=0.6)
+    assert (got["by_ring"]["R1"]["formed"], got["by_ring"]["R2"]["formed"]) == (IDENTIFIER, PAYMENT)
+    assert got["rings_by_formed"] == {IDENTIFIER: {"rings": 1, "whole": 1, "mostly_whole": 1},
+                                      PAYMENT: {"rings": 1, "whole": 0, "mostly_whole": 1}}
+    plain = ring_recall([{*R1}, {*R2}], truth)  # plain sets do not say
+    assert plain["by_ring"]["R1"]["formed"] is None and plain["rings_by_formed"] == {"None": {"rings": 2, "whole": 2, "mostly_whole": 2}}
 
 
 def test_ring_recall_counts_split_rings_and_high_scoring_look_alikes(truth):
@@ -261,53 +351,65 @@ def test_a_community_embedding_is_the_mean_of_its_members(fixture_run):
     assert embed_communities(fixture_run, pl.DataFrame({"member_keys": [R2]}))["embedding"].dtype == pl.List(pl.Float64)
 
 
-def test_attach_communities_stages_scores_and_stores_the_communities(fixture_run, staged):
+def test_attach_communities_scores_and_stores_the_communities_and_stages_nothing(fixture_run, staged):
     embed(fixture_run, {m: [1.0, 2.0, 3.0] for m in R1[:3]})
     scores = scores_frame(fixture_run, hot=set(R1))
     out, counts = attach_communities(fixture_run, scores, None)
+    assert staged == {}  # `score` stages the communities once, after their summaries: not here
 
-    # the staged table: what stage accepts, keyed by community_key
-    df, key = staged["community"]
-    assert key == "community_key" and df.height == counts["communities"] == 9
-    assert set(df.columns) - {"member_keys"} <= set(COMMUNITY_PROPS)
-    assert {"community_key", "member_keys", "score", "size", "score_parts", "run_id", "created_at", "embedding"} <= set(df.columns)
-    assert df.schema["member_keys"] == pl.List(pl.Utf8) and df["community_key"].n_unique() == df.height
-    assert (df["size"] == df["member_keys"].list.len()).all() and set(df["run_id"]) == {fixture_run.id}
-    ring = df.filter(pl.col("community_key") == community_key(fixture_run.id, R1)).row(0, named=True)
-    assert ring["member_keys"] == sorted(R1) and ring["embedding"] == pytest.approx([1.0, 2.0, 3.0])
-    assert df.filter(pl.col("community_key") == community_key(fixture_run.id, R2))["embedding"][0] is None
+    # the file for track 3b: the staged columns, how each community formed, and the embedding
+    kept = pl.read_parquet(fixture_run.paths.artifacts / COMMUNITIES_FILE)
+    assert kept.height == counts["communities"] == 10
+    assert {"community_key", "member_keys", "score", "size", "score_parts", "run_id", "created_at", "formed", "embedding"} <= set(kept.columns)
+    assert kept.schema["member_keys"] == pl.List(pl.Utf8) and kept["community_key"].n_unique() == kept.height
+    assert (kept["size"] == kept["member_keys"].list.len()).all() and set(kept["run_id"]) == {fixture_run.id}
+    assert set(kept["formed"]) == {IDENTIFIER, PAYMENT} and kept.filter(pl.col("formed") == IDENTIFIER).height == 3
+    ring = kept.filter(pl.col("community_key") == community_key(fixture_run.id, R1)).row(0, named=True)
+    assert ring["member_keys"] == sorted(R1) and ring["embedding"] == pytest.approx([1.0, 2.0, 3.0]) and ring["formed"] == IDENTIFIER
+    assert json.loads(ring["score_parts"])["formed_by_identifier"] == 1.0
+    assert json.loads(kept.filter(pl.col("formed") == PAYMENT)["score_parts"][0])["formed_by_identifier"] == 0.0
+    assert kept.filter(pl.col("community_key") == community_key(fixture_run.id, R2))["embedding"][0] is None
 
     # the counts, and the scores with the community each account is in
-    assert counts == {"communities": 9, "community_members": 200, "largest": 52}
+    assert counts == {"communities": 10, "community_members": 200, "largest": 39, "by_identifier": 3, "by_payment": 7}
     assert out.columns == [*scores.columns, "risk_community_key"] and out.height == scores.height
     by_account = dict(zip(out[KEY], out["risk_community_key"], strict=True))
     assert {by_account[a] for a in R1} == {community_key(fixture_run.id, R1)}
-    assert set(by_account.values()) == set(df["community_key"])
+    assert set(by_account.values()) == set(kept["community_key"])
 
     # the run store: a RiskCommunity node per community with its embedding, and a link from every member
     nodes = fixture_run.table("MATCH (c:RiskCommunity) RETURN c.community_key AS k, c.score AS score, c.size AS size, "
                               "c.run_id AS run_id, c.embedding AS embedding, c.summary AS summary")
-    assert nodes.height == 9 and set(nodes["k"]) == set(df["community_key"]) and set(nodes["run_id"]) == {fixture_run.id}
-    assert nodes["summary"].null_count() == 9  # track 3b writes it
-    assert nodes["embedding"].null_count() == 8
+    assert nodes.height == 10 and set(nodes["k"]) == set(kept["community_key"]) and set(nodes["run_id"]) == {fixture_run.id}
+    assert nodes["summary"].null_count() == 10  # track 3b writes it
+    assert nodes["embedding"].null_count() == 9
     assert nodes.filter(pl.col("k") == ring["community_key"])["embedding"][0].to_list() == pytest.approx([1.0, 2.0, 3.0])
-    assert dict(zip(nodes["k"], nodes["score"], strict=True)) == pytest.approx(dict(zip(df["community_key"], df["score"], strict=True)))
+    assert dict(zip(nodes["k"], nodes["score"], strict=True)) == pytest.approx(dict(zip(kept["community_key"], kept["score"], strict=True)))
     links = fixture_run.table("MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity) "
                               "RETURN a.account_id AS a, c.community_key AS c")
     assert links.height == 200 and dict(zip(links["a"], links["c"], strict=True)) == by_account
 
-    # the file for track 3b, and the manifest on disk
-    kept = pl.read_parquet(fixture_run.paths.artifacts / COMMUNITIES_FILE)
-    assert kept["community_key"].to_list() == df["community_key"].to_list() and kept["member_keys"].dtype == pl.List(pl.Utf8)
     step = reread(fixture_run).manifest.step("communities")
     assert step.status == StepStatus.DONE and step.counts == counts and step.started_at and step.finished_at
+
+
+def test_what_stage_takes_leaves_out_formed_and_the_embedding_only_when_it_should(fixture_run):
+    embed(fixture_run, {m: [1.0, 2.0, 3.0] for m in R1[:3]})
+    attach_communities(fixture_run, scores_frame(fixture_run), None)
+    kept = pl.read_parquet(fixture_run.paths.artifacts / COMMUNITIES_FILE)
+    ready = for_stage(fixture_run, kept)
+    assert "formed" not in ready.columns and "embedding" in ready.columns  # `formed` is not a staged column
+    assert set(ready.columns) - {"member_keys"} <= set(COMMUNITY_PROPS)
+    fixture_run.recipe.write_back.vectors = False
+    assert not {"formed", "embedding"} & set(for_stage(fixture_run, kept).columns)
+    fixture_run.recipe.write_back.vectors = True
+    assert "embedding" not in for_stage(fixture_run, kept.with_columns(embedding=pl.lit(None, dtype=pl.List(pl.Float64)))).columns
 
 
 def test_attach_communities_drops_a_community_under_min_size_and_nulls_who_is_in_none(fixture_run, staged):
     keys = [*R1, R2[0], R2[1]]  # the two R2 accounts link to each other (one email) and are under min_size 3
     out, counts = attach_communities(fixture_run, scores_frame(fixture_run, keys=keys), keys)
-    assert counts == {"communities": 1, "community_members": 6, "largest": 6}
-    assert staged["community"][0].height == 1
+    assert counts == {"communities": 1, "community_members": 6, "largest": 6, "by_identifier": 1, "by_payment": 0}
     assert out.filter(pl.col(KEY).is_in(R2[:2]))["risk_community_key"].null_count() == 2
     assert out.schema["risk_community_key"] == pl.Utf8
     assert "under min_size 3" in reread(fixture_run).manifest.step("communities").note
@@ -316,9 +418,8 @@ def test_attach_communities_drops_a_community_under_min_size_and_nulls_who_is_in
 def test_attach_communities_on_a_slice_of_nothing(fixture_run, staged):
     empty = scores_frame(fixture_run, keys=[])
     out, counts = attach_communities(fixture_run, empty, [])
-    assert counts == {"communities": 0, "community_members": 0, "largest": 0}
+    assert counts == {"communities": 0, "community_members": 0, "largest": 0, "by_identifier": 0, "by_payment": 0}
     assert out.height == 0 and out.schema["risk_community_key"] == pl.Utf8
-    assert staged["community"][0].height == 0 and "embedding" not in staged["community"][0].columns
     assert fixture_run.table("MATCH (c:RiskCommunity) RETURN count(c) AS n")["n"][0] == 0
 
 
@@ -326,52 +427,41 @@ def test_a_second_attach_leaves_the_run_store_with_this_result_only(fixture_run,
     scores = scores_frame(fixture_run)
     attach_communities(fixture_run, scores, None)
     attach_communities(fixture_run, scores, None)  # the same slice twice changes nothing
-    assert fixture_run.table("MATCH (c:RiskCommunity) RETURN count(c) AS n")["n"][0] == 9
+    assert fixture_run.table("MATCH (c:RiskCommunity) RETURN count(c) AS n")["n"][0] == 10
     keys = [*R1, *L1]
     attach_communities(fixture_run, scores_frame(fixture_run, keys=keys), keys)  # a smaller slice replaces it
     assert fixture_run.table("MATCH (c:RiskCommunity) RETURN count(c) AS n")["n"][0] == 2
     assert fixture_run.table("MATCH (:Account)-[r:IN_RISK_COMMUNITY]->() RETURN count(r) AS n")["n"][0] == 10
 
 
-def test_vectors_are_staged_only_when_the_recipe_writes_them_back(fixture_run, staged):
-    embed(fixture_run, {m: [1.0, 2.0, 3.0] for m in R1})
-    scores = scores_frame(fixture_run)
-    attach_communities(fixture_run, scores, None)
-    assert "embedding" in staged["community"][0].columns
-    fixture_run.recipe.write_back.vectors = False
-    attach_communities(fixture_run, scores, None)
-    assert "embedding" not in staged["community"][0].columns
-    assert fixture_run.table("MATCH (c:RiskCommunity) WHERE c.embedding IS NOT NULL RETURN count(c) AS n")["n"][0] == 1
-    # no account has an embedding yet (the first pass has not run): there is nothing to stage
-    fixture_run.recipe.write_back.vectors = True
-    fixture_run.store().execute("MATCH (a:Account) REMOVE a.risk_embedding")
-    attach_communities(fixture_run, scores, None)
-    assert "embedding" not in staged["community"][0].columns
+def test_a_failure_marks_the_communities_step_failed(fixture_run, monkeypatch):
+    import lab.scoring.communities as communities
 
+    def refuse(run, df):
+        raise ValueError("the store said no")
 
-def test_a_failed_stage_marks_the_communities_step_failed(fixture_run, monkeypatch):
-    def refuse(df, key=None, kind="account"):
-        raise ValueError("stage said no")
-
-    monkeypatch.setattr(fixture_run, "stage", refuse)
-    with pytest.raises(ValueError, match="stage said no"):
+    monkeypatch.setattr(communities, "write_communities", refuse)
+    with pytest.raises(ValueError, match="the store said no"):
         attach_communities(fixture_run, scores_frame(fixture_run), None)
     step = reread(fixture_run).manifest.step("communities")
-    assert step.status == StepStatus.FAILED and "stage said no" in step.note
+    assert step.status == StepStatus.FAILED and "the store said no" in step.note
 
 
 def test_the_real_stage_takes_the_community_table(fixture_run):
     embed(fixture_run, {m: [1.0, 2.0, 3.0] for m in R1})
     out, counts = attach_communities(fixture_run, scores_frame(fixture_run, hot=set(R1)), None)
+    kept = pl.read_parquet(fixture_run.paths.artifacts / COMMUNITIES_FILE)
+    fixture_run.stage(for_stage(fixture_run, kept), "community_key", "community")
     pushed = rows(fixture_run.push_store(), "MATCH (c:RiskCommunity) RETURN properties(c) AS p ORDER BY c.size, c.community_key")
-    assert len(pushed) == counts["communities"] == 9
+    assert len(pushed) == counts["communities"] == 10
     top = next(r["p"] for r in pushed if r["p"]["community_key"] == community_key(fixture_run.id, R1))
     assert top["size"] == 6 and top["run_id"] == fixture_run.id and top["created_at"].endswith("Z")
     assert top["embedding"] == pytest.approx([1.0, 2.0, 3.0]) and json.loads(top["score_parts"])["cycles"] == 1.0
+    assert json.loads(top["score_parts"])["formed_by_identifier"] == 1.0 and "formed" not in top  # a part, not a column
     assert "embedding" not in next(r["p"] for r in pushed if r["p"]["community_key"] == community_key(fixture_run.id, R2))
     stamped = rows(fixture_run.push_store(), "MATCH (a:Account) WHERE a.risk_community_key IS NOT NULL RETURN count(a) AS n")
     assert stamped[0]["n"] == 200
-    assert reread(fixture_run).manifest.step("stage").counts["communities"] == 9
+    assert reread(fixture_run).manifest.step("stage").counts["communities"] == 10
 
 
 def test_write_communities_with_nothing_removes_what_was_there(fixture_run, staged):
@@ -383,19 +473,32 @@ def test_write_communities_with_nothing_removes_what_was_there(fixture_run, stag
 
 
 # ---- the whole step ------------------------------------------------------------------------------------------------
-def test_score_runs_communities_between_the_account_scores_and_the_stage(fixture_run, staged, truth):
+def test_score_runs_communities_between_the_account_scores_and_the_stage(fixture_run, monkeypatch, truth):
+    calls: list[tuple[str, pl.DataFrame]] = []
+
+    def fake_stage(df, key=None, kind="account"):
+        calls.append((kind, df))
+        return df.height
+
+    monkeypatch.setattr(fixture_run, "stage", fake_stage)
     counts = score(fixture_run)
+    assert [k for k, _ in calls] == ["account", "community", "alert"]  # each table once: the manifest counts them once
+    staged = {k: (df, None) for k, df in calls}
     accounts, _ = staged["account"]
     found, _ = staged["community"]
     assert staged_errors(accounts, KEY) == []  # risk_community_key is a valid account column
-    assert counts["communities"] == found.height == 9 and counts["community_members"] == 200
+    assert set(found.columns) - {"member_keys"} <= set(COMMUNITY_PROPS) and "formed" not in found.columns
+    assert counts["communities"] == found.height == 10 and counts["community_members"] == 200
+    assert counts["by_identifier"] == 3 and counts["by_payment"] == 7
     assert accounts["risk_community_key"].null_count() == 0 and set(accounts["risk_community_key"]) == set(found["community_key"])
     # the community of R1 outscores the one of L1, the look-alike family, as the accounts do
-    got = ring_recall(found, truth, alert_threshold=0.6)
+    got = ring_recall(pl.read_parquet(fixture_run.paths.artifacts / COMMUNITIES_FILE), truth, alert_threshold=0.6)
     assert got["by_ring"]["R1"]["community_score"] > got["by_lookalike"]["L1"]["community_score"]
-    assert got["whole"] == 2 and got["lookalikes_in_high_scoring_community"] == 0
+    assert got["whole"] == 2 and got["lookalikes_in_high_scoring_community"] == 0  # L1, the family, scores below the alert line
+    assert got["rings_by_formed"] == {IDENTIFIER: {"rings": 2, "whole": 2, "mostly_whole": 2}}
+    assert got["by_lookalike"]["L1"]["community_score"] < 0.6 < got["by_ring"]["R1"]["community_score"]
     run = reread(fixture_run)
     assert run.manifest.step("communities").status == StepStatus.DONE
-    assert run.manifest.step("score").counts["communities"] == 9
+    assert run.manifest.step("score").counts["communities"] == 10
     assert (run.paths.artifacts / COMMUNITIES_FILE).exists()
     print(f"\nA11 on the fixture: {json.dumps({k: v for k, v in got.items() if not k.startswith('by_')})}")

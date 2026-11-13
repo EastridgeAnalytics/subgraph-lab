@@ -1,4 +1,4 @@
-"""Track 3b: the evidence object, on the fixture graph (page 05, R16).
+"""Track 3b and 5b: the evidence object, on the fixture graph (page 05, R16).
 
 The fixture has 200 accounts, 2,000 payments, the mule ring R1 (six accounts on one device and address, a payment
 cycle through the six), the structuring ring R2 (eight accounts on one email, each paying the collector just under
@@ -86,7 +86,9 @@ def test_a_community_evidence_has_every_part_and_passes_its_schema(world):
     jsonschema.validate(ev.model_dump(mode="json"), json.loads(SCHEMA.read_text(encoding="utf-8")))  # the exported file
     validate_evidence(ev)
     assert (ev.subject, ev.run_id, ev.member_count, ev.member_keys) == ("community", world.run.id, 6, sorted(R1))
-    assert 0 < ev.score <= 1 and set(ev.score_parts) == {"member_risk", "shared_identifiers", "cycles", "new_accounts", "speed"}
+    assert 0 < ev.score <= 1 and set(ev.score_parts) == {
+        "member_risk", "shared_identifiers", "cycles", "new_accounts", "speed", "formed_by_identifier"}
+    assert ev.score_parts["formed_by_identifier"] == 1.0  # the ring is a community of shared identifiers
     assert {(s.kind, s.key, s.members_sharing) for s in ev.shared_identifiers} == {("device", "D-R1", 6), ("address", "AD-R1", 6)}
     assert ev.money.cycles == 1  # A0011 to A0016 and back to A0011: one cycle, however often it was paid
     assert ev.money.first_at.endswith("Z") and ev.money.first_at < ev.money.last_at
@@ -98,7 +100,7 @@ def test_a_community_evidence_has_every_part_and_passes_its_schema(world):
     assert len(ev.top_members) == 5 and [m.score for m in ev.top_members] == sorted((m.score for m in ev.top_members), reverse=True)
     assert {m.key for m in ev.top_members} <= set(R1)
     c = ev.comparison
-    assert (c.communities_in_slice, c.score_rank) == (9, 1) and c.median_size > 0 and 0 <= c.median_score <= 1
+    assert (c.communities_in_slice, c.score_rank) == (10, 1) and c.median_size > 0 and 0 <= c.median_score <= 1
 
 
 def test_the_money_matches_the_payments_worked_out_by_hand(world):
@@ -120,7 +122,7 @@ def test_the_money_matches_the_payments_worked_out_by_hand(world):
     assert [(s.kind, s.key, s.members_sharing) for s in r2.shared_identifiers] == [("email", "E-R2", 8)]
     assert r2.money.cycles == 0  # structuring pays one way
     l1 = build_evidence(world.run, "community", community_of(world, L1), world.ctx)
-    assert l1.factors == [] and l1.money.cycles > 1  # a family paying each other has many short cycles
+    assert l1.factors == [] and l1.money.cycles >= 1  # a family paying each other back and forth has short cycles too
 
 
 def test_evidence_is_deterministic(world):
@@ -181,7 +183,7 @@ def test_an_alert_has_the_same_shape_with_one_member(world):
     assert {(s.kind, s.key, s.members_sharing) for s in ev.shared_identifiers} == {("device", "D-R1", 6), ("address", "AD-R1", 6)}
     assert all(f.accounts == 1 for f in ev.factors) and {"shared_device_5plus"} <= {f.factor_id for f in ev.factors}
     assert [(m.key, m.score) for m in ev.top_members] == [(R1[0], ev.score)]
-    assert ev.comparison.communities_in_slice == 9 and ev.comparison.score_rank >= 1
+    assert ev.comparison.communities_in_slice == 10 and ev.comparison.score_rank >= 1
 
 
 def test_the_alert_key_is_the_documented_hash_and_every_alert_has_evidence(world):
@@ -189,7 +191,7 @@ def test_the_alert_key_is_the_documented_hash_and_every_alert_has_evidence(world
     window = load_policy(world.run).window
     assert all(alert_key(world.run.id, a, window) in built for a in world.found["account_key"])
     assert sum(e.subject == "alert" for e in built.values()) == world.found.height
-    assert sum(e.subject == "community" for e in built.values()) == 9
+    assert sum(e.subject == "community" for e in built.values()) == 10
 
 
 def test_evidence_for_every_alert_and_community_is_saved_where_explain_alert_reads_it(world):
@@ -272,8 +274,41 @@ def test_each_group_is_counted_apart_and_a_payment_between_groups_is_out_for_one
 
 def test_cycles_are_counted_up_to_a_cap(monkeypatch):
     names = [f"n{i}" for i in range(6)]
-    rows = [(a, b, 1.0, "2026-10-01T10:00:00") for a in names for b in names if a != b]  # everyone pays everyone
+    # everyone pays everyone, each payment a minute after the one before it, so there is a lot of money going round
+    rows = [(a, b, 1.0, f"2026-10-01T10:{i // 60:02d}:{i % 60:02d}")
+            for i, (a, b) in enumerate((a, b) for a in names for b in names if a != b)]
     full = evidence_module._money(pay_frame(rows), members_of(names))[0].cycles
     assert full > 20
-    monkeypatch.setattr(evidence_module, "CYCLE_COUNT_CAP", 7)
+    monkeypatch.setenv("LAB_CYCLE_COUNT_CAP", "7")  # a setting, read when the evidence is built
+    reload_settings()
     assert evidence_module._money(pay_frame(rows), members_of(names))[0].cycles == 7
+
+
+def test_a_ring_paid_in_the_wrong_order_has_no_cycle_in_the_evidence():
+    forward = pay_frame([("a", "b", 5.0, "2026-10-01T10:00:00"), ("b", "c", 5.0, "2026-10-02T10:00:00"),
+                         ("c", "a", 5.0, "2026-10-03T10:00:00")])
+    backward = pay_frame([("a", "b", 5.0, "2026-10-03T10:00:00"), ("b", "c", 5.0, "2026-10-02T10:00:00"),
+                          ("c", "a", 5.0, "2026-10-01T10:00:00")])
+    assert evidence_module._money(forward, members_of(["a", "b", "c"]))[0].cycles == 1
+    got = evidence_module._money(backward, members_of(["a", "b", "c"]))[0]
+    assert got.cycles == 0 and got.internal == 15.0  # the same money among the same three, in the order that is no loop
+
+
+def test_the_evidence_and_the_community_score_count_cycles_the_same_way(world):
+    """One definition: the cycles in the evidence are the ones `signals.payment_cycles` finds among the members' payments,
+    and the community's `cycles` part is positive exactly when there are some."""
+    for members in (R1, R2, L1):
+        ev = build_evidence(world.run, "community", community_of(world, members), world.ctx)
+        assert (ev.money.cycles > 0) == (ev.score_parts["cycles"] > 0)
+
+
+def test_how_much_an_object_lists_is_a_setting(world, monkeypatch):
+    key = community_of(world, R1)
+    monkeypatch.setenv("LAB_EVIDENCE_TOP_MEMBERS", "2")
+    monkeypatch.setenv("LAB_EVIDENCE_MAX_IDENTIFIERS", "1")
+    monkeypatch.setenv("LAB_EVIDENCE_MAX_IDS", "1")
+    reload_settings()
+    ev = build_evidence(world.run, "community", key, EvidenceContext.load(world.run, world.factor_run, world.found))
+    assert len(ev.top_members) == 2 and len(ev.shared_identifiers) == 1
+    assert ev.factors and all(len(f.evidence_ids) <= 1 for f in ev.factors)
+    assert any(len(f.evidence_ids) == 1 for f in ev.factors)

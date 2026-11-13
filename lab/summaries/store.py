@@ -3,13 +3,15 @@
 `summarise(run, found, factor_run)` is the step. It builds the evidence for every community and alert, saves each under
 `artifacts/evidence/<key>.json`, writes a summary for the top `LAB_SUMMARY_COMMUNITIES` communities and the top
 `LAB_SUMMARY_ALERTS` alerts (best score first, through `writers.Writer`: cache, API when a key is set, checks,
-template), saves each under `artifacts/summaries/<key>.json`, and puts them where they are used:
+template), saves each under `artifacts/summaries/<key>.json`, and returns the alert rows and the community rows with
+`evidence`, `evidence_hash` and the summary columns. It stages nothing: `score` stages each table once, after this step
+(`describe` below is the one other place a row is staged, one row at a time). It puts the rest where it is used:
 
 | Where | What |
 |---|---|
 | `artifacts/evidence/<key>.json` | the `Evidence`, for every community and alert: `read_evidence(run, key)` |
 | `artifacts/summaries/<key>.json` | the `Summary` (source, model, hash, checks, failed reason), for those that have one: `read_summary(run, key)` |
-| the staged `Alert` and `RiskCommunity` rows | `evidence` (JSON), `evidence_hash` on every row; `summary`, `summary_source`, `summary_model` on the summarised ones |
+| the `Alert` and `RiskCommunity` rows it returns, which `score` stages | `evidence` (JSON), `evidence_hash` on every row; `summary`, `summary_source`, `summary_model` on the summarised ones |
 | the run store's `RiskCommunity` nodes | `summary`, which `community_summary` indexes, so "communities like this one" finds it |
 
 `describe(run, key, text)` is the agent's path: track 2d's `describe_alert` calls it. It checks the text an agent wrote
@@ -27,7 +29,7 @@ never sits beside source `agent` or `template`.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
 import polars as pl
 
@@ -90,14 +92,22 @@ def read_summary(run: Run, key: str) -> Summary | None:
 
 
 # ---- the step ---------------------------------------------------------------------------------------------------
-def summarise(
-    run: Run, found: pl.DataFrame, factor_run: FactorRun, writer: Writer | None = None
-) -> tuple[pl.DataFrame, dict[str, int], str]:
+class Summarised(NamedTuple):
+    """What `summarise` returns, for `score` to stage."""
+
+    alerts: pl.DataFrame  # the alert rows with the evidence and summary columns
+    communities: pl.DataFrame  # the community rows with the same columns, as `stage` takes them
+    counts: dict[str, int]  # summaries, from_api, from_template, failed_checks, cached
+    note: str  # for the manifest
+
+
+def summarise(run: Run, found: pl.DataFrame, factor_run: FactorRun, writer: Writer | None = None) -> Summarised:
     """Evidence for every alert and community, a summary for the top ones, all stored. See the module docstring.
 
     `found` is the alerts (`alert_key`, `account_key`, `window`, `score`, `evidence`). Returns the alerts with
-    `evidence` now the evidence object's JSON, plus `evidence_hash`, `summary`, `summary_source` and `summary_model`;
-    the counts (`summaries`, `from_api`, `from_template`, `failed_checks`, `cached`); and a note for the manifest.
+    `evidence` now the evidence object's JSON, plus `evidence_hash`, `summary`, `summary_source` and `summary_model`; the
+    communities with the same columns (nothing is staged here); the counts (`summaries`, `from_api`, `from_template`,
+    `failed_checks`, `cached`); and a note for the manifest.
     """
     s = get_settings()
     ctx = EvidenceContext.load(run, factor_run, found)
@@ -119,10 +129,8 @@ def summarise(
     alerts = alerts.with_columns(
         pl.Series("evidence", [canonical_json(built[k].model_dump(mode="json")) for k in alerts["alert_key"]], dtype=pl.Utf8)
     )
-    stage_communities(run, ctx.communities, built, summaries)
-    if alerts.height:
-        run.stage(alerts, ALERT_KEY, "alert")
-    _forget_models(run, summaries, built)
+    communities = community_rows(run, ctx.communities, built, summaries)
+    _forget_models(run, summaries, built)  # before `score` stages the rows: staging cannot clear a property
     write_community_text(run, {k: v.text for k, v in summaries.items() if built[k].subject == "community"})
 
     counts = {
@@ -134,7 +142,7 @@ def summarise(
     }
     note = f"written by the Anthropic API ({s.model})" if writer.uses_api else "template only: no ANTHROPIC_API_KEY set"
     log.info("%d summaries: %s", counts["summaries"], counts)
-    return alerts, counts, note
+    return Summarised(alerts, communities, counts, note)
 
 
 def _columns(keys: list[str], built: dict[str, Evidence], summaries: dict[str, Summary]) -> list[pl.Series]:
@@ -150,22 +158,27 @@ def _columns(keys: list[str], built: dict[str, Evidence], summaries: dict[str, S
     ]
 
 
-def stage_communities(
+def community_rows(
     run: Run, communities: pl.DataFrame, built: dict[str, Evidence], summaries: dict[str, Summary]
-) -> int:
-    """Restage these community rows (a second stage of a key updates it) with their evidence and summary columns.
-
-    The rows are the ones `attach_communities` staged, same columns (`for_stage` leaves the embedding out when the recipe
-    does not write vectors back), plus the new ones, so what was staged is still all there in the last stage.
-    """
-    if communities.is_empty():
-        return 0
+) -> pl.DataFrame:
+    """The community rows as `run.stage(df, "community_key", "community")` takes them: the scored table (`for_stage` leaves
+    out `formed`, and the embedding when the recipe does not write vectors back) plus `evidence`, `evidence_hash` and the
+    summary columns of the ones that have a summary."""
     keys = communities["community_key"].to_list()
-    df = for_stage(run, communities).with_columns(
+    return for_stage(run, communities).with_columns(
         *_columns(keys, built, summaries),
         pl.Series("evidence", [canonical_json(built[k].model_dump(mode="json")) for k in keys], dtype=pl.Utf8),
     )
-    return run.stage(df, COMMUNITY_KEY, "community")
+
+
+def stage_communities(
+    run: Run, communities: pl.DataFrame, built: dict[str, Evidence], summaries: dict[str, Summary]
+) -> int:
+    """Restage community rows with their evidence and summary columns (a second stage of a key updates it): `describe`'s
+    way of changing one summary after `score`. Nothing is staged for an empty table."""
+    if communities.is_empty():
+        return 0
+    return run.stage(community_rows(run, communities, built, summaries), COMMUNITY_KEY, "community")
 
 
 def write_community_text(run: Run, texts: dict[str, str]) -> int:

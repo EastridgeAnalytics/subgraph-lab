@@ -8,18 +8,21 @@ an object is worked out here, so a writer has nothing to invent.
 | Part | Community | Alert (one member) |
 |---|---|---|
 | `member_keys`, `member_count` | the community's accounts, sorted | the alert's account |
-| `score`, `score_parts` | the community score and its five parts | the account's `risk_score`; parts `rules` and `model` |
-| `shared_identifiers` | identifiers two or more members use, with how many members do; at most 10, most shared first | identifiers the account shares with others, with how many accounts of the slice use each, this one included |
+| `score`, `score_parts` | the community score, its five parts and `formed_by_identifier` | the account's `risk_score`; parts `rules` and `model` |
+| `shared_identifiers` | identifiers two or more members use, with how many members do; at most `LAB_EVIDENCE_MAX_IDENTIFIERS`, most shared first | identifiers the account shares with others, with how many accounts of the slice use each, this one included |
 | `money` | `inflow` from accounts outside, `outflow` to accounts outside, `internal` between members; `cycles`; first and last payment and the span in hours | the same, with `internal` 0 and `cycles` 0 |
-| `factors` | every factor that fired (score above 0) on any member: how many members, and up to 10 evidence ids | the factors that fired on the account, with `accounts` 1 |
-| `top_members` | the five highest account scores, keys only | the account itself |
+| `factors` | every factor that fired (score above 0) on any member: how many members, and up to `LAB_EVIDENCE_MAX_IDS` evidence ids | the factors that fired on the account, with `accounts` 1 |
+| `top_members` | the `LAB_EVIDENCE_TOP_MEMBERS` highest account scores, keys only | the account itself |
 | `comparison` | `communities_in_slice`, `score_rank` among the communities (1 is highest, ties share a rank), the median community size and score | `communities_in_slice`; `score_rank` among the slice's alerts; the median community size; the median alert score |
 
 Rules the numbers follow. An identifier used by more than `LAB_SHARED_MAX` accounts of the slice is left out, as the
-community score leaves it out. `cycles` is the number of distinct simple cycles of at most `CYCLE_MAX_LENGTH`
-accounts among the payments between members (a pays b and b pays a is one), counted up to `CYCLE_COUNT_CAP`, so a
-community with that many reports the cap and the template says "or more". Money is summed over every payment that
-touches a member, whoever the other account is. Scores and medians are rounded to 4 decimals, money and the span to 2.
+community score leaves it out. `cycles` is the number of distinct time-respecting cycles of at most `LAB_CYCLE_MAX_LENGTH`
+accounts among the payments between members (`signals.payment_cycles`: each payment after the one before it; a pays b and
+then b pays a is one), counted up to `LAB_CYCLE_COUNT_CAP`, so a community with that many reports the cap and the template
+says "or more". Money is summed over every payment that touches a member, whoever the other account is. Scores and
+medians are rounded to 4 decimals, money and the span to 2. How many an object lists (the top members, the shared
+identifiers, the evidence ids per factor) is `LAB_EVIDENCE_TOP_MEMBERS`, `LAB_EVIDENCE_MAX_IDENTIFIERS` and
+`LAB_EVIDENCE_MAX_IDS`.
 
 The inputs are an `EvidenceContext`. `attach_summaries` hands it the factor run it already has; with none given it
 reads `artifacts/factor_results.parquet` and recomputes the account scores from it with the factor file and policy,
@@ -33,31 +36,25 @@ from collections.abc import Collection
 from dataclasses import dataclass, field
 from datetime import datetime
 from functools import cache
-from itertools import islice
 from typing import TYPE_CHECKING, Any
 
 import jsonschema
-import networkx as nx
 import polars as pl
 
 from lab.adapters import reads
 from lab.common import alert_key as make_alert_key
 from lab.contracts.evidence import Comparison, Evidence, FactorHit, MemberScore, Money, SharedIdentifier
 from lab.scoring.communities import COMMUNITIES_FILE
-from lab.scoring.community_score import CYCLE_MAX_LENGTH
 from lab.scoring.community_score import SCHEMA as COMMUNITY_SCHEMA
 from lab.scoring.factors import FactorRun, empty_results, load_factor_file
 from lab.scoring.pipeline import FACTOR_RESULTS, slice_keys
 from lab.scoring.policy import _EDGE, account_scores, load_policy
+from lab.scoring.signals import cycles_by_group
 from lab.settings import get_settings
 
 if TYPE_CHECKING:
     from lab.runs import Run
 
-TOP_MEMBERS = 5
-MAX_IDENTIFIERS = 10
-MAX_EVIDENCE_IDS = 10
-CYCLE_COUNT_CAP = 1000
 SUBJECTS = ("community", "alert")
 
 _PAY_SCHEMA = {"src": pl.Utf8, "dst": pl.Utf8, "amount": pl.Float64, "ts": pl.Datetime("us")}
@@ -267,10 +264,8 @@ def _money(pay: pl.DataFrame, member_df: pl.DataFrame) -> dict[int, Money]:
         p.filter(pl.col("g_dst") >= 0).select(g="g_dst", ts="ts"),
     ]).group_by("g").agg(first=pl.col("ts").min(), last=pl.col("ts").max())
     span = {r["g"]: (r["first"], r["last"]) for r in touched.iter_rows(named=True)}
-    cycles: dict[int, int] = {}
-    for (g,), edges in inside.partition_by("g_src", as_dict=True).items():
-        D = nx.DiGraph(set(zip(edges["src"], edges["dst"], strict=True)))
-        cycles[g] = sum(1 for _ in islice(nx.simple_cycles(D, length_bound=CYCLE_MAX_LENGTH), CYCLE_COUNT_CAP))
+    group_of = dict(zip(member_df["account"], member_df["g"], strict=True))
+    cycles = {g: len(found) for g, found in cycles_by_group(pay, group_of).items()}  # the one definition: signals
     out = {}
     for g in range(int(member_df["g"].max()) + 1 if member_df.height else 0):
         first, last = span.get(g, (None, None))
@@ -305,7 +300,7 @@ def _shared(ctx: EvidenceContext, subject: str, member_df: pl.DataFrame) -> dict
     out: dict[int, list[SharedIdentifier]] = {}
     for r in found.iter_rows(named=True):
         mine = out.setdefault(r["g"], [])
-        if len(mine) < MAX_IDENTIFIERS:
+        if len(mine) < get_settings().evidence_max_identifiers:
             mine.append(SharedIdentifier(kind=r["noun"], key=r["identifier"], members_sharing=int(r["n"])))
     return out
 
@@ -324,7 +319,7 @@ def _fired(ctx: EvidenceContext, member_df: pl.DataFrame) -> dict[int, list[Fact
         counts.setdefault(slot, set()).add(r["key"])
         mine = ids.setdefault(slot, [])
         for evidence_id in _evidence_ids(r["evidence"]):
-            if evidence_id not in mine and len(mine) < MAX_EVIDENCE_IDS:
+            if evidence_id not in mine and len(mine) < get_settings().evidence_max_ids:
                 mine.append(evidence_id)
     out: dict[int, list[FactorHit]] = {}
     for (g, factor_id), accounts in sorted(counts.items(), key=lambda kv: (kv[0][0], -len(kv[1]), kv[0][1])):
@@ -354,7 +349,7 @@ def _top_members(ctx: EvidenceContext, member_df: pl.DataFrame) -> dict[int, lis
     out: dict[int, list[MemberScore]] = {}
     for r in scored.iter_rows(named=True):
         mine = out.setdefault(r["g"], [])
-        if len(mine) < TOP_MEMBERS:
+        if len(mine) < get_settings().evidence_top_members:
             mine.append(MemberScore(key=r["account"], score=round(float(r["risk_score"]), 4)))
     return out
 
