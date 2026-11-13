@@ -29,7 +29,7 @@ services:
     profiles: [local]
     environment:
       DO_NOT_TRACK: "1"
-    command: ["python", "-m", "generator", "--size", "${LAB_SEED_SIZE:-small}", "--out", "/import"]
+    command: ["python", "-m", "generator", "--size", "${LAB_SEED_SIZE:-small}", "--seed", "${LAB_SEED:-42}", "--out", "/import"]
     volumes:
       - seedcsv:/import
 
@@ -63,6 +63,17 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+
+  # Runs once Neo4j is healthy: the uniqueness constraints. IF NOT EXISTS, so every `up` is safe.
+  seed-schema:
+    image: neo4j:2026.08.1
+    profiles: [local]
+    depends_on:
+      neo4j:
+        condition: service_healthy
+    command: ["cypher-shell", "-a", "neo4j://neo4j:7687", "-u", "${NEO4J_USERNAME:-neo4j}", "-p", "${NEO4J_PASSWORD:-subgraph-lab}", "-f", "/seed/schema.cypher"]
+    volumes:
+      - ./generator/schema.cypher:/seed/schema.cypher:ro
 
 volumes:
   labdata:
