@@ -269,10 +269,21 @@ def score(state: LabState, run_id: str) -> ScoreOut:
     return ScoreOut(run_id=run_id, status="queued", manifest=manifest)
 
 
-def run_status(run_id: str) -> RunManifest:
-    """The manifest as it is now: what `run_status` returns while an agent waits on egress or score."""
+def run_status(run_id: str, wait_seconds: int = 0) -> RunManifest:
+    """The manifest: what `run_status` returns while an agent waits on egress or score. With `wait_seconds`, it holds
+    the answer until the run is no longer queued or running, or the time is up."""
+    import time
+
     check_run_id(run_id)
-    return read_manifest(run_paths(run_id).manifest)
+    path = run_paths(run_id).manifest
+    if not path.exists():
+        raise NotFound(f"no run {run_id}")
+    end = time.monotonic() + wait_seconds
+    manifest = read_manifest(path)
+    while manifest.status in (StepStatus.PENDING, StepStatus.RUNNING) and time.monotonic() < end:
+        time.sleep(1.0)
+        manifest = read_manifest(path)
+    return manifest
 
 
 def explain(run_id: str, key: str) -> ExplainOut:

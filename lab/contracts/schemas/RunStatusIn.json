@@ -1,0 +1,21 @@
+{
+  "description": "`wait_seconds` above 0 holds the answer until the run stops running or the time is up, so an agent need not\npoll in a tight loop. It stays under an agent's usual tool timeout.",
+  "properties": {
+    "run_id": {
+      "title": "Run Id",
+      "type": "string"
+    },
+    "wait_seconds": {
+      "default": 0,
+      "maximum": 240,
+      "minimum": 0,
+      "title": "Wait Seconds",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "run_id"
+  ],
+  "title": "RunStatusIn",
+  "type": "object"
+}

@@ -81,7 +81,8 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
     route and the `apply_push` tool answer 409 and nothing is sent. `apply` itself still runs a dry run first.
 38. **The agent's long tools queue their work and answer at once.** `egress` (the pull and the first pass) and
     `score` return the run id with status queued; a ninth tool, `run_status`, returns the manifest to poll. A
-    blocking call longer than an agent's tool timeout left half-done runs behind (wave 2).
+    blocking call longer than an agent's tool timeout left half-done runs behind (wave 2). `run_status` takes
+    `wait_seconds` (up to 240) and answers early when the run stops running, so an agent waits without spinning.
 
 ## Open
 

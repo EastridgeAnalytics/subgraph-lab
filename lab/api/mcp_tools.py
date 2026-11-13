@@ -33,7 +33,7 @@ def implementations(state: ops.LabState) -> dict[str, Callable[[Any], BaseModel]
     """Tool name to the function that does it, taking the tool's input model."""
     return {
         "egress": lambda i: ops.egress(state, i),
-        "run_status": lambda i: ops.run_status(i.run_id),
+        "run_status": lambda i: ops.run_status(i.run_id, i.wait_seconds),
         "search_slice": lambda i: ops.search_slice(state, i),
         "score": lambda i: ops.score(state, i.run_id),
         "preview_push": lambda i: ops.review(state, i.run_id),

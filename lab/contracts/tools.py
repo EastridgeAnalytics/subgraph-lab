@@ -56,6 +56,14 @@ class RunIn(BaseModel):
     run_id: str
 
 
+class RunStatusIn(BaseModel):
+    """`wait_seconds` above 0 holds the answer until the run stops running or the time is up, so an agent need not
+    poll in a tight loop. It stays under an agent's usual tool timeout."""
+
+    run_id: str
+    wait_seconds: int = Field(0, ge=0, le=240)
+
+
 class ApplyPushIn(BaseModel):
     run_id: str
     confirm: bool = False
@@ -99,8 +107,9 @@ class GraphDiffOut(BaseModel):
 TOOLS: dict[str, tuple[type[BaseModel], type[BaseModel], str]] = {
     "egress": (EgressIn, EgressOut, "Queue a fresh run: pull a slice from the master graph into a new run store, then "
                "its first pass. Answers at once with the run id; poll run_status until first_pass (or pull) is done."),
-    "run_status": (RunIn, RunManifest, "The run's manifest: every step's status, counts and note, and any fallback. "
-                   "Poll it after egress or score until the step you asked for is done or failed."),
+    "run_status": (RunStatusIn, RunManifest, "The run's manifest: every step's status, counts and note, and any "
+                   "fallback. After egress or score, call it with wait_seconds (up to 240) until the step you asked "
+                   "for is done or failed; it answers early when the run stops running."),
     "search_slice": (SearchSliceIn, SliceEstimate, "Hybrid search plus hops in a run store: hits, size, memory."),
     "score": (ScoreIn, ScoreOut, "Queue the models, factors, policy, communities and summaries on a run's slice. "
               "Answers at once; poll run_status until score is done."),

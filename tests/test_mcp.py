@@ -389,3 +389,27 @@ def test_mcp_live_an_agent_pulls_searches_scores_previews_and_pushes_and_apply_n
         assert pushed.pushed and labruns(run_id) == 1
     finally:
         wipe_lab()
+
+
+def test_run_status_waits_until_the_run_stops_running(served, data_dir):
+    """Decision 38: wait_seconds holds the answer; it returns early when the run is done."""
+    import threading as _t
+
+    run = Run.create(Recipe(models=["communities"]), data_dir=data_dir)
+    run.manifest.start("pull")
+    run.save()
+
+    def finish_later():
+        time.sleep(2)
+        run.manifest.finish("pull", {"nodes": 1})
+        run.manifest.status = StepStatus.DONE
+        run.save()
+
+    _t.Thread(target=finish_later, daemon=True).start()
+    started = time.monotonic()
+    out = RunManifest.model_validate(call(served, "run_status", run_id=run.id, wait_seconds=30).structured_content)
+    waited = time.monotonic() - started
+    assert out.status is StepStatus.DONE and out.step("pull").status is StepStatus.DONE and 1.5 < waited < 20
+    quick = RunManifest.model_validate(call(served, "run_status", run_id=run.id).structured_content)
+    assert quick.status is StepStatus.DONE
+    assert call(served, "run_status", run_id=run.id, wait_seconds=999).is_error  # over the 240 limit
