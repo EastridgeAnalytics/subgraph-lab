@@ -73,6 +73,8 @@ push store's uniqueness constraints. A keyed merge creates nodes that do not exi
 `RiskCommunity` nodes and their links reach Aura. A label with no key is skipped and reported, never guessed.
 
 - **Push never deletes. Retractions, when a run needs them, go over Bolt.**
+- **Push never creates a customer node.** Every account key in the push store is checked on the master graph first;
+  one missing key stops the whole push (decision 35).
 - Push stops at the first failing batch and names the batch, the row range and the statement. `relate push` has no
   resume flag, so the manifest records which entities landed and a resume pushes the rest. A resent batch is
   harmless: the merge is keyed.

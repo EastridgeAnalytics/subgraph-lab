@@ -6,7 +6,7 @@ that lands. Each wave's report goes in `reviews/`.
 | Wave | State | Report |
 |---|---|---|
 | 0 · pins, scaffold, contracts | Done, 12 November 2026 | [wave-0](reviews/wave-0.md), [Relate 1.0.1](reviews/wave-0-relate-1.0.1.md) |
-| 1 · the data and the way in | Not started | |
+| 1 · the data and the way in | Done, 13 November 2026 | [wave-1](reviews/wave-1.md) |
 | 2 · find and score | Not started | |
 | 3 · communities, summaries, the rest of the app | Not started | |
 | 4 · the director's review | Not started | |
@@ -18,7 +18,7 @@ that lands. Each wave's report goes in `reviews/`.
 | # | Deliverable | Done means | Track | Status |
 |---|---|---|---|---|
 | 1 | Contracts | The run manifest, the staged-results table, the recipe file, the REST routes, the MCP tool list and the lint config, written and reviewed on day one | Integrator | Done in wave 0: `lab/contracts/`, `lab/common/`, `lab/runs.py` |
-| 2 | Generator and seed | Accounts with devices, emails and addresses. Three planted patterns with ring ids, plus legitimate look-alikes. A small seed that fits Aura Free's smaller published limit, and 1M relationships for the measured page | Data | Not started |
+| 2 | Generator and seed | Accounts with devices, emails and addresses. Three planted patterns with ring ids, plus legitimate look-alikes. A small seed that fits Aura Free's smaller published limit, and 1M relationships for the measured page | Data | Done (1a): `generator/`, the `seed` and `seed-schema` services. `small` is 39,565 nodes and 150,000 relationships. Loading it into Aura Free (A7) waits for credentials |
 | 3 | Pull | `relate pull` from Aura into a fresh store per run. Parallel Bolt as the fallback. Both measured at 100k and 1M relationships | Data plane | Not started |
 | 4 | Indexes and first pass | Node2Vec embeddings and account summaries, with vector and full-text indexes created in Relate | Adapters | Not started |
 | 5 | Search-defined slice | Hybrid search plus hops, the size and memory shown before expansion, the cap enforced | Data plane | Not started |

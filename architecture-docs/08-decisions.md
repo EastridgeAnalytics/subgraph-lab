@@ -72,6 +72,8 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
     An account query uses that account's own embedding and summary.
 34. **Examples are importable.** `examples/` is a package; the first pass calls the Node2Vec example's `embed`,
     and the scoring reads the TGN example's output, so each model runs in one place.
+35. **A push never creates a customer node.** Before it sends anything, `apply` checks every account key in the push
+    store against the master graph over Bolt and refuses the whole push when any is missing.
 
 ## Open
 

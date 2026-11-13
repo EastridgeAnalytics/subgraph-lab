@@ -89,13 +89,18 @@ def _chunks(items: list, size: int) -> Iterator[list]:
         yield items[i : i + size]
 
 
-def _missing_keys(session, label: str, key: str, keys: list, batch: int) -> int:
-    """How many of `keys` no node labelled `label` has on the master graph."""
-    found = 0
+def missing_on_master(session, label: str, key: str, keys: list, batch: int) -> list:
+    """The keys in `keys` that no node labelled `label` has on the master graph, in their given order."""
+    found: set = set()
     query = f"MATCH (n:{ident(label)}) WHERE n.{ident(key)} IN $keys RETURN n.{ident(key)} AS k"
     for part in _chunks(keys, batch):
-        found += len(read_remote(session, query, keys=part))
-    return len(keys) - found
+        found.update(r["k"] for r in read_remote(session, query, keys=part))
+    return [k for k in keys if k not in found]
+
+
+def _missing_keys(session, label: str, key: str, keys: list, batch: int) -> int:
+    """How many of `keys` no node labelled `label` has on the master graph."""
+    return len(missing_on_master(session, label, key, keys, batch))
 
 
 def _bytes_estimate(conn, mapping: GraphMapping, counts: dict[str, int], sample_rows: int) -> int:

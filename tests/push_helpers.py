@@ -160,13 +160,20 @@ class _Result(list):
         return self[0] if self else None
 
 
+def _has_every_key(query: str, params: dict) -> list[dict]:
+    """The default fake master graph: it holds every account key it is asked about (decision 35's check passes)."""
+    if "IN $keys" in query and " AS k" in query:
+        return [{"k": k} for k in params.get("keys", [])]
+    return []
+
+
 class FakeSession:
     """Records every statement; `answer(query, params)` supplies the rows a read returns. It is its own transaction."""
 
     def __init__(self, answer=None):
         self.statements: list[tuple[str, dict]] = []
         self.modes: list[str] = []  # how each statement was run: "read" (execute_read), "write" or "auto" (session.run)
-        self.answer = answer or (lambda q, p: [])
+        self.answer = answer or _has_every_key
         self._mode = "auto"
 
     def run(self, query, parameters=None, **params):

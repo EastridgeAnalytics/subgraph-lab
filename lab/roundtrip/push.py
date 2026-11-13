@@ -42,7 +42,7 @@ from lab.contracts.graph import (
 )
 from lab.contracts.manifest import PushEntity, Route, StepStatus, now_iso
 from lab.roundtrip import ledger
-from lab.roundtrip.delta import DeltaError, compute, read_remote
+from lab.roundtrip.delta import DeltaError, compute, missing_on_master, read_remote
 from lab.roundtrip.indexes import unique_constraint
 from lab.roundtrip.pull import unreachable_reason
 from lab.roundtrip.queries import ident
@@ -144,6 +144,20 @@ def _dry_run(run: Run, settings: Settings, with_text: bool) -> tuple[list[PushEn
     if report is None:
         raise PushError("relate push --dry-run --json printed no report")
     return ledger.parse_report(report, batch_size=settings.push_batch), (t.stdout.strip() if t else "")
+
+
+def _accounts_missing_on_master(run: Run, settings: Settings) -> list:
+    """Every account key in the push store that the master graph lacks. The lab never creates a customer node."""
+    m = run.recipe.graph
+    keys = [r["k"] for r in run.push_store().execute(
+        f"MATCH (a:{ident(m.account_label)}) RETURN a.{ident(m.account_key)} AS k").data()]
+    if not keys:
+        return []
+    try:
+        with neo4j_session(settings) as session:
+            return missing_on_master(session, m.account_label, m.account_key, keys, settings.key_batch)
+    except Exception as e:  # noqa: BLE001 (any failure to read means the check did not pass)
+        raise PushError(f"could not check the push store's accounts on the master graph over Bolt: {e}") from e
 
 
 def _staged_counts(run: Run) -> dict[str, int]:
@@ -276,6 +290,10 @@ def _apply(run: Run, settings: Settings, counts: dict[str, int], resumed: bool) 
     plan, _ = _dry_run(run, settings, with_text=False)  # every push follows a dry run, even one nobody asked for
     if bad := ledger.blockers(plan):
         return False, "the dry run shows rows the push would skip, so nothing was sent: " + "; ".join(bad) + "."
+    if absent := _accounts_missing_on_master(run, settings):
+        return False, (f"{len(absent)} accounts in the push store are not on the master graph (for example "
+                       f"{', '.join(map(str, absent[:5]))}); a keyed merge would create them, so nothing was sent "
+                       "(decision 35).")
     manifest.push = ledger.reconcile(manifest.push, plan) if resumed else ledger.fresh(plan)
     if not resumed or "push" not in manifest.routes:
         manifest.routes["push"] = Route.RELATE  # a fallback below says otherwise; a resume keeps an earlier fallback

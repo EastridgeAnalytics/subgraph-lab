@@ -400,7 +400,7 @@ def test_the_master_graph_unreachable_over_bolt_is_a_failed_push(fixture_run, re
 
     patch_master(monkeypatch, Down())
     result = apply(fixture_run, confirm=True)
-    assert not result.pushed and "could not make the lab's own uniqueness constraints" in result.message
+    assert not result.pushed and "could not check the push store's accounts on the master graph" in result.message
     assert relate.real_pushes == []  # nothing went to the master graph
 
 
@@ -659,17 +659,18 @@ def test_live_scores_alone_and_a_disposition_alone_push_without_alerts_or_commun
 
 
 @pytest.mark.live
-def test_live_a_key_the_master_graph_lacks_is_flagged_by_the_review_and_created_bare_by_the_push(lab):
-    """Known behaviour, pinned: a keyed merge creates a node it cannot find. The review says so beforehand."""
+def test_live_a_key_the_master_graph_lacks_stops_the_whole_push(lab):
+    """Decision 35: a keyed merge would create the missing account, so nothing is sent at all."""
     from lab.common.neo4j import neo4j_session
 
     keys = master_keys()
+    before = lab_snapshot()
     lab.stage(account_frame([keys[0], "ZZ-ghost"]), kind="account")
     review = preview(lab)
     assert review.delta.missing_remote_keys == 1
     assert "Warning: 1 of 2 sampled accounts are not on the master graph" in review.plan_text
-    apply(lab, confirm=True)
+    result = apply(lab, confirm=True)
+    assert result.pushed is False and "ZZ-ghost" in result.message and "decision 35" in result.message
     with neo4j_session() as s:
-        ghost = s.run("MATCH (a:Account {account_id: 'ZZ-ghost'}) RETURN properties(a) AS p").single()["p"]
-    assert set(ghost) == {"account_id", "risk_score", "risk_score_model", "risk_factors", "risk_embedding", "risk_run_id",
-                          "risk_at"}
+        assert s.run("MATCH (a:Account {account_id: 'ZZ-ghost'}) RETURN count(a) AS n").single()["n"] == 0
+    assert lab_snapshot() == before
