@@ -64,6 +64,11 @@ lab adds one: it samples the remote for keys that are missing or changed, and sh
 scores that moved grouped by size, vectors, and bytes to send.
 
 - **A person sees the plan and the delta before anything is sent.**
+- **The plan's created and updated columns are the lab's own counts.** The dry run does not read the master graph:
+  it prints every row as created, and prints the same after the push has landed (run against the test Neo4j in
+  wave 5c; not yet on Aura). The review counts them over Bolt, read only: `Alert` and `RiskCommunity` created are the
+  delta's new keys, an account is created only if the master graph lacks it, and a link is created unless it is
+  already there. Total, batches and skipped are relate's. The review's text says which is which.
 - **One confirm. `apply_push(confirm=true)` is the only code path that writes to the master graph.**
 
 ## Push

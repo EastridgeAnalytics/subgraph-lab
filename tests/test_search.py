@@ -118,9 +118,87 @@ def test_the_hops_expansion_counts_what_the_adapters_will_build(run_of):
     assert sizes[0][0] == ["A0011"]
     one, two = set(sizes[1][0]), set(sizes[2][0])
     assert {"A0011", "A0012", "A0016"} <= one  # the ring's cycle: A0011 pays A0012 and is paid by A0016
-    assert "A0013" not in one  # two hops away, through the shared device
-    assert set(R1) <= two and one < two
+    assert set(R1) <= one  # and the ring shares a device: an identifier is one step too (decision 41)
+    assert one < two
     assert sizes[0][1] < sizes[1][1] < sizes[2][1]
+
+
+ANY_ID = "USES_DEVICE|HAS_EMAIL|HAS_ADDRESS"
+
+
+def payment_neighbours(run, keys) -> set[str]:
+    df = run.table("MATCH (a:Account)-[:TX]-(b:Account) WHERE a.account_id IN $k RETURN DISTINCT b.account_id AS b",
+                   {"k": sorted(keys)})
+    return set(df["b"].to_list())
+
+
+def identifier_mates(run, keys) -> set[str]:
+    df = run.table(f"MATCH (a:Account)-[:{ANY_ID}]->(i)<-[:{ANY_ID}]-(b:Account) WHERE a.account_id IN $k "
+                   "RETURN DISTINCT b.account_id AS b", {"k": sorted(keys)})
+    return set(df["b"].to_list())
+
+
+def slice_of(run, account: str, hops: int) -> set[str]:
+    search_slice(run, SearchSpec(account=account, k=1, hops=hops))
+    return set(current_slice(run))
+
+
+def test_one_hop_is_one_account_step_by_a_payment_or_a_shared_identifier(run_of):
+    """Decision 41: h 1 from a ring member is its payment counterparties (either way) and the accounts that share an
+    identifier with it, and nothing two steps away."""
+    one = slice_of(run_of, "A0011", 1)
+    payers = payment_neighbours(run_of, {"A0011"})
+    mates = identifier_mates(run_of, {"A0011"}) - {"A0011"}
+    assert set(R1) - {"A0011"} <= mates  # the ring shares a device and an address
+    assert {"A0012", "A0016"} <= payers  # the ring's cycle, one step either way
+    assert one == {"A0011"} | payers | mates
+    two_away = (payment_neighbours(run_of, one) | identifier_mates(run_of, one)) - one
+    assert two_away  # the fixture has accounts two steps out, so the check below can fail
+    assert not one & two_away
+    assert slice_of(run_of, "A0011", 2) == one | two_away  # h 2 is one more step from everything h 1 reached
+
+
+def test_an_identifier_shared_by_more_than_shared_max_accounts_is_no_step(run_of, restore_settings):
+    """Six accounts share the ring's device and address. At shared_max 6 they are a step; at 5 they are not."""
+    payers = payment_neighbours(run_of, {"A0011"})
+    ring_only_by_identifier = set(R1) - {"A0011"} - payers
+    assert ring_only_by_identifier  # some ring mate is not a payment counterparty, or the test proves nothing
+    restore_settings.setenv("LAB_SHARED_MAX", "6")
+    reload_settings()
+    assert set(R1) <= slice_of(run_of, "A0011", 1)
+    restore_settings.setenv("LAB_SHARED_MAX", "5")
+    reload_settings()
+    crowded = slice_of(run_of, "A0011", 1)
+    assert crowded == {"A0011"} | payers  # its other identifiers (an email of its own) lead nowhere
+    assert not ring_only_by_identifier & crowded
+    # the ring is still reached, a step at a time, by the payments that go round it
+    assert set(R1) <= slice_of(run_of, "A0011", 5)
+
+
+def test_h_zero_is_the_hits_and_h_two_reaches_further(run_of):
+    zero, one, two = (slice_of(run_of, "A0101", h) for h in (0, 1, 2))
+    assert zero == {"A0101"} and zero < one < two
+
+
+def test_the_hit_count_is_the_hits_returned(run_of):
+    """The manifest's `hits`, the estimate's hit list and the saved slice say the same number, and no key is in it
+    twice, however the two lists overlap (wave 2 saw 19 where the manifest said 20)."""
+    for spec in (SearchSpec(text=DEMO, k=20), SearchSpec(account="A0011", k=20),
+                 SearchSpec(text="payments just under 10,000", account="A0011", k=20)):
+        est = search_slice(run_of, spec)
+        keys = [h.key for h in est.hits]
+        step = RunManifest.load(run_of.paths.manifest).step("slice")
+        assert len(keys) == len(set(keys)) == 20 == step.counts["hits"]
+        assert len(json.loads((run_of.paths.artifacts / "slice.json").read_text())["estimate"]["hits"]) == 20
+        assert est.note is None
+
+
+def test_fewer_hits_than_k_is_said(run_of):
+    """Only 200 accounts exist, so k of 300 cannot be met: the hit list is shorter and the note says why."""
+    est = search_slice(run_of, SearchSpec(text=DEMO, k=300, hops=0))
+    assert len(est.hits) == 200 and len({h.key for h in est.hits}) == 200
+    assert "200 accounts, fewer than the k of 300" in est.note
+    assert RunManifest.load(run_of.paths.manifest).step("slice").counts["hits"] == 200
 
 
 def test_over_cap_is_flagged_saved_without_keys_and_refused_by_current_slice(run_of, restore_settings):

@@ -16,7 +16,9 @@ What `relate push 1.0.1 --json` really prints (wave 1, probed against Neo4j 2026
   not what landed. The reason is one line on stderr: `Error: push failed: batch 2 of Alert (rows 1..2) failed: ...`,
   or `Error: push failed: pre-read of Account failed: ...` when the remote could not even be read.
 - A dry run (`--dry-run --json`) prints `"dryRun": true` and the plan, with `batches` as the planned count and
-  nothing sent.
+  nothing sent. It does not read the remote: it prints every row as `created` and none as `updated`, before a push and
+  after the same push has landed (wave 5c, against the test Neo4j). `parse_report` therefore leaves `created` and
+  `updated` at 0 for a dry run, and `push.preview` fills them from the master graph.
 - `--labels A,B` pushes those nodes and the relationships between them; relationships to any other label are
   reported as one `(dangling)` entity and skipped. `--types T` pushes those relationships and their end nodes, and
   reports those end nodes as node entities, so a node entity in a `--types` push covers only the nodes at the end of
@@ -84,7 +86,8 @@ def parse_report(report: dict | None, *, batch_size: int, returncode: int = 0,
     On a dry run nothing has landed. On a real push, an entity landed when it completed every batch it planned
     (`ceil((total - skipped) / batch_size)`) and is not the one the failure line names; after a clean exit every entity
     landed, except one whose rows were skipped for want of a key. `created` and `updated` are zero for an entity that did
-    not land, because the report gives the plan there, not what happened.
+    not land, because the report gives the plan there, not what happened: on a dry run that is the plan's guess that the
+    remote is empty, which is not kept.
     """
     if not report:
         return []

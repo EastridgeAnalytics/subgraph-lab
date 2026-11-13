@@ -62,7 +62,8 @@ class StoreNotEmpty(PullError):
 
 @dataclass
 class PullCounts:
-    """What a pull put in the store. `nodes` and `relationships` are new ones; reused ones were returned twice."""
+    """What a pull put in the store. `nodes` and `relationships` are new ones; reused ones were returned twice, and
+    relate's count of them is unreliable (wave 1), so it is kept for the log and never put on the manifest."""
 
     nodes: int = 0
     relationships: int = 0
@@ -80,8 +81,8 @@ class PullResult:
     relationships: int
     constraints: int
     seconds: float  # the route that delivered the data, not the failed attempt before a fallback
-    reused_nodes: int = 0
-    reused_relationships: int = 0
+    reused_nodes: int = 0  # for logs only: relate's count, unreliable
+    reused_relationships: int = 0  # for logs only
     indexes: list[str] = field(default_factory=list)  # the search indexes now in the run store
     reason: str | None = None  # why the fallback ran, when it did
 
@@ -147,15 +148,17 @@ def pull(run: Run) -> PullResult:
         raise
     if route is Route.RELATE:
         manifest.routes["pull"] = Route.RELATE
+    # Relate's "reused" counts are not on the manifest: wave 1 found them unreliable, and the Run screen showed them
+    # as a number to trust. `PullResult` and the log keep them.
     manifest.finish(
         "pull",
-        {"nodes": counts.nodes, "relationships": counts.relationships, "constraints": counts.constraints,
-         "reused_nodes": counts.reused_nodes, "reused_relationships": counts.reused_relationships},
+        {"nodes": counts.nodes, "relationships": counts.relationships, "constraints": counts.constraints},
         note=f"route {route.value}, {seconds:.1f}s",
     )
     run.save()
-    log.info("pulled %d nodes and %d relationships by %s in %.1fs", counts.nodes, counts.relationships,
-             route.value, seconds)
+    log.info("pulled %d nodes and %d relationships by %s in %.1fs (relate's reused counts, unreliable: %d nodes, "
+             "%d relationships)", counts.nodes, counts.relationships, route.value, seconds, counts.reused_nodes,
+             counts.reused_relationships)
 
     manifest.start("indexes")
     run.save()

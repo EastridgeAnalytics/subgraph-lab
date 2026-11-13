@@ -2,6 +2,9 @@
 
 `preview(run)` shows what a push would do: `relate push --dry-run` parsed into `PushEntity` rows, the same dry run as
 relate prints it, and the lab's own delta read from the master graph. It writes nothing anywhere but the manifest.
+The rows' `total`, `batches` and `skipped` are relate's; their `created` and `updated` are the lab's own counts
+against the master graph (`_counted`), because relate's dry run does not read the master graph and prints every row
+as created.
 
 `apply(run, confirm)` is the only code path that writes to the master graph (the other is `retract`, and the Bolt
 fallback below is inside `apply`). It refuses unless `confirm is True`, as its first act. With a confirm it
@@ -26,12 +29,13 @@ import json
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, Any
 
+from lab.common.batching import key_batches
 from lab.common.ids import iso_utc
 from lab.common.log import get_logger
 from lab.common.neo4j import neo4j_session
 from lab.common.relate_cli import RelateError, credentials_file, plaintext_flag, relate_cli
 from lab.common.store import rows
-from lab.contracts.api import PushResult, Review
+from lab.contracts.api import Delta, PushResult, Review
 from lab.contracts.graph import (
     ALERT_KEY,
     ALERT_LABEL,
@@ -50,6 +54,7 @@ from lab.roundtrip.stage import (
     NodeShape,
     NothingStaged,
     RelShape,
+    account_shape,
     ensure_push_constraints,
     has_staged,
     node_shapes,
@@ -146,16 +151,19 @@ def _dry_run(run: Run, settings: Settings, with_text: bool) -> tuple[list[PushEn
     return ledger.parse_report(report, batch_size=settings.push_batch), (t.stdout.strip() if t else "")
 
 
-def _accounts_missing_on_master(run: Run, settings: Settings) -> list:
-    """Every account key in the push store that the master graph lacks. The lab never creates a customer node."""
+def _accounts_missing_on_master(run: Run, settings: Settings, session=None) -> list:
+    """Every account key in the push store that the master graph lacks. The lab never creates a customer node.
+    Reads over `session` when the caller has one open, else over its own."""
     m = run.recipe.graph
     keys = [r["k"] for r in run.push_store().execute(
         f"MATCH (a:{ident(m.account_label)}) RETURN a.{ident(m.account_key)} AS k").data()]
     if not keys:
         return []
     try:
-        with neo4j_session(settings) as session:
+        if session is not None:
             return missing_on_master(session, m.account_label, m.account_key, keys, settings.key_batch)
+        with neo4j_session(settings) as own:
+            return missing_on_master(own, m.account_label, m.account_key, keys, settings.key_batch)
     except Exception as e:  # noqa: BLE001 (any failure to read means the check did not pass)
         raise PushError(f"could not check the push store's accounts on the master graph over Bolt: {e}") from e
 
@@ -182,21 +190,24 @@ def preview(run: Run) -> Review:
     manifest.start("review")
     run.save()
     try:
+        plan, text = _dry_run(run, settings, with_text=True)  # first: relate needs the push store to itself
         with neo4j_session(settings) as session:
             try:
                 delta = compute(run, session=session)
                 missing_constraints = own_constraints_missing(session)
+                plan = _counted(run, plan, delta, session, settings)
             except DeltaError:
                 raise
             except Exception as e:
                 raise DeltaError(f"could not read the master graph over Bolt: {type(e).__name__}: {e}"[:400]) from e
-        plan, text = _dry_run(run, settings, with_text=True)
     except Exception as e:
         manifest.fail("review", f"{type(e).__name__}: {e}"[:500])
         run.save()
         raise
+    finally:
+        run.close()
 
-    notes = [_constraint_note(missing_constraints)]
+    notes = [_counts_note(), _constraint_note(missing_constraints)]
     if delta.missing_remote_keys:
         notes.append(
             f"Warning: {delta.missing_remote_keys} of {delta.sampled} sampled accounts are not on the master graph. "
@@ -217,6 +228,77 @@ def preview(run: Run) -> Review:
     })
     run.save()
     return Review(run_id=run.id, plan=plan, plan_text=plan_text, delta=delta)
+
+
+def _counted(run: Run, plan: list[PushEntity], delta: Delta, session, settings: Settings) -> list[PushEntity]:
+    """`plan` with `created` and `updated` counted on the master graph, in read transactions over Bolt.
+
+    Relate's dry run does not read the master graph. It prints every row as created and none as updated, before a
+    push and after the same push has landed (checked against the test Neo4j in wave 5c), so those two numbers say
+    nothing and are not kept. Counted here instead, and equal to what the push then reports:
+
+    - `Alert` and `RiskCommunity`: created is the delta's new keys, the rest are updated;
+    - the account label: created is the staged accounts the master graph lacks (a push with any is refused,
+      decision 35), the rest are updated;
+    - a link: created unless it is already there. A link hangs on one of the lab's own nodes, so when every such
+      node is new no link can be there and nothing is read.
+
+    An entity this does not know (relate's `(dangling)` line) is left as parsed, and a push that has one is refused.
+    """
+    mapping = run.recipe.graph
+    totals = {e.entity: e.total for e in plan}
+    created: dict[str, int] = {
+        ALERT_LABEL: delta.new_alerts,
+        COMMUNITY_LABEL: delta.new_communities,
+        account_shape(mapping).label: len(_accounts_missing_on_master(run, settings, session)),
+    }
+    for rel in rel_shapes(mapping):
+        if rel.entity in totals:
+            created[rel.entity] = _new_links(run, session, settings, rel, created, totals)
+    out = []
+    for e in plan:
+        if e.entity in created:
+            made = min(created[e.entity], e.total)
+            e = e.model_copy(update={"created": made, "updated": e.total - made})
+        out.append(e)
+    return out
+
+
+def _new_links(run: Run, session, settings: Settings, rel: RelShape, created: dict[str, int],
+               totals: dict[str, int]) -> int:
+    """How many of a relationship's staged links the master graph does not have."""
+    pairs = _staged_pairs(run.push_store(), rel)
+    lab_end = rel.start if rel.start.label in (ALERT_LABEL, COMMUNITY_LABEL) else rel.end
+    if created.get(lab_end.label, 0) >= totals.get(lab_end.label, 0):
+        return len(pairs)  # every node the links hang on is new, so none of them can be there yet
+    s, e = rel.start, rel.end
+    query = (f"UNWIND $rows AS r MATCH (:{ident(s.label)} {{{ident(s.key)}: r.s}})-[x:{ident(rel.type)}]->"
+             f"(:{ident(e.label)} {{{ident(e.key)}: r.e}}) WITH DISTINCT r.s AS s, r.e AS e RETURN count(*) AS n")
+    there = 0
+    for part in key_batches(pairs, settings.key_batch):
+        there += sum(r["n"] for r in read_remote(session, query, rows=[{"s": a, "e": b} for a, b in part]))
+    return len(pairs) - there
+
+
+def _staged_pairs(conn, rel: RelShape) -> list[tuple]:
+    """The `(start key, end key)` of every link of this type in the push store."""
+    s, e = rel.start, rel.end
+    found = rows(
+        conn,
+        f"MATCH (s:{ident(s.label)})-[:{ident(rel.type)}]->(e:{ident(e.label)}) "
+        f"RETURN s.{ident(s.key)} AS s, e.{ident(e.key)} AS e",
+    )
+    return [(r["s"], r["e"]) for r in found]
+
+
+def _counts_note() -> str:
+    return (
+        "The created and updated columns of relate's table above assume the master graph is empty: its dry run does "
+        "not read it, so it prints every row as created. The plan the review lists uses the lab's own counts instead, "
+        "read from the master graph over Bolt, read only: Alert and RiskCommunity created are the delta's new keys, "
+        "Account created is the staged accounts the master graph lacks, and a link is created unless it is already "
+        "there. Total, batches and skipped are relate's."
+    )
 
 
 def _constraint_note(missing: list[tuple[str, str]]) -> str:
@@ -490,11 +572,7 @@ def _bolt_nodes(session, conn, shape: NodeShape, batch: int) -> PushEntity:
 
 def _bolt_rels(session, conn, rel: RelShape, batch: int) -> PushEntity:
     s, e = rel.start, rel.end
-    pairs = rows(
-        conn,
-        f"MATCH (s:{ident(s.label)})-[:{ident(rel.type)}]->(e:{ident(e.label)}) "
-        f"RETURN s.{ident(s.key)} AS s, e.{ident(e.key)} AS e",
-    )
+    pairs = [{"s": a, "e": b} for a, b in _staged_pairs(conn, rel)]
     statement = (
         f"UNWIND $rows AS r MATCH (a:{ident(s.label)} {{{ident(s.key)}: r.s}}) "
         f"MATCH (b:{ident(e.label)} {{{ident(e.key)}: r.e}}) MERGE (a)-[:{ident(rel.type)}]->(b)"

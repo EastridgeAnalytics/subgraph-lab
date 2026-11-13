@@ -124,6 +124,10 @@ def test_parse_a_recorded_dry_run():
     assert [e.batches for e in plan] == [1, 1, 1, 1, 1]  # planned
     assert not any(e.landed for e in plan)  # a dry run lands nothing
     assert ledger.blockers(plan) == []
+    # relate printed created = total for every row, because a dry run does not read the remote (it says the same after
+    # a push has landed); the parse does not pass that on as a count: the review fills created and updated itself
+    assert all(e["created"] == e["total"] and e["updated"] == 0 for e in r.json["entities"])
+    assert [(e.created, e.updated) for e in plan] == [(0, 0)] * 5
 
 
 def test_parse_a_recorded_success():
@@ -200,9 +204,9 @@ def test_preview_shows_the_plan_and_the_delta_and_writes_nothing(fixture_run, re
     def answer(q, p):
         if "OPTIONAL MATCH" in q:
             return [{"key": k, "found": k in remote, "score": remote.get(k)} for k in p["keys"]]
-        if "SHOW CONSTRAINTS" in q:
-            return []
-        return []
+        if q.startswith("MATCH (n:Account)"):  # the accounts the master graph has, out of these keys
+            return [{"k": k} for k in p["keys"] if k in remote]
+        return []  # no constraints, no alerts, no communities, no links
 
     master.answer = answer
     review = preview(fixture_run)
@@ -211,6 +215,13 @@ def test_preview_shows_the_plan_and_the_delta_and_writes_nothing(fixture_run, re
     assert names == {"Account": 3, "Alert": 2, "RiskCommunity": 1, "(Alert)-[:ALERT_ON]->(Account)": 2,
                      "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)": 3}
     assert not any(e.landed for e in review.plan)
+    # created and updated are the master graph's, not relate's (which prints every row as created): two of the three
+    # accounts are there, so the third would be created; the alerts, the community and their links are all new
+    counted = {e.entity: (e.created, e.updated) for e in review.plan}
+    assert counted == {"Account": (1, 2), "Alert": (2, 0), "RiskCommunity": (1, 0),
+                       "(Alert)-[:ALERT_ON]->(Account)": (2, 0), "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)": (3, 0)}
+    assert not any("UNWIND $rows" in q for q, _ in master.statements)  # all new nodes: no link can be there, none read
+    assert "assume the master graph is empty" in review.plan_text and "lab's own counts" in review.plan_text
     d = review.delta
     assert (d.new_alerts, d.new_communities, d.accounts_scored, d.vectors, d.dispositions) == (2, 1, 3, 4, 0)  # vectors: three accounts and one community
     assert d.sampled == 3 and d.missing_remote_keys == 1
@@ -227,6 +238,38 @@ def test_preview_shows_the_plan_and_the_delta_and_writes_nothing(fixture_run, re
     step = reloaded(fixture_run).step("review")
     assert step.status is StepStatus.DONE and step.counts["entities"] == 5 and step.counts["new_alerts"] == 2
     assert reloaded(fixture_run).step("push").status is StepStatus.PENDING
+
+
+def test_the_plan_counts_what_is_already_on_the_master_graph(fixture_run, relate, master):
+    """A second push of a run that is partly there: one alert and the community exist, with the links they had."""
+    stage_all(fixture_run)  # alerts alert-A0001 and alert-A0002, community-1 with three members
+    there = {"alert-A0001"}
+
+    def answer(q, p):
+        if q.startswith("MATCH (n:Account)"):
+            return [{"k": k} for k in p["keys"]]
+        if q.startswith("MATCH (n:Alert)"):
+            return [{"k": k} for k in p["keys"] if k in there]
+        if q.startswith("MATCH (n:RiskCommunity)"):
+            return [{"k": k} for k in p["keys"]]  # the community is there
+        if "-[x:ALERT_ON]->" in q:
+            return [{"n": 1}]  # the one existing alert's link
+        if "-[x:IN_RISK_COMMUNITY]->" in q:
+            return [{"n": 2}]  # two of the three members are linked already
+        if "OPTIONAL MATCH" in q:
+            return [{"key": k, "found": True, "score": None} for k in p["keys"]]
+        return []
+
+    master.answer = answer
+    review = preview(fixture_run)
+    counted = {e.entity: (e.created, e.updated) for e in review.plan}
+    assert counted == {"Account": (0, 3), "Alert": (1, 1), "RiskCommunity": (0, 1),
+                       "(Alert)-[:ALERT_ON]->(Account)": (1, 1), "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)": (1, 2)}
+    assert (review.delta.new_alerts, review.delta.new_communities) == (1, 0)  # the delta says the same
+    reads = [(q, p, m) for (q, p), m in zip(master.statements, master.modes, strict=True) if "UNWIND $rows" in q]
+    assert len(reads) == 2 and all(m == "read" for _, _, m in reads)  # one batch of pairs per link type, read only
+    assert [len(p["rows"]) for _, p, _ in reads] == [2, 3] and all(set(r) == {"s", "e"} for _, p, _ in reads for r in p["rows"])
+    assert master.writes() == []
 
 
 def test_preview_says_what_a_stopped_push_would_resume(fixture_run, relate, master):
@@ -500,6 +543,11 @@ def test_live_stage_preview_apply(lab):
     assert {e.entity: e.total for e in review.plan} == {
         "Account": 3, "Alert": 2, "RiskCommunity": 1, "(Alert)-[:ALERT_ON]->(Account)": 2,
         "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)": 3}
+    # relate's own dry run says "created" for every row, accounts that are on the master graph included; the review's
+    # plan has the lab's counts, and they are what the push then reports
+    assert {e.entity: (e.created, e.updated) for e in review.plan} == {
+        "Account": (0, 3), "Alert": (2, 0), "RiskCommunity": (1, 0), "(Alert)-[:ALERT_ON]->(Account)": (2, 0),
+        "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)": (3, 0)}
     d = review.delta
     assert (d.new_alerts, d.new_communities, d.accounts_scored, d.dispositions) == (2, 1, 3, 1)
     assert d.vectors == 4 and d.sampled == 3 and d.missing_remote_keys == 0 and d.bytes_estimate > 0
@@ -513,6 +561,8 @@ def test_live_stage_preview_apply(lab):
     result = apply(lab, confirm=True)
     assert result.pushed and not result.resumed and all(landed(result).values())
     assert list(landed(result)) == ALL_ENTITIES
+    assert [(e.entity, e.created, e.updated) for e in result.entities[:5]] == [
+        (e.entity, e.created, e.updated) for e in review.plan]  # the review said what the push did
     snap = lab_snapshot()
     assert len(snap["Alert"]) == 2 and len(snap["RiskCommunity"]) == 1 and len(snap["LabRun"]) == 1
     assert snap["ALERT_ON"] == 2 and snap["IN_RISK_COMMUNITY"] == 3
@@ -527,10 +577,21 @@ def test_live_stage_preview_apply(lab):
     assert own_constraints_on_master() == set(OWN_CONSTRAINTS)
     # customer nodes and relationships are untouched
     assert customer_state() == before_customer
-    # the delta now knows the alerts and the community are there
-    after = preview(lab).delta
+    # the delta now knows the alerts and the community are there, and so does the plan (relate's dry run still says
+    # every row would be created)
+    again = preview(lab)
+    after = again.delta
     assert (after.new_alerts, after.new_communities) == (0, 0)
     assert after.score_changes["0.0-0.1"] == 3 and after.score_changes["new"] == 0
+    assert all((e.created, e.updated) == (0, e.total) for e in again.plan)
+    # one new alert beside the two that are there: its link is the only new link, found by reading the master graph
+    lab.stage(alert_frame([(f"alert-{keys[2]}", keys[2])]), kind="alert")
+    mixed = preview(lab)
+    counted = {e.entity: (e.created, e.updated) for e in mixed.plan}
+    assert counted["Alert"] == (1, 2) and counted["(Alert)-[:ALERT_ON]->(Account)"] == (1, 2)
+    pushed = apply(lab, confirm=True)
+    assert [(e.entity, e.created, e.updated) for e in pushed.entities[:5]] == [
+        (e.entity, e.created, e.updated) for e in mixed.plan]
 
 
 @pytest.mark.live
@@ -654,8 +715,25 @@ def test_live_scores_alone_and_a_disposition_alone_push_without_alerts_or_commun
     assert result.pushed and not result.resumed
     risk = lab_snapshot()["risk"]
     assert risk[keys[0]]["risk_disposition"] == "false_positive" and risk[keys[0]]["risk_score"] == 0.9
-    assert risk[keys[3]] == {k: v for k, v in risk[keys[3]].items() if k.startswith("risk_disposition")}
-    assert risk[keys[3]]["risk_disposition_by"] == "laura"
+    # the account this run never scored has its disposition and the run's id, and no score
+    assert risk[keys[3]] == {k: v for k, v in risk[keys[3]].items() if k.startswith("risk_disposition") or k == "risk_run_id"}
+    assert risk[keys[3]]["risk_disposition_by"] == "laura" and risk[keys[3]]["risk_run_id"] == lab.id
+    assert "risk_score" not in risk[keys[3]]
+
+
+@pytest.mark.live
+def test_live_retract_removes_an_account_that_holds_only_a_disposition(lab):
+    """A reviewer's decision on an account the run never scored travels with the push, and retract takes it back."""
+    keys = master_keys()
+    lab.stage(account_frame(keys[:2]), kind="account")
+    stage_disposition(lab, "account", keys[3], "needs_more", "laura")  # never scored by this run
+    assert apply(lab, confirm=True).pushed
+    risk = lab_snapshot()["risk"]
+    assert set(risk) == {keys[0], keys[1], keys[3]} and risk[keys[3]]["risk_run_id"] == lab.id
+
+    result = retract(lab, confirm=True)
+    assert result.accounts_cleaned == 3 and {"risk_run_id", "risk_disposition"} <= set(result.properties)
+    assert lab_snapshot()["risk"] == {}  # the disposition-only account is clean too
 
 
 @pytest.mark.live
