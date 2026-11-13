@@ -206,7 +206,7 @@ storage with hash, model and source; summaries into the full-text index; a commu
 members'. Test: a summary with a planted number falls back to the template (A9); the cache makes no second call.
 Row 9.
 
-### 3c · the velocity factor and the NetworkX example (`examples/velocity/`, `examples/communities/`)
+### 3c · the velocity factor and the NetworkX example (`examples/velocity/`, `examples/networkx/`)
 
 statsforecast per account into `velocity_anomaly`; cycles and components as the NetworkX example. Rest of row 7.
 

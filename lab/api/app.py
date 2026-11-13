@@ -49,6 +49,7 @@ from lab.contracts.api import (
     ShowCode,
     SliceEstimate,
     SliceRequest,
+    SourceFile,
     Timeline,
 )
 from lab.contracts.manifest import RunManifest
@@ -158,6 +159,11 @@ def create_app(*, state: ops.LabState | None = None, supervise: bool = True, app
     @guarded
     def models() -> ModelsList:
         return results.models_list()
+
+    @app.get("/api/models/{name}/source", response_model=SourceFile)
+    @guarded
+    def model_source(name: str) -> SourceFile:
+        return results.source_file(name)
 
     # ---- runs --------------------------------------------------------------------------------------------------
     @app.post("/api/runs", response_model=RunStarted)

@@ -89,7 +89,8 @@ Decisions 39 to 42 come from the wave 4 review ([mvp-review](reviews/mvp-review.
 39. **The account score is a noisy-or of weighted factors** (R1): `1 - Π(1 - wᵢ·sᵢ)`, over the rule factors for
     `risk_score_rules`, the model factors for `risk_score_model`, and all of them for `risk_score`. A factor that does
     not fire changes nothing and a new factor can only add. The policy file says `combine: noisy_or`; the weighted
-    mean stays available. The shipped weights and threshold are re-set for the demo data.
+    mean stays available. A weight is in [0, 1], how much that factor alone can say; a weight outside it is an
+    error. The shipped file has three tiers: 0.65 for a rule enough alone, 0.20 supporting, 0.05 unproven.
 40. **A recipe can choose its factors.** `factors` lists factor ids; unset means every factor in the file.
 41. **Hops count accounts** (R2). One hop is one account-to-account step, by a payment or by a shared identifier;
     an identifier shared by more than `LAB_SHARED_MAX` accounts is no step. `LAB_SEARCH_HOPS` defaults to 1.

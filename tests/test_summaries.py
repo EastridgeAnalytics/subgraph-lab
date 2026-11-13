@@ -516,13 +516,13 @@ def test_attach_summaries_stages_summaries_on_alerts_and_communities_and_indexes
     assert {k: counts[k] for k in ("summaries", "from_api", "from_template", "failed_checks", "cached")} == {
         "summaries": counts["alerts"] + counts["communities"], "from_api": 0,
         "from_template": counts["alerts"] + counts["communities"], "failed_checks": 0, "cached": 0}
-    assert counts["alerts"] == 6 and counts["communities"] == 9
+    assert counts["alerts"] == 14 and counts["communities"] == 9
 
     # the push store: every community and alert has its evidence and hash; every one here has a template summary
     push = run.push_store()
     communities = rows(push, "MATCH (c:RiskCommunity) RETURN properties(c) AS p")
     alerts = rows(push, "MATCH (a:Alert) RETURN properties(a) AS p")
-    assert len(communities) == 9 and len(alerts) == 6
+    assert len(communities) == 9 and len(alerts) == 14
     for r in (*communities, *alerts):
         p = r["p"]
         ev = Evidence.model_validate_json(p["evidence"])
@@ -547,7 +547,7 @@ def test_attach_summaries_stages_summaries_on_alerts_and_communities_and_indexes
 
     # the manifest
     step = Run(run.id, run.paths.root.parent.parent).manifest.step("summaries")
-    assert step.status == StepStatus.DONE and step.counts == {k: counts[k] for k in step.counts} and step.counts["summaries"] == 15
+    assert step.status == StepStatus.DONE and step.counts == {k: counts[k] for k in step.counts} and step.counts["summaries"] == 23
     assert step.started_at and step.finished_at and "template only" in step.note
 
 
@@ -589,14 +589,14 @@ def test_the_step_marks_itself_failed_when_it_raises(fixture_run, monkeypatch):
 def test_a_rerun_with_the_same_evidence_and_model_makes_no_call_through_the_whole_pipeline(fixture_run, monkeypatch):
     api = install(monkeypatch, ideal)
     first = score(fixture_run)
-    assert (first["from_api"], first["cached"], first["from_template"], first["failed_checks"]) == (15, 0, 0, 0)
-    assert len(api.calls) == 15 and len(api.built) == 1
+    assert (first["from_api"], first["cached"], first["from_template"], first["failed_checks"]) == (23, 0, 0, 0)
+    assert len(api.calls) == 23 and len(api.built) == 1
     again = score(fixture_run)  # the same run, the same evidence, the same model
-    assert len(api.calls) == 15 and len(api.built) == 1
-    assert (again["from_api"], again["cached"], again["summaries"]) == (15, 15, 15)
+    assert len(api.calls) == 23 and len(api.built) == 1
+    assert (again["from_api"], again["cached"], again["summaries"]) == (23, 23, 23)
     push = rows(fixture_run.push_store(), "MATCH (n) WHERE n.summary_source IS NOT NULL "
                                           "RETURN n.summary_source AS s, n.summary_model AS m")
-    assert {(r["s"], r["m"]) for r in push} == {("api", MODEL)} and len(push) == 15
+    assert {(r["s"], r["m"]) for r in push} == {("api", MODEL)} and len(push) == 23
     assert "Anthropic API (claude-sonnet-5-5)" in Run(fixture_run.id, fixture_run.paths.root.parent.parent).manifest.step("summaries").note
 
 
@@ -607,7 +607,7 @@ def test_a_planted_number_in_one_answer_costs_only_that_summary(fixture_run, mon
 
     install(monkeypatch, handler)
     counts = score(fixture_run)
-    assert (counts["from_api"], counts["from_template"], counts["failed_checks"]) == (14, 1, 1)
+    assert (counts["from_api"], counts["from_template"], counts["failed_checks"]) == (22, 1, 1)
     bad = rows(fixture_run.push_store(), "MATCH (a:Alert) WHERE a.summary_source = 'template' RETURN a.account_key AS k")
     assert [r["k"] for r in bad] == [R1[0]]
 
@@ -733,7 +733,7 @@ def test_the_restaged_rows_keep_the_columns_the_earlier_stage_gave_them(world, m
 
 
 @pytest.mark.parametrize(("threshold", "min_size", "alerts", "communities"), [
-    ("0.99", "3", 0, 9), ("0.6", "1000", 6, 0), ("0.99", "1000", 0, 0),
+    ("0.99", "3", 0, 9), ("0.6", "1000", 14, 0), ("0.99", "1000", 0, 0),
 ])
 def test_a_run_with_no_alerts_or_no_communities_is_fine(fixture_run, monkeypatch, tmp_path, threshold, min_size, alerts, communities):
     policy = tmp_path / "policy.yaml"

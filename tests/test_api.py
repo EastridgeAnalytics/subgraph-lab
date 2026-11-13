@@ -422,6 +422,24 @@ def test_models_lists_the_four_models_and_every_factor(client):
     assert all(m.code_path and m.description for m in models.models)
 
 
+@pytest.mark.parametrize("name, path, language, needle", [
+    ("tgn", "examples/tgn/example.py", "python", "TGN"),
+    ("communities", "examples/networkx/example.py", "python", "louvain"),
+    ("shared_device_5plus", "factors/shared_device.cypher", "cypher", "MATCH"),
+    ("velocity_anomaly", "lab/scoring/velocity.py", "python", "def score"),
+])
+def test_models_source_shows_each_entrys_code(client, name, path, language, needle):
+    body = contract.SourceFile.model_validate(client.get(f"/api/models/{name}/source").json())
+    assert (body.name, body.path, body.language) == (name, path, language)
+    assert body.text == (REPO / path).read_text(encoding="utf-8") and needle.lower() in body.text.lower()
+
+
+@pytest.mark.parametrize("name", ["no_such_factor", "..", "..%2F..%2Fpyproject.toml"])
+def test_models_source_is_404_for_anything_else(client, name):
+    r = client.get(f"/api/models/{name}/source")
+    assert r.status_code == 404 and "detail" in r.json()
+
+
 # ---- results ---------------------------------------------------------------------------------------------------
 def test_accounts_are_paged_highest_score_first(client, scored_run):
     page = contract.AccountsPage.model_validate(client.get(f"/api/runs/{scored_run.id}/results/accounts").json())

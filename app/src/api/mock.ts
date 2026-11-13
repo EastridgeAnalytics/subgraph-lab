@@ -295,7 +295,7 @@ export const mockModels: T.ModelsList = {
       description: "Embeds every node from its neighbours (PyG's Node2Vec). The embeddings feed search and similar accounts." },
     { name: "tgn", kind: "model", code_path: "examples/tgn",
       description: "Scores each account from its timed payment events (PyG's TGN example). Lands as the tgn risk factor." },
-    { name: "communities", kind: "model", code_path: "examples/communities",
+    { name: "communities", kind: "model", code_path: "examples/networkx",
       description: "Finds communities in the slice, by payments and shared identifiers: connected components, then seeded Louvain (NetworkX), and scores them." },
     { name: "velocity", kind: "model", code_path: "examples/velocity",
       description: "Compares each account's outflow with its own forecast (statsforecast). Lands as the velocity_anomaly risk factor." },

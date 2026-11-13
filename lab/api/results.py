@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, get_args
 
 import numpy as np
@@ -33,6 +34,7 @@ from lab.contracts.api import (
     ModelInfo,
     ModelsList,
     ShowCode,
+    SourceFile,
     Timeline,
     TimelinePoint,
 )
@@ -341,7 +343,7 @@ MODELS: dict[str, tuple[str, str]] = {
     "tgn": ("Scores each account from its timed payment events (PyG's TGN example). Lands as the tgn risk factor.",
             "examples/tgn"),
     "communities": ("Finds communities in the slice, by payments and shared identifiers: connected components, then "
-                    "seeded Louvain (NetworkX), and scores them.", "examples/communities"),
+                    "seeded Louvain (NetworkX), and scores them.", "examples/networkx"),
     "velocity": ("Compares each account's outflow with its own forecast (statsforecast). Lands as the velocity_anomaly "
                  "risk factor.", "examples/velocity"),
 }
@@ -369,6 +371,39 @@ def models_list() -> ModelsList:
     models += [ModelInfo(name=f.id, kind="factor", description=f.description or f.name,
                          code_path=_factor_code_path(f, base), factor=f) for f in factor_file.factors]
     return ModelsList(models=models, factor_version=factor_file.version, policy=policy.model_dump(mode="json"))
+
+
+_ROOT = Path(__file__).resolve().parents[2]  # the folder that holds lab/, examples/ and factors/
+_LANGUAGES = {".cypher": "cypher", ".py": "python", ".yaml": "yaml", ".yml": "yaml"}
+
+
+def _source_path(info: ModelInfo, factors_dir: Path) -> Path:
+    """Where an entry's code is. A model, or a factor whose source is a model, shows its example's `example.py`."""
+    f = info.factor
+    if f is not None and f.kind == "cypher":
+        return factors_dir / (f.query or "")
+    path = _ROOT / info.code_path
+    return path / "example.py" if path.suffix == "" else path
+
+
+def source_file(name: str) -> SourceFile:
+    """The text of one model's example or one factor's Cypher or Python (decision 43). Read only.
+
+    Only files under factors/, examples/ and lab/ with a known extension are served; anything else is 404, the same as
+    an unknown name, so the route cannot be walked to another file.
+    """
+    s = get_settings()
+    info = next((m for m in models_list().models if m.name == name), None)
+    if info is None:
+        raise NotFound(f"no model or factor named {name!r}")
+    factors_dir = s.factors_file.parent.resolve()
+    path = _source_path(info, factors_dir).resolve()
+    allowed = (factors_dir, (_ROOT / "examples").resolve(), (_ROOT / "lab").resolve())
+    if not any(path.is_relative_to(a) for a in allowed) or path.suffix not in _LANGUAGES or not path.is_file():
+        raise NotFound(f"{name!r} has no source file the lab can show")
+    shown = path.relative_to(_ROOT) if path.is_relative_to(_ROOT) else Path("factors") / path.relative_to(factors_dir)
+    return SourceFile(name=name, path=shown.as_posix(), language=_LANGUAGES[path.suffix],
+                      text=path.read_text(encoding="utf-8"))
 
 
 # ---- show code --------------------------------------------------------------------------------------------------

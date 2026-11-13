@@ -84,8 +84,12 @@ class CommunityPolicy(BaseModel):
 class Policy(BaseModel):
     """How factors become account scores.
 
-    risk_score_rules is the weighted mean of the cypher and python factors, risk_score_model the weighted mean of
-    the model factors, and risk_score their mean weighted by each side's total weight. A missing factor counts 0.
+    With combine noisy_or (decision 39, shipped): each score is 1 - prod(1 - weight * factor score) over its factors
+    (risk_score_rules over the cypher and python ones, risk_score_model over the model ones, risk_score over all);
+    a factor that does not fire changes nothing, and weights must be in [0, 1].
+    With combine weighted_mean: risk_score_rules is the weighted mean of the cypher and python factors,
+    risk_score_model the weighted mean of the model factors, and risk_score their mean weighted by each side's total
+    weight. A missing factor counts 0.
     An account at or above alert_threshold gets an Alert for the window.
     """
 

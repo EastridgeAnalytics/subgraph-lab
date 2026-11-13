@@ -28,7 +28,7 @@
       "type": "object"
     }
   },
-  "description": "How factors become account scores.\n\nrisk_score_rules is the weighted mean of the cypher and python factors, risk_score_model the weighted mean of\nthe model factors, and risk_score their mean weighted by each side's total weight. A missing factor counts 0.\nAn account at or above alert_threshold gets an Alert for the window.",
+  "description": "How factors become account scores.\n\nWith combine noisy_or (decision 39, shipped): each score is 1 - prod(1 - weight * factor score) over its factors\n(risk_score_rules over the cypher and python ones, risk_score_model over the model ones, risk_score over all);\na factor that does not fire changes nothing, and weights must be in [0, 1].\nWith combine weighted_mean: risk_score_rules is the weighted mean of the cypher and python factors,\nrisk_score_model the weighted mean of the model factors, and risk_score their mean weighted by each side's total\nweight. A missing factor counts 0.\nAn account at or above alert_threshold gets an Alert for the window.",
   "properties": {
     "alert_threshold": {
       "default": 0.6,
