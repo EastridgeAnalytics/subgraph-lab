@@ -65,6 +65,13 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
 31. **A search slice reads a run store whose first pass is done.** The estimate names its run, or uses the newest
     such run; with none, it says to pull a schema slice first. A run whose recipe has a search slices its own
     store after its first pass.
+32. **The lab creates uniqueness constraints on its own labels only** (`Alert`, `RiskCommunity`, `LabRun`) on the
+    master graph before the first push, `IF NOT EXISTS`, and the review lists them. Never on a customer label.
+33. **The vector query comes from the graph, not from the words.** Node2Vec embeddings describe structure, so a
+    text query is not embedded: its full-text hits are found first and their mean embedding is the vector query.
+    An account query uses that account's own embedding and summary.
+34. **Examples are importable.** `examples/` is a package; the first pass calls the Node2Vec example's `embed`,
+    and the scoring reads the TGN example's output, so each model runs in one place.
 
 ## Open
 
