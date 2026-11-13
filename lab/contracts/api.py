@@ -15,6 +15,8 @@ from lab.contracts.recipe import PullSpec, Recipe, SearchSpec
 ROUTES: list[tuple[str, str, str | None, str]] = [
     ("GET", "/api/health", None, "Health"),
     ("POST", "/api/connect/test", "ConnectTest", "ConnectResult"),
+    ("POST", "/api/connect/use", "ConnectTest", "ConnectResult"),
+    ("GET", "/api/connect", None, "ConnectResult"),
     ("POST", "/api/slice/estimate", "SliceRequest", "SliceEstimate"),
     ("POST", "/api/slice/run", "SliceRequest", "RunStarted"),
     ("GET", "/api/models", None, "ModelsList"),

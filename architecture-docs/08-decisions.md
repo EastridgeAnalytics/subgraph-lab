@@ -60,6 +60,8 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
 29. **The search surface has fixed names.** Accounts carry `risk_embedding` (pushed) and `lab_summary` (not
     pushed); the indexes are `account_embedding`, `account_summary`, `community_embedding` and
     `community_summary`, created after every pull with `LAB_EMBEDDING_DIM` dimensions.
+30. **The Connect screen can switch the master graph for this session.** `POST /api/connect/use` keeps the
+    credentials in the lab's memory only, never on disk and never in a response; `.env` stays the default.
 
 ## Open
 

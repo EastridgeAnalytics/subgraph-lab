@@ -24,7 +24,8 @@ export const mockData = {
 export async function mockHandler(method: string, path: string, _body?: unknown): Promise<unknown> {
   const p = path.split("?")[0];
   if (method === "GET" && p === "/api/health") return mockData.health;
-  if (method === "POST" && p === "/api/connect/test") return mockData.connect;
+  if (method === "POST" && (p === "/api/connect/test" || p === "/api/connect/use")) return mockData.connect;
+  if (method === "GET" && p === "/api/connect") return mockData.connect;
   if (method === "POST" && p === "/api/slice/estimate") return mockData.estimate;
   if (method === "POST" && (p === "/api/slice/run" || p === "/api/runs")) return { run_id: RUN };
   if (method === "GET" && p === "/api/runs") return { runs: [mockData.run] };

@@ -33,6 +33,8 @@ async function call<R>(method: "GET" | "POST", path: string, body?: unknown): Pr
 export const api = {
   health: () => call<T.Health>("GET", "/api/health"),
   connectTest: (b: T.ConnectTest) => call<T.ConnectResult>("POST", "/api/connect/test", b),
+  connectUse: (b: T.ConnectTest) => call<T.ConnectResult>("POST", "/api/connect/use", b),
+  connection: () => call<T.ConnectResult>("GET", "/api/connect"),
   sliceEstimate: (b: T.SliceRequest) => call<T.SliceEstimate>("POST", "/api/slice/estimate", b),
   sliceRun: (b: T.SliceRequest) => call<T.RunStarted>("POST", "/api/slice/run", b),
   models: () => call<T.ModelsList>("GET", "/api/models"),
