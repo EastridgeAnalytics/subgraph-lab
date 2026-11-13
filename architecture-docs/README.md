@@ -1,0 +1,26 @@
+# Architecture docs
+
+Read these first, people and agents, before changing code. Each page says what is designed. Nothing is built yet,
+so [99](99-build-status.md) is short. As pieces land, each page says what runs today and what is still design,
+under a heading that says so. A code change that makes a page wrong changes the page in the same commit.
+
+Read them in order. 00 is the picture. 01 to 07 follow the data through one run. 08 is what was decided and what
+is open. 88 is the product requirements. 99 is the state of the build.
+
+| Page | What it answers |
+|---|---|
+| [00 Overview](00-overview.md) | What subgraph-lab is, the one picture, what holds everywhere, the words we use |
+| [01 The round trip](01-the-round-trip.md) | How a subgraph gets from Aura into Relate, and how results get back |
+| [02 The slice](02-the-slice.md) | How search picks the part of the graph the models work on |
+| [03 Models and adapters](03-models-and-adapters.md) | How the slice reaches open-source models, and what comes back |
+| [04 Risk scores](04-risk-scores.md) | Factors, account scores, communities and community scores |
+| [05 Summaries](05-summaries.md) | How a community gets a written reason, and the checks on it |
+| [06 The app and the agent](06-the-app-and-the-agent.md) | The seven screens, and what an agent can read and do |
+| [07 What runs where](07-what-runs-where.md) | The containers, ports, settings and limits |
+| [08 Decisions](08-decisions.md) | Settled and open |
+| [88 Product requirements](88-product-requirements.md) | MVP 1.0: requirements, acceptance tests, scope |
+| [99 Build status](99-build-status.md) | What is built, partly built and not; the roadmap |
+
+Relate's own documentation is the source for every `relate` command and Cypher feature on these pages:
+[relatedb.ai/docs](https://relatedb.ai/docs/). Where a page says "from the docs", it means that. Where it says
+"to measure", nobody has measured it yet.
