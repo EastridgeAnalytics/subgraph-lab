@@ -66,6 +66,7 @@ export async function mockHandler(method: string, path: string, body?: unknown):
   if (method === "POST" && (p === "/api/slice/run" || p === "/api/runs")) return { run_id: RUN };
   if (method === "GET" && p === "/api/runs") return { runs: [mockData.run] };
   if (method === "GET" && p === `/api/runs/${RUN}`) return mockData.run;
+  if (method === "GET" && /^\/api\/runs\/[^/]+\/timeline$/.test(p)) return mockTimelineAnswer(path);
   const added = mockRunsAnswer(method, p, body);
   if (added !== undefined) return added;
   throw new Error(`no mock for ${method} ${p}`);
@@ -222,4 +223,38 @@ function mockRunsAnswer(method: string, p: string, body: unknown): unknown {
   if (method === "POST" && tail === "push" && hasReview) return mockPush(id, body);
   if (method === "POST" && tail === "resume" && id === mockRunIds.failed) { mockPolls.set(id, 4); return { run_id: id }; }
   return undefined;
+}
+
+// ---- Added by 3e: the Timeline screen ---------------------------------------------------------------------------------
+// 45 days from 2026-09-01, one point a day except 2026-09-07, which has no payments (so a day can be missing from the
+// answer, as in the lab's). Every number below is invented for the mock, not measured.
+export const MOCK_TIMELINE_START = "2026-09-01";
+export const MOCK_TIMELINE_DAYS = 45;
+const MOCK_TIMELINE_GAP = 6; // the day index with no payments
+const MOCK_TIMELINE_BOUNDS = { start: "2026-09-01T03:12:00Z", end: "2026-10-15T21:40:00Z" };
+
+const mockDayOf = (i: number) => new Date(Date.parse(`${MOCK_TIMELINE_START}T00:00:00Z`) + i * 86_400_000).toISOString().slice(0, 10);
+
+/** The lab's `GET /timeline`: one point per day with payments, up to `asOf` (a bare date means the end of that day;
+ *  none means to the end). `start` and `end` stay the bounds of the whole store whatever `asOf` is. */
+export function mockTimeline(asOf?: string | null): T.Timeline {
+  const cutoff = asOf ? Date.parse(asOf.length === 10 ? `${asOf}T23:59:59Z` : asOf) : null;
+  if (cutoff !== null && Number.isNaN(cutoff)) throw new Error(`as_of must be an ISO-8601 date or datetime, got ${asOf}`);
+  const points: T.TimelinePoint[] = [];
+  for (let i = 0; i < MOCK_TIMELINE_DAYS; i++) {
+    const at = `${mockDayOf(i)}T00:00:00Z`;
+    if (i === MOCK_TIMELINE_GAP || (cutoff !== null && Date.parse(at) > cutoff)) continue;
+    const payments = 30 + ((i * 37) % 29);
+    points.push({
+      at, payments, accounts: Math.min(payments * 2, 20 + ((i * 11) % 25)),
+      amount: Math.round(payments * (180 + ((i * 13) % 40)) * 100) / 100,
+    });
+  }
+  const as_of = cutoff === null ? null : new Date(cutoff).toISOString().replace(".000Z", "Z");
+  return { ...MOCK_TIMELINE_BOUNDS, as_of, points };
+}
+
+// The route for any run id: `?as_of=` in the path is read here, since mockHandler drops the query before it matches.
+function mockTimelineAnswer(path: string): T.Timeline {
+  return mockTimeline(new URLSearchParams(path.split("?")[1] ?? "").get("as_of"));
 }
