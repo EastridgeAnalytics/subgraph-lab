@@ -15,6 +15,7 @@ from lab.common import alert_key
 from lab.contracts.factors import FactorFile
 from lab.contracts.graph import ACCOUNT_RESULT_PROPS, ALERT_PROPS
 from lab.contracts.manifest import StepStatus
+from lab.contracts.recipe import Recipe
 from lab.contracts.staged import staged_errors
 from lab.runs import Run
 from lab.scoring import score
@@ -120,10 +121,47 @@ def test_a_model_factor_output_joins_the_score(fixture_run, staged):
     after = dict(zip(*staged["account"][0].select(KEY, "risk_score"), strict=True))
     assert counts["factors_ran"] == 7 and counts["factors_skipped"] == 0
     weight = {f.id: f.weight for f in FactorFile.load(REPO / "factors" / "factors.yaml").factors}
-    assert after[R1[0]] == pytest.approx(before[R1[0]] + weight["tgn"] / sum(weight.values()))
+    # the noisy-or: a model score of 1.0 at weight w leaves a share w of what was left, so it only adds
+    assert after[R1[0]] == pytest.approx(1 - (1 - before[R1[0]]) * (1 - weight["tgn"]))
+    assert after[R1[0]] > before[R1[0]]
     assert after["A0001"] == before["A0001"]  # no model score for it, so nothing moved
     model_side = dict(zip(*staged["account"][0].select(KEY, "risk_score_model"), strict=True))
-    assert model_side[R1[0]] == 1.0 and model_side["A0001"] == 0.0
+    assert model_side[R1[0]] == pytest.approx(weight["tgn"]) and model_side["A0001"] == 0.0  # one model factor: w * 1.0
+
+
+def test_the_shipped_policy_alerts_on_both_rings_and_not_on_the_look_alike(fixture_run, staged, truth):
+    """Decision 39 on the fixture: the strong rules alert alone, and the family on one laptop does not."""
+    score(fixture_run)
+    found, _ = staged["alert"]
+    precision, recall = precision_recall(found, truth)
+    assert set(R1) | set(R2) <= set(found["account_key"]) and not set(found["account_key"]) & set(L1)
+    assert precision >= 0.9 and recall >= 0.9
+
+
+def test_a_recipe_that_chooses_its_factors_scores_with_those_only(fixture_run, staged):
+    """Decision 40, through the whole step: the others are `not chosen`, count nothing and are not in `risk_factors`."""
+    fixture_run.recipe = Recipe(factors=["just_under_threshold", "fan_in_new_accounts"])
+    counts = score(fixture_run)
+    assert counts["factors"] == 7 and counts["factors_ran"] == 2 and counts["factors_not_chosen"] == 5
+    assert counts["factors_skipped"] == 0 and counts["factors_failed"] == 0
+    accounts, _ = staged["account"]
+    assert [f["id"] for f in json.loads(accounts["risk_factors"][0])] == ["just_under_threshold", "fan_in_new_accounts"]
+    found, _ = staged["alert"]
+    assert set(found["account_key"]) == set(R2)  # only structuring can alert when only its rules are chosen
+    for r in found.iter_rows(named=True):
+        assert {f["factor_id"] for f in json.loads(r["evidence"])["factors"]} <= {"just_under_threshold", "fan_in_new_accounts"}
+    note = reread(fixture_run).manifest.step("score").note
+    assert "tgn" not in note and "skipped" not in note  # not chosen is not a problem to report
+    fr = pl.read_parquet(fixture_run.paths.artifacts / "factor_results.parquet")
+    assert set(fr["factor_id"]) <= {"just_under_threshold", "fan_in_new_accounts"}
+
+
+def test_an_unknown_factor_id_fails_the_step_and_names_it(fixture_run, staged):
+    fixture_run.recipe = Recipe(factors=["shared_device_5plus", "nope"])
+    with pytest.raises(ValueError, match="nope"):
+        score(fixture_run)
+    step = reread(fixture_run).manifest.step("score")
+    assert step.status == StepStatus.FAILED and "nope" in step.note and staged == {}
 
 
 # ---- the slice ---------------------------------------------------------------------------------------------------

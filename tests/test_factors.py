@@ -150,9 +150,58 @@ def test_run_factors_reports_a_status_per_factor(shipped):
     assert s["velocity_anomaly"].status == "ran"  # lab.scoring.velocity exists since 3c
     assert s["tgn"].status == "skipped" and "no model output" in s["tgn"].reason and "examples/tgn" in s["tgn"].reason
     assert shipped.counts() == {"factors": 7, "factors_ran": 6, "factors_skipped": 1, "factors_failed": 0,
-                                "factor_rows": shipped.results.height}
+                                "factors_not_chosen": 0, "factor_rows": shipped.results.height}
     assert "skipped tgn" in shipped.note() and "skipped velocity_anomaly" not in shipped.note()
     assert shipped.version == FactorFile.load(FACTORS / "factors.yaml").version
+
+
+# ---- the recipe chooses its factors (decision 40) --------------------------------------------------------------------
+def test_a_recipe_runs_only_the_factors_it_chooses_and_reports_the_rest_not_chosen(fixture_run, shipped):
+    fixture_run.recipe = Recipe(factors=["just_under_threshold", "shared_device_5plus"])  # any order
+    fr = run_factors(fixture_run)
+    s = status(fr)
+    assert list(s) == [f.id for f in shipped.file.factors]  # a status for every factor in the file, in file order
+    assert [i for i, v in s.items() if v.status == "ran"] == ["shared_device_5plus", "just_under_threshold"]
+    others = [i for i in s if s[i].status == "not chosen"]
+    assert sorted(others) == sorted(set(s) - {"shared_device_5plus", "just_under_threshold"})
+    assert all(s[i].reason and s[i].accounts == 0 and s[i].seconds == 0 for i in others)
+    assert set(fr.results["factor_id"]) == {"shared_device_5plus", "just_under_threshold"}
+    # the chosen ones come out as they do when every factor runs
+    same = shipped.results.filter(pl.col("factor_id").is_in(["shared_device_5plus", "just_under_threshold"]))
+    assert fr.results.sort("factor_id", "key").equals(same.sort("factor_id", "key"))
+
+
+def test_not_chosen_is_neither_skipped_nor_failed_and_stays_out_of_the_note(fixture_run):
+    """tgn has no output on the fixture, so it is `skipped` when asked for and `not chosen` when it is not."""
+    fixture_run.recipe = Recipe(factors=["shared_device_5plus"])
+    fr = run_factors(fixture_run)
+    assert status(fr)["tgn"].status == "not chosen" and not fr.skipped and not fr.failed
+    assert fr.note() is None and [s.id for s in fr.not_chosen] == [i for i in status(fr) if i != "shared_device_5plus"]
+    assert fr.counts() == {"factors": 7, "factors_ran": 1, "factors_skipped": 0, "factors_failed": 0,
+                           "factors_not_chosen": 6, "factor_rows": fr.results.height}
+    fixture_run.recipe = Recipe(factors=["shared_device_5plus", "tgn"])
+    asked = run_factors(fixture_run)
+    assert status(asked)["tgn"].status == "skipped" and "skipped tgn" in asked.note()
+
+
+def test_an_unset_recipe_runs_every_factor_and_an_empty_one_runs_none(fixture_run, shipped):
+    assert fixture_run.recipe.factors is None and shipped.counts()["factors_not_chosen"] == 0
+    fixture_run.recipe = Recipe(factors=[])
+    fr = run_factors(fixture_run)
+    assert {s.status for s in fr.status} == {"not chosen"} and fr.results.height == 0
+    assert fr.results.schema == pl.Schema(RESULT_SCHEMA)
+
+
+def test_a_factor_id_the_file_does_not_have_is_an_error_that_names_it_before_anything_runs(fixture_run):
+    fixture_run.recipe = Recipe(factors=["shared_device_5plus", "no_such_factor", "or_this_one"])
+    with pytest.raises(ValueError, match="no_such_factor, or_this_one"):
+        run_factors(fixture_run)
+
+
+def test_the_choice_applies_to_a_slice_too(fixture_run):
+    fixture_run.recipe = Recipe(factors=["shared_device_5plus"])
+    fr = run_factors(fixture_run, [*R1[:2], L1[0]])
+    assert fired(fr, "shared_device_5plus") == set(R1[:2]) and set(fr.results["factor_id"]) == {"shared_device_5plus"}
 
 
 # ---- the slice ----------------------------------------------------------------------------------------------------

@@ -29,7 +29,7 @@ flowchart TB
 | Level | What it is | Where it lands in Aura |
 |---|---|---|
 | Risk factor | One reason, scored 0 to 1, with its evidence. A Cypher rule, a Python function or a model produces it | Inside the evidence, not as its own property |
-| Account score | The factors combined by the policy file. Every part stays visible | `risk_score`, `risk_score_model`, `risk_score_rules` and `risk_factors` on the Account |
+| Account score | The factors combined by the policy file as a noisy-or: a factor that does not fire changes nothing, and a new one can only add. Every part stays visible | `risk_score`, `risk_score_model`, `risk_score_rules` and `risk_factors` on the Account |
 | Community score | Built from the members and the shape of the group: how many members score high, the identifiers they share, money cycling inside the group, the share of new accounts, how fast money moves through | A `RiskCommunity` node with its score and summary, linked to its members |
 
 ## Adding a factor
@@ -40,24 +40,70 @@ A factor is one entry in `factors/factors.yaml`. The file is versioned and check
 - id: shared_device_5plus
   name: Five or more accounts on one device
   kind: cypher
-  query: factors/shared_device.cypher
+  query: shared_device.cypher
   threshold: 5
-  weight: 0.30
+  weight: 0.20
+- id: new_accounts_shared_identifier
+  name: New accounts sharing an identifier
+  kind: cypher
+  query: new_accounts_shared_identifier.cypher
+  threshold: 3
+  weight: 0.65
+- id: in_and_out_within_a_day
+  name: Money in and out of similar size within a day
+  kind: cypher
+  query: in_and_out_within_a_day.cypher
+  threshold: 3
+  weight: 0.65
+- id: just_under_threshold
+  name: Payments just under 10,000
+  kind: cypher
+  query: just_under_threshold.cypher
+  threshold: 3
+  weight: 0.65
+- id: fan_in_new_accounts
+  name: Fan-in from new accounts
+  kind: cypher
+  query: fan_in_new_accounts.cypher
+  threshold: 5
+  weight: 0.20
 - id: velocity_anomaly
   name: Outflow far above the account's own forecast
   kind: python
-  function: factors.velocity:score    # statsforecast
-  weight: 0.20
+  function: lab.scoring.velocity:score    # statsforecast
+  weight: 0.05
 - id: tgn
   name: Temporal model score
   kind: model
   source: examples/tgn
-  weight: 0.50
+  weight: 0.05
 ```
 
 - **Add an entry, re-run the recipe, and the new factor is in every score and every summary. No code change.**
 - **The weights and thresholds that ship are set for the demo data. On real data, the team that owns the review sets them.**
-- The MVP ships five rule factors, the velocity forecast and the TGN score.
+- The MVP ships five rule factors, the velocity forecast and the TGN score. The entries above are the shipped file's,
+  each with a `description` left out here.
+
+## How the factors combine
+
+`factors/policy.yaml` says `combine: noisy_or`. **A factor's weight is how much it alone can say, in [0, 1], and the
+score is `1 - Π(1 - wᵢ·sᵢ)` over the factors.** `risk_score_rules` is that over the Cypher and Python factors,
+`risk_score_model` over the model factors, and `risk_score` over all of them.
+
+- **A factor that does not fire, was skipped or failed changes nothing, and a new factor can only add.** Two
+  independent signals add up. The factors are taken as independent, so two that measure the same thing count twice.
+- **A weight outside [0, 1] is an error that names the factor.** It is never clipped.
+- **An account alerts at or above `alert_threshold`, 0.6 as shipped.** The shipped weights are three tiers: 0.65 for
+  the rules that alone are enough (new accounts sharing an identifier, money in and out within a day, payments just
+  under 10,000), 0.20 for the rules that only support (a shared device is also a family's laptop; fan-in from new
+  accounts is rare), and 0.05 for the velocity forecast and the TGN score, which did not separate planted accounts
+  from the rest on the seed (run `run-20261113T082716Z-52f819`). The supporting and unproven factors together cannot reach 0.6.
+- **A recipe can choose its factors.** `factors` in the recipe lists factor ids; unset means every factor in the file.
+  A factor it does not list is reported `not chosen`, does not run, and counts nothing. An id the file does not have
+  is an error that names it.
+- `combine: weighted_mean` is still available. There a factor that did not fire counts 0 and keeps its weight in the
+  divisor, so adding a factor lowers every score by its share, and the threshold must be set again.
+- Precision and recall of the alerts on the seed are on the measured page. To measure.
 
 ## Communities
 
