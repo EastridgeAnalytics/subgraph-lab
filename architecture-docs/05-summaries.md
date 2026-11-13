@@ -73,4 +73,4 @@ hybrid search over both.
 
 ## Where it lives
 
-`lab/summaries/`: the schema, the hasher, the three writers, the checks, the cache. Planned.
+`lab/summaries/`: the schema, the hasher, the three writers, the checks, the cache.

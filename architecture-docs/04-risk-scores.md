@@ -13,7 +13,7 @@ flowchart TB
   policy["Policy file<br/>weights · thresholds · how they add up"]
   account["Account score<br/>risk_score · risk_score_model · risk_score_rules · risk_factors"]
   links["Links inside the slice<br/>payments · shared devices, emails, addresses"]
-  comm["Communities<br/>connected components, then seeded Louvain"]
+  comm["Communities<br/>shared identifiers first, then payments and seeded Louvain"]
   cscore["Community score<br/>members · shared identifiers · cycles · new accounts · speed"]
   node["RiskCommunity node<br/>score · summary · run id · member links"]
   rule --> policy
@@ -159,4 +159,3 @@ Results has three buttons on every account and every community: confirmed, false
 ## Where it lives
 
 `factors/` for the file and its queries, `lab/scoring/` for the policy, the communities and the community score.
-Planned.

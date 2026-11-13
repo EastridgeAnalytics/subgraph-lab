@@ -16,8 +16,8 @@ Settled, then open. A later decision can replace an earlier one. The number stay
 6. **Nothing reaches the master graph without a dry run and a confirm.** Push never deletes.
 7. **Risk factors live in a YAML file** with a schema, and a policy file combines them. A new factor needs no
    code change.
-8. **Communities are found per slice with NetworkX**, connected components first, then seeded Louvain. igraph and
-   leidenalg are GPL and stay out.
+8. **Communities are found per slice with NetworkX**, connected components first, then seeded Louvain (grouped by shared
+   identifier first since decision 42). igraph and leidenalg are GPL and stay out.
 9. **Summaries come only from a checked evidence object**, carry the innocent explanation, and fall back to a
    template on any failed check. The Anthropic API writes them when a key is set, else the agent, else the
    template.

@@ -79,7 +79,7 @@ Every row was run against Relate 1.0.1 in wave 0 ([review](reviews/wave-0-relate
 | Word | Means |
 |---|---|
 | master graph | The full graph in Aura or Neo4j, the system of record. The lab reads slices from it and writes results back to it |
-| slice | Part of the graph, picked by labels and a window, by Cypher, or by search: these accounts and everything within two hops |
+| slice | Part of the graph, picked by labels and a window, by Cypher, or by search: the hits and the accounts `h` steps from them, one by default |
 | Relate | Neo4j's embedded graph database. It runs inside the lab, speaks Cypher, holds the slice, and pulls from and pushes to Neo4j |
 | hybrid search | A vector search and a full-text search run together, their results merged into one ranked list |
 | rank fusion | The merge: each hit scores 1 / (60 + its rank) in each list, and the scores add up |

@@ -70,7 +70,7 @@ inline in code.
 | `LAB_EMBEDDING_DIM` | 64 | Node2Vec's embedding size, and the vector indexes' dimensions |
 | `LAB_SHARED_MAX` | 50 | An identifier shared by more accounts than this links none of them for communities, and is counted |
 | `LAB_KEY_BATCH` | 500 | Account keys per Relate statement. Relate 1.0.1's `IN $keys` slows with the square of the list |
-| `LAB_NEW_ACCOUNT_DAYS` · `LAB_PASS_THROUGH_HOURS` · `LAB_ROUND_THRESHOLD` · `LAB_JUST_UNDER` | 60 · 24 · 10,000 · 0.05 | The account summary's phrases: "new account", "money in and out within a day", "payments just under 10,000" (the share below the round number) |
+| `LAB_NEW_ACCOUNT_DAYS` · `LAB_ROUND_THRESHOLD` · `LAB_JUST_UNDER` | 60 · 10,000 · 0.05 | The account summary's phrases: "new account" and "payments just under 10,000" (the share below the round number). "Money in and out within a day" is the factor's own query, with the factor's threshold |
 | `LAB_CYCLE_MAX_LENGTH` · `LAB_CYCLE_COUNT_CAP` | 6 · 1,000 | The longest payment cycle looked for, in accounts, and the most cycles counted per community |
 | `LAB_VELOCITY_HOLDOUT_DAYS` · `LAB_VELOCITY_MIN_HISTORY_DAYS` · `LAB_VELOCITY_MIN_ACTIVE_DAYS` | 14 · 28 · 3 | The velocity factor: the recent days held out, and the history an account needs to be scored |
 | `LAB_SUMMARY_SMALL_GROUP` | 8 | Up to this many members, money between them reads as a household in the template; more reads as a club or a market |

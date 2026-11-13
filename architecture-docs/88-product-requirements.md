@@ -25,7 +25,7 @@ connection and name the pull route that will run.
 API is not reachable, with the route recorded. R5 Recreate the vector and full-text indexes after every pull.
 
 **Find.** R6 Slice by labels, types and time window, by Cypher, or by search. R7 Search runs vector and full-text
-in one statement, fuses by rank, keeps the top `k` (default 50) and expands `h` hops (default 2). R8 Show hits,
+in one statement, fuses by rank, keeps the top `k` (default 50) and expands `h` account-to-account steps (default 1). R8 Show hits,
 size and memory before any model runs, and refuse past a cap.
 
 **Enrich.** R9 Adapters to an Arrow table, PyG `Data`, PyG `TemporalData` in the TGB layout, and NetworkX. R10

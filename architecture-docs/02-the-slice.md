@@ -97,4 +97,4 @@ gets an embedding, the average of its members'. "Communities like this one" is t
 
 ## Where it lives
 
-`lab/slice/`: the three slicers, the first pass, the index creation, the estimate. Planned.
+`lab/slice/`: the three slicers, the first pass, the index creation, the estimate.

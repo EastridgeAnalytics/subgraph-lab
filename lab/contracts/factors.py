@@ -77,7 +77,7 @@ class CommunityPolicy(BaseModel):
         "shared_identifiers": 0.2,  # how many identifiers members share, relative to the community's size
         "cycles": 0.15,  # money that comes back to where it started inside the community
         "new_accounts": 0.15,  # the share of members opened within LAB_NEW_ACCOUNT_DAYS
-        "speed": 0.15,  # how fast money moves through: in and out within LAB_PASS_THROUGH_HOURS
+        "speed": 0.15,  # how fast money moves through: the in_and_out_within_a_day factor's rows
     })
 
 

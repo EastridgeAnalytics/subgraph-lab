@@ -65,4 +65,4 @@ answer at once; the agent polls `run_status` (decision 38).
 
 ## Where it lives
 
-`app/` for the screens, `lab/api/` for the routes and the MCP tools. Planned.
+`app/` for the screens, `lab/api/` for the routes and the MCP tools.

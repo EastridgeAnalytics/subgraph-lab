@@ -39,10 +39,10 @@ flowchart LR
 | Adapter | Gives | Used by |
 |---|---|---|
 | none | An Arrow table. Relate returns Arrow, so pandas, Polars and DuckDB read it directly | Anything tabular |
-| `to_pyg()` | A PyG `Data` object: node features, edge index, timestamps | Node2Vec, GraphSAGE, GNNExplainer |
+| `to_pyg()` | An undirected graph for PyG: the edge index and the node count, accounts first, no features | Node2Vec, GraphSAGE |
 | `to_temporal()` | A PyG `TemporalData` object, the same `src, dst, t, msg` arrays the Temporal Graph Benchmark uses | TGN, and any model on the TGB leaderboard |
 | `to_networkx()` | A NetworkX graph, weighted by relationship kind | Louvain, cycles, connected components |
-| `to_series()` | A Cypher aggregation per account, in Nixtla's long format | statsforecast |
+| `to_series()` | Each account's outflow per period, summed in Polars from the payments, in Nixtla's long format | statsforecast |
 
 ## The four examples in the MVP
 
@@ -79,4 +79,4 @@ NetworkX does the community work. igraph and leidenalg are GPL and stay out of t
 
 ## Where it lives
 
-`lab/adapters/` for the five adapters, `examples/` for the four examples. Planned.
+`lab/adapters/` for the five adapters, `examples/` for the four examples.

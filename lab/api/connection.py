@@ -79,8 +79,10 @@ def check_connection(request: ConnectTest | None = None, settings: Settings | No
         version = agent.split("/", 1)[1] if "/" in agent else (agent or None)
         try:
             with driver.session(database=s.neo4j_database) as session:
+                # one row per component on Neo4j 2026; the kernel's is the server's version
                 row = session.run("CALL dbms.components() YIELD name, versions, edition "
-                                  "RETURN versions[0] AS version, edition").single()
+                                  "RETURN versions[0] AS version, edition "
+                                  "ORDER BY CASE name WHEN 'Neo4j Kernel' THEN 0 ELSE 1 END LIMIT 1").single()
             if row:
                 version, edition = row["version"] or version, row["edition"]
         except Exception:  # noqa: BLE001 (a user without that procedure still has a working connection)
