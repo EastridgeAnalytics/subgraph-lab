@@ -74,6 +74,8 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
     and the scoring reads the TGN example's output, so each model runs in one place.
 35. **A push never creates a customer node.** Before it sends anything, `apply` checks every account key in the push
     store against the master graph over Bolt and refuses the whole push when any is missing.
+36. **The community score's weights live in the policy file** (`community.weights`, `community.min_size`), beside
+    the account policy. Each part is in [0, 1] and the score is their weighted mean.
 
 ## Open
 

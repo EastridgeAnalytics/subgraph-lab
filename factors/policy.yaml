@@ -7,3 +7,11 @@ version: "1"
 combine: weighted_mean
 alert_threshold: 0.6
 window: P30D
+community:
+  min_size: 3
+  weights:
+    member_risk: 0.35
+    shared_identifiers: 0.2
+    cycles: 0.15
+    new_accounts: 0.15
+    speed: 0.15

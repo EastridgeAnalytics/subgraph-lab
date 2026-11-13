@@ -66,6 +66,20 @@ class FactorFile(BaseModel):
         return cls(version=str(raw.get("version") or digest), factors=raw.get("factors") or [])
 
 
+class CommunityPolicy(BaseModel):
+    """How a community's score is built from its members and its shape (page 04, level three). Each part is in
+    [0, 1]; the score is their weighted mean. A community smaller than `min_size` is not scored or staged."""
+
+    min_size: int = Field(3, ge=2)
+    weights: dict[str, float] = Field(default_factory=lambda: {
+        "member_risk": 0.35,  # the share of members at or above the alert threshold, and their mean score
+        "shared_identifiers": 0.2,  # how many identifiers members share, relative to the community's size
+        "cycles": 0.15,  # money that comes back to where it started inside the community
+        "new_accounts": 0.15,  # the share of members opened within LAB_NEW_ACCOUNT_DAYS
+        "speed": 0.15,  # how fast money moves through: in and out within LAB_PASS_THROUGH_HOURS
+    })
+
+
 class Policy(BaseModel):
     """How factors become account scores.
 
@@ -78,6 +92,7 @@ class Policy(BaseModel):
     combine: Literal["weighted_mean"] = "weighted_mean"
     alert_threshold: float = Field(0.6, ge=0, le=1)
     window: str = "P30D"
+    community: CommunityPolicy = Field(default_factory=CommunityPolicy)
 
     @classmethod
     def load(cls, path: Path) -> Policy:
