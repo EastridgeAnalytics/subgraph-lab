@@ -42,7 +42,7 @@ Relate store through Relate's Python library in `UNWIND` batches, under the run 
 - **One format in: a table with a key column.**
 - One commit cannot exceed 64 MiB. The loader starts at 20,000 rows, raises until refused, and backs off by half.
 - Alert keys are `sha1(run_id | account_id | window)`. Community keys are `sha1(run_id | lowest member key)`.
-- The library is on GitHub releases, not PyPI. The release URL and checksum are pinned.
+- The library is `relate-db` on PyPI, pinned at 1.0.1.
 
 ## Review
 

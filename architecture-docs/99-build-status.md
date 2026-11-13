@@ -1,7 +1,8 @@
 # 99 · Build status
 
 **Nothing is built as of 12 November 2026.** The design is complete. This page changes in the same commit as any
-piece that lands.
+piece that lands. The build runs by [97](97-development-plan.md), wave by wave. Each wave's report goes in
+`reviews/`.
 
 ## The MVP, by 11 December 2026
 

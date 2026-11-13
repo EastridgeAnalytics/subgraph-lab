@@ -4,6 +4,9 @@ Read `architecture-docs/README.md` first, then the pages it lists, before readin
 removes a piece updates that page in the same commit. A change that makes any page wrong changes the page in the
 same commit.
 
+Building it? `architecture-docs/97-development-plan.md` is the plan. The director runs it; builders read their
+brief and the pages it names.
+
 Never write a number that has not been measured as if it had been. Tag it "to measure". When it is measured, say
 which run produced it.
 

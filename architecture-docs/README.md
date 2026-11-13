@@ -5,7 +5,7 @@ so [99](99-build-status.md) is short. As pieces land, each page says what runs t
 under a heading that says so. A code change that makes a page wrong changes the page in the same commit.
 
 Read them in order. 00 is the picture. 01 to 07 follow the data through one run. 08 is what was decided and what
-is open. 88 is the product requirements. 99 is the state of the build.
+is open. 88 is the product requirements. 99 is the state of the build. Building? 97 is the plan the director runs.
 
 | Page | What it answers |
 |---|---|
@@ -19,6 +19,7 @@ is open. 88 is the product requirements. 99 is the state of the build.
 | [07 What runs where](07-what-runs-where.md) | The containers, ports, settings and limits |
 | [08 Decisions](08-decisions.md) | Settled and open |
 | [88 Product requirements](88-product-requirements.md) | MVP 1.0: requirements, acceptance tests, scope |
+| [97 Development plan](97-development-plan.md) | The waves, the director and the builders, how the work runs |
 | [99 Build status](99-build-status.md) | What is built, partly built and not; the roadmap |
 
 Relate's own documentation is the source for every `relate` command and Cypher feature on these pages:
