@@ -48,6 +48,15 @@ IN_COMMUNITY = "IN_RISK_COMMUNITY"  # (:Account)-[:IN_RISK_COMMUNITY]->(:RiskCom
 
 RISK_PREFIX = "risk_"
 
+# The run store's search surface (decision 29). The first pass writes the embedding and the summary; the indexes
+# are created after every pull. Community nodes in the run store carry their own embedding and summary.
+EMBEDDING_PROP = "risk_embedding"  # pushed back too
+SUMMARY_PROP = "lab_summary"  # the template account summary; stays in the run store
+ACCOUNT_VECTOR_INDEX = "account_embedding"
+ACCOUNT_TEXT_INDEX = "account_summary"
+COMMUNITY_VECTOR_INDEX = "community_embedding"
+COMMUNITY_TEXT_INDEX = "community_summary"
+
 ACCOUNT_RESULT_PROPS = (
     "risk_score",
     "risk_score_model",

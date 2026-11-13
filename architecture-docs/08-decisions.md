@@ -57,6 +57,9 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
 27. **The lab reads through `relate.connect()`.** Its cursor has `data()`, `to_arrow()`, `to_df()` and
     `graph()`. `relate.Database.execute_arrow()` exists too; the lab does not need it.
 28. **`LabRun` is its own push**, after everything else in the run has landed.
+29. **The search surface has fixed names.** Accounts carry `risk_embedding` (pushed) and `lab_summary` (not
+    pushed); the indexes are `account_embedding`, `account_summary`, `community_embedding` and
+    `community_summary`, created after every pull with `LAB_EMBEDDING_DIM` dimensions.
 
 ## Open
 

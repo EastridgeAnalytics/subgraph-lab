@@ -65,6 +65,8 @@ inline in code.
 | `LAB_LOUVAIN_RESOLUTION` · `LAB_COMPONENT_MIN` | 1.0 · 30 | Louvain's resolution, and the component size above which Louvain runs |
 | `LAB_WEIGHT_DEVICE` · `LAB_WEIGHT_EMAIL` · `LAB_WEIGHT_ADDRESS` · `LAB_WEIGHT_PAYMENT` | 3.0 · 2.0 · 1.5 · 1.0 | Link weights for communities |
 | `LAB_SEED` | 42 | The random seed for the generator, Node2Vec and Louvain |
+| `LAB_EMBEDDING_DIM` | 64 | Node2Vec's embedding size, and the vector indexes' dimensions |
+| `LAB_DELTA_SAMPLE` | 1,000 | Accounts sampled from the master graph for the review's delta |
 | `LAB_DATA_DIR` | `data` | Run stores, push stores and manifests |
 | `LAB_PORT` · `LAB_RELATE_BOLT_PORT` · `LAB_RELATE_HTTP_PORT` · `LAB_RELATE_MCP_PORT` | 8000 · 7687 · 7474 · 7475 | Host ports for the lab and Relate |
 | `LAB_NEO4J_BOLT_PORT` · `LAB_NEO4J_HTTP_PORT` | 17687 · 17474 | Host ports for the bundled Neo4j |

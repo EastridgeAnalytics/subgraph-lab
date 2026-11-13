@@ -45,6 +45,7 @@ class Settings(BaseSettings):
     weight_payment: float = Field(1.0, alias="LAB_WEIGHT_PAYMENT")
     seed: int = Field(42, alias="LAB_SEED")
     delta_sample: int = Field(1_000, alias="LAB_DELTA_SAMPLE")
+    embedding_dim: int = Field(64, alias="LAB_EMBEDDING_DIM")
 
     # Where things live
     data_dir: Path = Field(Path("data"), alias="LAB_DATA_DIR")
