@@ -1,0 +1,95 @@
+{
+ "dry_run": {
+  "args": [
+   "push",
+   "--to",
+   "creds.env",
+   "--database",
+   "push",
+   "--labels",
+   "Account,Alert,RiskCommunity",
+   "--dry-run",
+   "--json"
+  ],
+  "returncode": 0,
+  "stdout": "{\"bytesSent\":0,\"dryRun\":true,\"elapsedMs\":4,\"entities\":[{\"batches\":1,\"created\":2,\"entity\":\"Account\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"account_id\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\",\"total\":2,\"updated\":0},{\"batches\":1,\"created\":1,\"entity\":\"Alert\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"alert_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\",\"total\":1,\"updated\":0},{\"batches\":1,\"created\":1,\"entity\":\"RiskCommunity\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"community_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`RiskCommunity` {`community_key`: row.key.`community_key`}) SET n += row.props\",\"total\":1,\"updated\":0},{\"batches\":1,\"created\":1,\"entity\":\"(Alert)-[:ALERT_ON]->(Account)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Alert` {`alert_key`: row.start.`alert_key`}) MATCH (b:`Account` {`account_id`: row.end.`account_id`}) MERGE (a)-[r:`ALERT_ON`]->(b) SET r += row.props\",\"total\":1,\"updated\":0},{\"batches\":1,\"created\":1,\"entity\":\"(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Account` {`account_id`: row.start.`account_id`}) MATCH (b:`RiskCommunity` {`community_key`: row.end.`community_key`}) MERGE (a)-[r:`IN_RISK_COMMUNITY`]->(b) SET r += row.props\",\"total\":1,\"updated\":0}],\"rowsSent\":0,\"statementsSent\":0}\n",
+  "stderr": ""
+ },
+ "success": {
+  "args": [
+   "push",
+   "--to",
+   "creds.env",
+   "--database",
+   "push",
+   "--labels",
+   "Account,Alert,RiskCommunity",
+   "--json"
+  ],
+  "returncode": 0,
+  "stdout": "{\"bytesSent\":2654,\"dryRun\":false,\"elapsedMs\":202,\"entities\":[{\"batches\":1,\"created\":0,\"entity\":\"Account\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"account_id\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\",\"total\":2,\"updated\":2},{\"batches\":1,\"created\":1,\"entity\":\"Alert\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"alert_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\",\"total\":1,\"updated\":0},{\"batches\":1,\"created\":1,\"entity\":\"RiskCommunity\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"community_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`RiskCommunity` {`community_key`: row.key.`community_key`}) SET n += row.props\",\"total\":1,\"updated\":0},{\"batches\":1,\"created\":1,\"entity\":\"(Alert)-[:ALERT_ON]->(Account)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Alert` {`alert_key`: row.start.`alert_key`}) MATCH (b:`Account` {`account_id`: row.end.`account_id`}) MERGE (a)-[r:`ALERT_ON`]->(b) SET r += row.props\",\"total\":1,\"updated\":0},{\"batches\":1,\"created\":1,\"entity\":\"(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Account` {`account_id`: row.start.`account_id`}) MATCH (b:`RiskCommunity` {`community_key`: row.end.`community_key`}) MERGE (a)-[r:`IN_RISK_COMMUNITY`]->(b) SET r += row.props\",\"total\":1,\"updated\":0}],\"rowsSent\":6,\"statementsSent\":5}\n",
+  "stderr": ""
+ },
+ "success_again": {
+  "args": [
+   "push",
+   "--to",
+   "creds.env",
+   "--database",
+   "push",
+   "--labels",
+   "Account,Alert,RiskCommunity",
+   "--json"
+  ],
+  "returncode": 0,
+  "stdout": "{\"bytesSent\":2654,\"dryRun\":false,\"elapsedMs\":146,\"entities\":[{\"batches\":1,\"created\":0,\"entity\":\"Account\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"account_id\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\",\"total\":2,\"updated\":2},{\"batches\":1,\"created\":0,\"entity\":\"Alert\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"alert_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\",\"total\":1,\"updated\":1},{\"batches\":1,\"created\":0,\"entity\":\"RiskCommunity\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"community_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`RiskCommunity` {`community_key`: row.key.`community_key`}) SET n += row.props\",\"total\":1,\"updated\":1},{\"batches\":1,\"created\":0,\"entity\":\"(Alert)-[:ALERT_ON]->(Account)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Alert` {`alert_key`: row.start.`alert_key`}) MATCH (b:`Account` {`account_id`: row.end.`account_id`}) MERGE (a)-[r:`ALERT_ON`]->(b) SET r += row.props\",\"total\":1,\"updated\":1},{\"batches\":1,\"created\":0,\"entity\":\"(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Account` {`account_id`: row.start.`account_id`}) MATCH (b:`RiskCommunity` {`community_key`: row.end.`community_key`}) MERGE (a)-[r:`IN_RISK_COMMUNITY`]->(b) SET r += row.props\",\"total\":1,\"updated\":1}],\"rowsSent\":6,\"statementsSent\":5}\n",
+  "stderr": ""
+ },
+ "failed_first_alert": {
+  "args": [
+   "push",
+   "--to",
+   "creds.env",
+   "--database",
+   "push",
+   "--labels",
+   "Account,Alert,RiskCommunity",
+   "--json"
+  ],
+  "returncode": 1,
+  "stdout": "{\"bytesSent\":739,\"dryRun\":false,\"elapsedMs\":98,\"entities\":[{\"batches\":1,\"created\":0,\"entity\":\"Account\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"account_id\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\",\"total\":2,\"updated\":2},{\"batches\":0,\"created\":1,\"entity\":\"Alert\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"alert_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\",\"total\":1,\"updated\":0},{\"batches\":0,\"created\":0,\"entity\":\"RiskCommunity\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"community_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`RiskCommunity` {`community_key`: row.key.`community_key`}) SET n += row.props\",\"total\":1,\"updated\":0},{\"batches\":0,\"created\":0,\"entity\":\"(Alert)-[:ALERT_ON]->(Account)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Alert` {`alert_key`: row.start.`alert_key`}) MATCH (b:`Account` {`account_id`: row.end.`account_id`}) MERGE (a)-[r:`ALERT_ON`]->(b) SET r += row.props\",\"total\":1,\"updated\":0},{\"batches\":0,\"created\":0,\"entity\":\"(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Account` {`account_id`: row.start.`account_id`}) MATCH (b:`RiskCommunity` {`community_key`: row.end.`community_key`}) MERGE (a)-[r:`IN_RISK_COMMUNITY`]->(b) SET r += row.props\",\"total\":1,\"updated\":0}],\"rowsSent\":2,\"statementsSent\":1}\n",
+  "stderr": "Error: push failed: batch 1 of Alert (rows 0..1) failed: HTTP 400: {\"errors\":[{\"code\":\"Neo.ClientError.Request.Invalid\",\"message\":\"Bad Request\"}]} statement: UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\n"
+ },
+ "failed_second_batch": {
+  "args": [
+   "push",
+   "--to",
+   "creds.env",
+   "--database",
+   "push",
+   "--labels",
+   "Account,Alert,RiskCommunity",
+   "--batch-size",
+   "1",
+   "--json"
+  ],
+  "returncode": 1,
+  "stdout": "{\"bytesSent\":1392,\"dryRun\":false,\"elapsedMs\":128,\"entities\":[{\"batches\":2,\"created\":0,\"entity\":\"Account\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"account_id\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\",\"total\":2,\"updated\":2},{\"batches\":1,\"created\":2,\"entity\":\"Alert\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"alert_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\",\"total\":3,\"updated\":1},{\"batches\":0,\"created\":0,\"entity\":\"RiskCommunity\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"community_key\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`RiskCommunity` {`community_key`: row.key.`community_key`}) SET n += row.props\",\"total\":1,\"updated\":0},{\"batches\":0,\"created\":0,\"entity\":\"(Alert)-[:ALERT_ON]->(Account)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Alert` {`alert_key`: row.start.`alert_key`}) MATCH (b:`Account` {`account_id`: row.end.`account_id`}) MERGE (a)-[r:`ALERT_ON`]->(b) SET r += row.props\",\"total\":1,\"updated\":0},{\"batches\":0,\"created\":0,\"entity\":\"(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MATCH (a:`Account` {`account_id`: row.start.`account_id`}) MATCH (b:`RiskCommunity` {`community_key`: row.end.`community_key`}) MERGE (a)-[r:`IN_RISK_COMMUNITY`]->(b) SET r += row.props\",\"total\":1,\"updated\":0}],\"rowsSent\":3,\"statementsSent\":3}\n",
+  "stderr": "Error: push failed: batch 2 of Alert (rows 1..2) failed: HTTP 400: {\"errors\":[{\"code\":\"Neo.ClientError.Request.Invalid\",\"message\":\"Bad Request\"}]} statement: UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\n"
+ },
+ "unreachable": {
+  "args": [
+   "push",
+   "--to",
+   "dead.env",
+   "--database",
+   "push",
+   "--labels",
+   "Account",
+   "--json"
+  ],
+  "returncode": 1,
+  "stdout": "{\"bytesSent\":0,\"dryRun\":false,\"elapsedMs\":4109,\"entities\":[{\"batches\":0,\"created\":0,\"entity\":\"Account\",\"incomparableWarnings\":0,\"kind\":\"node\",\"mergeKey\":[\"account_id\"],\"policy\":\"add\",\"skipped\":{\"dangling\":0,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\",\"total\":2,\"updated\":0},{\"batches\":0,\"created\":0,\"entity\":\"(dangling)\",\"incomparableWarnings\":0,\"kind\":\"relationship\",\"mergeKey\":[],\"policy\":\"skip\",\"skipped\":{\"dangling\":2,\"policy\":0,\"remoteNewer\":0,\"unkeyed\":0},\"statement\":\"\",\"total\":2,\"updated\":0}],\"rowsSent\":0,\"statementsSent\":0}\n",
+  "stderr": "Error: push failed: pre-read of Account failed: HTTP request to http://localhost:1/db/neo4j/query/v2 failed: io: No connection could be made because the target machine actively refused it. (os error 10061)\n"
+ }
+}
