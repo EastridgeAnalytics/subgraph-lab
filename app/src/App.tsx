@@ -3,6 +3,8 @@ import { NavLink, Navigate, Route, Routes } from "react-router-dom";
 import { isMock } from "./api/client";
 import { ShowCode } from "./components/ShowCode";
 import Connect from "./screens/Connect";
+import Review from "./screens/Review";
+import Run from "./screens/Run";
 import Slice from "./screens/Slice";
 import { RunProvider } from "./state/run";
 
@@ -22,6 +24,8 @@ export const SCREENS = [
 const BUILT: Record<string, ReactElement> = {
   "/connect": <Connect />,
   "/slice": <Slice />,
+  "/run": <Run />,
+  "/review": <Review />,
 };
 
 function Placeholder({ label }: { label: string }) {
