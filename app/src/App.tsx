@@ -1,4 +1,10 @@
+import type { ReactElement } from "react";
 import { NavLink, Navigate, Route, Routes } from "react-router-dom";
+import { isMock } from "./api/client";
+import { ShowCode } from "./components/ShowCode";
+import Connect from "./screens/Connect";
+import Slice from "./screens/Slice";
+import { RunProvider } from "./state/run";
 
 // The seven MVP screens (page 06). Each screen lives in src/screens/<Name>.tsx and is filled in by its track.
 // The order of the nav is the order of the loop.
@@ -12,30 +18,53 @@ export const SCREENS = [
   { path: "/timeline", label: "Timeline" },
 ] as const;
 
+// The screens that are built. A track adds its screen here; the rest show the placeholder.
+const BUILT: Record<string, ReactElement> = {
+  "/connect": <Connect />,
+  "/slice": <Slice />,
+};
+
 function Placeholder({ label }: { label: string }) {
   return <p className="text-slate-500">{label} is not built yet.</p>;
 }
 
 export default function App() {
   return (
-    <div className="min-h-screen bg-white">
-      <header className="border-b border-slate-200 px-6 py-3 flex items-center gap-6">
-        <span className="font-semibold">subgraph-lab</span>
-        <nav className="flex gap-4 text-sm">
-          {SCREENS.map((s) => (
-            <NavLink key={s.path} to={s.path}
-              className={({ isActive }) => (isActive ? "text-indigo-700 font-medium" : "text-slate-600 hover:text-slate-900")}>
-              {s.label}
-            </NavLink>
-          ))}
-        </nav>
-      </header>
-      <main className="px-6 py-6 max-w-6xl">
-        <Routes>
-          <Route path="/" element={<Navigate to="/connect" replace />} />
-          {SCREENS.map((s) => <Route key={s.path} path={s.path} element={<Placeholder label={s.label} />} />)}
-        </Routes>
-      </main>
-    </div>
+    <RunProvider>
+      <div className="min-h-screen bg-white text-slate-800">
+        <header className="flex items-center gap-6 border-b border-slate-200 px-6 py-3">
+          <span className="flex items-center gap-2 font-semibold text-slate-900">
+            <span aria-hidden="true" className="h-2.5 w-2.5 rounded-full bg-indigo-600" />
+            subgraph-lab
+          </span>
+          <nav aria-label="Screens" className="flex gap-1 text-sm">
+            {SCREENS.map((s) => (
+              <NavLink key={s.path} to={s.path}
+                className={({ isActive }) =>
+                  "rounded-md px-3 py-1.5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 " +
+                  (isActive ? "bg-indigo-50 font-medium text-indigo-700" : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")}>
+                {s.label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="ml-auto flex items-center gap-3">
+            {isMock() && (
+              <span className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-900">
+                Mock data
+              </span>
+            )}
+            <ShowCode />
+          </div>
+        </header>
+        <main className="max-w-6xl px-6 py-6">
+          <Routes>
+            <Route path="/" element={<Navigate to="/connect" replace />} />
+            {SCREENS.map((s) => (
+              <Route key={s.path} path={s.path} element={BUILT[s.path] ?? <Placeholder label={s.label} />} />
+            ))}
+          </Routes>
+        </main>
+      </div>
+    </RunProvider>
   );
 }
