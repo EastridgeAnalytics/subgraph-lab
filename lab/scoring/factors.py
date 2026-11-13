@@ -185,7 +185,9 @@ def _query_text(factor: Factor, base: Path) -> str:
     return path.read_text(encoding="utf-8")
 
 
-def _run_cypher(run: Run, factor: Factor, base: Path, keys: list[str] | None) -> pl.DataFrame:
+def run_cypher(run: Run, factor: Factor, base: Path, keys: list[str] | None) -> pl.DataFrame:
+    """One Cypher factor on `keys` (or every account), in key batches. The signals reuse it, so a factor and the
+    community score never hold two definitions of the same pattern."""
     query = _query_text(factor, base)
     # LAB_KEY_BATCH keys at a time, as the adapters send them (a long IN list is slow in Relate 1.0.1). Each row
     # belongs to the account the query anchors on, so the batches never overlap.
@@ -313,4 +315,4 @@ def _evidence_json(text: str | None, default: str) -> str:
         return canonical_json({"text": text})
 
 
-_RUNNERS = {"cypher": _run_cypher, "python": _run_python, "model": _run_model}
+_RUNNERS = {"cypher": run_cypher, "python": _run_python, "model": _run_model}

@@ -32,6 +32,7 @@ from lab.common import canonical_json, get_logger
 from lab.contracts.evidence import Evidence, Summary
 from lab.settings import Settings, get_settings
 from lab.summaries.cache import SummaryCache
+from lab.summaries.cache import evidence_hash as cache_hash
 from lab.summaries.checks import PARTS_HELP, IsAccount, check
 from lab.summaries.template import template_summary
 
@@ -200,8 +201,8 @@ class Writer:
         s, model = self.settings, self.settings.model
         if not self.uses_api:
             return Written(template_for(evidence, None, None, self.is_account, s))
-        evidence_hash = evidence.hash()
-        cached = self.cache.get(evidence_hash, model)
+        evidence_hash = evidence.hash()  # the Summary names the object; the cache is keyed without run and key
+        cached = self.cache.get(cache_hash(evidence), model)
         if cached is not None:  # checked again: the checks may have changed since the answer was cached
             checks, why = check(cached, evidence, is_account=self.is_account, max_words=s.summary_words)
             if why is None:
@@ -223,5 +224,5 @@ class Writer:
         if why is not None:
             log.warning("summary for %s failed its checks: %s", evidence.key, [k for k, ok in checks.items() if not ok])
             return Written(template_for(evidence, f"checks failed: {why}", checks, self.is_account, s), failed_check=True)
-        self.cache.put(evidence_hash, model, text)
+        self.cache.put(cache_hash(evidence), model, text)
         return Written(Summary(key=evidence.key, text=text, source="api", model=model, evidence_hash=evidence_hash, checks=checks))

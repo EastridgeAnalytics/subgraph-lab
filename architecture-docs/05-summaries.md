@@ -26,11 +26,12 @@ flowchart LR
 One per community and one per alert. Checked against a JSON schema and hashed with SHA-256 before anything reads
 it. It holds:
 
-- the member count, the score and its parts
-- the identifiers members share, and how many share each one
-- money in, money out, cycles found, and the time span
-- the risk factors that fired, with counts and evidence ids
-- the top members by score, by key only
+- the member count, the score and its parts (for a community, also how it formed: `formed_by_identifier`)
+- the identifiers members share, and how many share each one (at most `LAB_EVIDENCE_MAX_IDENTIFIERS`)
+- money in, money out, time-respecting cycles found (each payment after the one before it; `signals.payment_cycles`, the
+  same definition the community score uses), and the time span
+- the risk factors that fired, with counts and evidence ids (at most `LAB_EVIDENCE_MAX_IDS` ids each)
+- the top members by score, by key only (`LAB_EVIDENCE_TOP_MEMBERS` of them)
 - how the community compares to the rest of the slice
 
 **Evidence carries keys and totals. Never names.**
@@ -56,8 +57,13 @@ explanation to rule out, such as a family sharing a laptop or a payroll account 
 
 - **Evidence leaves the container only when the key is set.**
 - Each summary is stored with its evidence hash, the model and the source: API, agent or template.
-- The cache key is the evidence hash plus the model. A re-run with the same evidence makes no new call.
+- The cache key is the evidence hash plus the model, where the hash leaves out the run id and the object's key. The same
+  evidence in a new run makes no new call.
 - About a thousand tokens of evidence in and 200 at most out, per summary. Cost per community is to measure.
+
+`score` stages the alert and community rows once, after their summaries are written; `summarise` stages nothing.
+The template reads a group of `LAB_SUMMARY_SMALL_GROUP` members or fewer as a household, and a bigger one as a club or a
+market.
 
 ## Where summaries go
 

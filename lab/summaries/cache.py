@@ -5,15 +5,28 @@ re-run with the same evidence and the same model finds its answer here and makes
 ever put in: the template is not cached as if it were an API answer, a failed answer is not cached, and an agent's
 text is not cached (it has no model). The last line for a key wins. A line that cannot be read is skipped.
 
-`evidence.hash()` includes the run id and the object's key, so two runs never share a hash: the cache serves a re-score
-of the same run, not a new run of the same data. The key function is `cache_key`, the one place to change that.
+The hash that keys the cache is `evidence_hash(evidence)` below: the evidence's own hash without `run_id` and `key`, which
+name the run and the object and say nothing about the pattern. The same evidence in a new run, whose community and alert keys
+are new, finds the answer a run before it paid for. (`Evidence.hash()`, with both, is what the staged rows and the summary
+carry: it names the object.) A cache file written before this change holds the old hashes; they never match, and cost
+one call each.
 """
 from __future__ import annotations
 
 import json
 from pathlib import Path
 
+from lab.common import evidence_hash as hash_of
 from lab.common import iso_utc, summary_cache_path
+from lab.contracts.evidence import Evidence
+
+NOT_THE_PATTERN = ("run_id", "key")  # what names the run and the object, not what the evidence shows
+
+
+def evidence_hash(evidence: Evidence) -> str:
+    """The cache's hash of `evidence`: SHA-256 of the evidence without `run_id` and `key`."""
+    body = evidence.model_dump(mode="json")
+    return hash_of({k: v for k, v in body.items() if k not in NOT_THE_PATTERN})
 
 
 def cache_key(evidence_hash: str, model: str) -> tuple[str, str]:

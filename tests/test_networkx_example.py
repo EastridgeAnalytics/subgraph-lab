@@ -1,7 +1,7 @@
-"""Track 3c: the NetworkX example, communities and money cycling (page 03), on the lab's own community code.
+"""Track 3c and 5b: the NetworkX example, communities and money cycling (page 03), on the lab's own community and cycle code.
 
-`lab.scoring.communities` is track 3a's. Without it the example has nothing to import, so this module is skipped
-until 3a is merged.
+`lab.scoring.communities` is track 3a's and `lab.scoring.signals` is 5b's: the example groups with the first and counts
+cycles with the second, and keeps no copy of either.
 """
 from __future__ import annotations
 
@@ -18,12 +18,21 @@ from lab.common.store import rows
 from lab.contracts.recipe import Recipe
 from lab.contracts.staged import staged_errors
 from lab.runs import Run
+from lab.settings import get_settings, reload_settings
 
 pytest.importorskip("lab.scoring.communities")
 
 import examples.networkx as pkg  # noqa: E402
 from examples.networkx import cycles_by_account, example  # noqa: E402
 from tests.fixtures.make_fixture import L1, R1, R2  # noqa: E402
+
+
+@pytest.fixture
+def restore_settings(monkeypatch):
+    yield monkeypatch
+    monkeypatch.undo()
+    reload_settings()
+
 
 SLICE = list(dict.fromkeys(R1 + R2 + [f"A{i:04d}" for i in range(1, 31)]))  # 38 accounts, as a search slice would be
 
@@ -34,14 +43,15 @@ def write_slice(run) -> None:
 
 
 def pairs_store(data_dir, pairs: list[tuple[str, str]]) -> Run:
-    """A store of accounts and the payments between them, one payment per pair given (a pair may repeat)."""
+    """A store of accounts and the payments between them, one payment per pair given (a pair may repeat). Each payment is
+    a day after the one before it in the list, so the list is the order the money moved in."""
     run = Run.create(Recipe(), data_dir=data_dir)
     conn = run.store()
     names = sorted({a for pair in pairs for a in pair})
     conn.execute("UNWIND $keys AS k CREATE (:Account {account_id: k})", {"keys": names})
-    batch = [{"s": s, "d": d, "id": f"T{i}"} for i, (s, d) in enumerate(pairs)]
+    batch = [{"s": s, "d": d, "id": f"T{i}", "ts": f"2026-06-{i + 1:02d}T00:00:00Z"} for i, (s, d) in enumerate(pairs)]
     conn.execute("UNWIND $rows AS r MATCH (s:Account {account_id: r.s}), (d:Account {account_id: r.d}) "
-                 "CREATE (s)-[:TX {tx_id: r.id, amount: 100.0, ts: datetime('2026-06-01T00:00:00Z')}]->(d)",
+                 "CREATE (s)-[:TX {tx_id: r.id, amount: 100.0, ts: datetime(r.ts)}]->(d)",
                  {"rows": batch})
     return run
 
@@ -60,14 +70,16 @@ def test_the_example_is_importable_and_under_100_lines_of_code():
     assert len(code) < 100, f"{len(code)} lines of code"
 
 
-def test_the_example_uses_the_labs_community_code_and_has_no_louvain_of_its_own():
-    """Decision 34: one place per job."""
+def test_the_example_uses_the_labs_community_and_cycle_code_and_has_none_of_its_own():
+    """Decision 34 and the review's section 3: one place per job."""
     import lab.scoring.communities as communities
+    import lab.scoring.signals as signals
 
-    assert example.communities is communities
+    assert example.communities is communities and example.signals is signals
     names = {n.id for n in ast.walk(ast.parse(inspect.getsource(example))) if isinstance(n, ast.Name)}
     names |= {n.attr for n in ast.walk(ast.parse(inspect.getsource(example))) if isinstance(n, ast.Attribute)}
     assert not [n for n in names if "louvain" in n.lower() or "modularity" in n.lower()]
+    assert not [n for n in names if "simple_cycles" in n or "MAX_CYCLE" in n or "length_bound" in n]  # no search, no bound of its own
 
 
 def test_every_account_in_the_slice_has_a_count_and_the_ring_members_have_one_or_more(fixture_run):
@@ -103,7 +115,9 @@ def test_what_counts_as_a_cycle(data_dir):
     pairs += [("d", "e"), ("e", "f")]  # a chain: money goes on, not back
     pairs += [("g", "h"), ("h", "g")]  # two accounts paying each other: a cycle of two
     pairs += [("s", "s")]  # an account paying itself is not a cycle
-    long = [f"r{i}" for i in range(example.MAX_CYCLE + 1)]
+    pairs += [("z", "y"), ("y", "x"), ("x", "z")]  # a ring that runs backwards through the alphabet and forwards in time
+    pairs += [("w", "v"), ("u", "w"), ("v", "u")]  # three edges paid in an order that is no loop in time
+    long = [f"r{i}" for i in range(get_settings().cycle_max_length + 1)]
     pairs += [(long[i], long[(i + 1) % len(long)]) for i in range(len(long))]  # a ring one account too long
     run = pairs_store(data_dir, pairs)
     try:
@@ -112,8 +126,33 @@ def test_what_counts_as_a_cycle(data_dir):
     finally:
         run.close()
     assert {k: got[k] for k in "abcdefghs"} == {"a": 1, "b": 1, "c": 1, "d": 0, "e": 0, "f": 0, "g": 1, "h": 1, "s": 0}
+    assert all(got[k] == 1 for k in "zyx")  # z pays y, y pays x, x pays z, each after the one before
+    assert all(got[k] == 0 for k in "wvu")  # w pays v, then u pays w, then v pays u: not each after the one before
     assert all(got[k] == 0 for k in long)
-    assert example.MAX_CYCLE == 6
+
+
+def test_a_ring_paid_in_the_wrong_order_is_not_a_cycle(data_dir):
+    forward = pairs_store(data_dir, [("a", "b"), ("b", "c"), ("c", "a")])
+    try:
+        assert cycles_by_account(forward)["cycles"].to_list() == [1, 1, 1]
+    finally:
+        forward.close()
+    backward = pairs_store(data_dir, [("c", "a"), ("b", "c"), ("a", "b")])  # the same three edges, paid in the opposite order
+    try:
+        assert cycles_by_account(backward)["cycles"].to_list() == [0, 0, 0]
+    finally:
+        backward.close()
+
+
+def test_the_length_bound_is_the_setting(data_dir, restore_settings):
+    run = pairs_store(data_dir, [(f"r{i}", f"r{(i + 1) % 4}") for i in range(4)])  # a ring of four
+    try:
+        assert cycles_by_account(run)["cycles"].to_list() == [1, 1, 1, 1]
+        restore_settings.setenv("LAB_CYCLE_MAX_LENGTH", "3")
+        reload_settings()
+        assert cycles_by_account(run)["cycles"].to_list() == [0, 0, 0, 0]
+    finally:
+        run.close()
 
 
 def test_a_ring_only_counts_inside_a_community(data_dir, monkeypatch):

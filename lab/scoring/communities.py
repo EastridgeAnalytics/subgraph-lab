@@ -1,19 +1,28 @@
 """Communities (page 04, level three): who is grouped with whom inside the slice, and how to put the groups in the run store.
 
-`find_communities(run, keys)` takes the slice as the account graph the NetworkX adapter builds (a payment links two
-accounts, a shared device, email or address links them harder, `lab/adapters/nx.py`) and finds the groups in two
-steps:
+`find_communities(run, keys)` groups the slice's accounts in two steps (decision 42):
 
-1. Connected components. A component with no more than `LAB_COMPONENT_MIN` accounts is one community as it stands.
-2. Seeded Louvain (`LAB_SEED`, `LAB_LOUVAIN_RESOLUTION`), on the components that are bigger than that. Louvain is
-   the only reason a component is ever cut.
+1. Shared identifiers first. Accounts joined by a device, an email or an address that at most `LAB_SHARED_MAX` accounts of
+   the slice use are linked, and each connected component of at least the policy's `community.min_size` accounts is a
+   community as it stands (`formed` is `"identifier"`). A planted ring on one device is one community of exactly its
+   members, whatever else its accounts pay.
+2. Then payments. Louvain's resolution limit merges small clusters into big ones, so it only sees the accounts the first
+   step left. Those are grouped on their payment graph: a payment links two accounts once, either way
+   (`LAB_WEIGHT_PAYMENT`). A connected component with no more than `LAB_COMPONENT_MIN` accounts is one community as it
+   stands, and a bigger one is cut by seeded Louvain (`LAB_SEED`, `LAB_LOUVAIN_RESOLUTION`). These have `formed`
+   `"payment"`.
 
-An account with no link is not a community, and neither is a Louvain group of one. The result is the same for the
-same seed, across runs and across Python processes: a component is handed to Louvain with its nodes and edges
-sorted, so neither set order nor hash randomisation reaches it.
+An account with no link is not a community, and neither is a Louvain group of one. An identifier component under
+`min_size` is not a community either: its accounts go on to the payment step. The result is the same for the same seed,
+across runs and across Python processes: a component is handed to Louvain with its nodes and edges sorted, so neither set
+order nor hash randomisation reaches it.
+
+A community is a `Community`: a frozen set of account keys that also says how it `formed`. It compares equal to a plain
+set of the same keys.
 
 `ring_recall` is the A11 measurement: of the planted rings, how many came out whole, and how many look-alike groups
-landed in a community that scores like an alert. It reports; it asserts nothing.
+landed in a community that scores like an alert. It reports; it asserts nothing. It also says which kind of community
+holds each ring, so the measured page can report each kind.
 
 The store half. `embed_communities` gives each community the mean of its members' `risk_embedding`, and
 `write_communities` puts every community into the run store as a `RiskCommunity` node (`embedding`, `score`, `size`,
@@ -29,14 +38,14 @@ import networkx as nx
 import numpy as np
 import polars as pl
 
-from lab.adapters import reads, to_networkx
+from lab.adapters import reads
 from lab.common import get_logger
 from lab.contracts.factors import Policy
 from lab.contracts.graph import COMMUNITY_KEY, COMMUNITY_LABEL, EMBEDDING_PROP, IN_COMMUNITY
 from lab.roundtrip.indexes import COMMUNITY_EMBEDDING_PROP
 from lab.roundtrip.loader import load_rows
 from lab.roundtrip.queries import ident
-from lab.scoring.policy import _EDGE
+from lab.scoring.policy import _EDGE, load_policy
 from lab.settings import get_settings
 
 if TYPE_CHECKING:
@@ -45,22 +54,86 @@ if TYPE_CHECKING:
 log = get_logger("scoring.communities")
 
 COMMUNITIES_FILE = "communities.parquet"  # in the run's artifacts: every scored community with its members, for 3b
+IDENTIFIER, PAYMENT = "identifier", "payment"  # how a community formed: `formed` in the file, a part in `score_parts`
+
+
+class Community(frozenset):
+    """A community: its account keys (a frozen set, equal to a plain set of the same keys) and `formed`, which is
+    `"identifier"` or `"payment"`. A plain set that gets scored is taken to have formed by payment."""
+
+    formed: str
+
+    def __new__(cls, members: Iterable[str] = (), formed: str = PAYMENT) -> Community:
+        if formed not in (IDENTIFIER, PAYMENT):
+            raise ValueError(f"a community forms by {IDENTIFIER!r} or {PAYMENT!r}, not {formed!r}")
+        self = super().__new__(cls, members)
+        self.formed = formed
+        return self
 
 
 # ---- finding ---------------------------------------------------------------------------------------------------
-def find_communities(run: Run, keys: list[str] | None = None) -> list[set[str]]:
-    """The communities of the slice (`keys`; None is every account in the run store), as sets of account keys.
+def find_communities(run: Run, keys: list[str] | None = None, min_size: int | None = None) -> list[Community]:
+    """The communities of the slice (`keys`; None is every account in the run store), as `Community` sets of account keys.
 
-    Biggest first, ties by lowest member key. Every set has at least two accounts: it is not yet the policy's
-    `min_size`, which `score_communities` applies.
+    Identifier communities first, then payment communities among the accounts they leave (see the module docstring).
+    `min_size` is the size an identifier component needs to be a community: the policy's `community.min_size`
+    unless given. Biggest first, ties by lowest member key. Every set has at least two accounts; the payment ones
+    are not yet cut to the policy's `min_size`, which `score_communities` applies.
     """
-    G = to_networkx(run, keys=keys)
-    groups = split_graph(G)
+    s = get_settings()
+    min_size = load_policy(run).community.min_size if min_size is None else min_size
+    accounts = reads.accounts(run, keys)["key"].to_list()
+    first, too_shared = identifier_groups(reads.identifiers(run, keys), s.shared_max, min_size)
+    taken = set().union(*first) if first else set()
+    left = [a for a in accounts if a not in taken]
+    G = payment_graph(run, left)
+    second = split_graph(G)
+    groups = sorted(
+        [Community(g, IDENTIFIER) for g in first] + [Community(g, PAYMENT) for g in second],
+        key=lambda c: (-len(c), min(c)),
+    )
     log.info(
-        "communities: %d accounts, %d links, %d communities (%d identifiers too shared to link)",
-        G.number_of_nodes(), G.number_of_edges(), len(groups), G.graph.get("skipped_identifiers", 0),
+        "communities: %d accounts; %d by shared identifier (%d accounts, %d identifiers too shared to link); "
+        "%d by payment (%d accounts of the %d left, %d links)",
+        len(accounts), len(first), len(taken), too_shared, len(second), sum(len(g) for g in second), len(left),
+        G.number_of_edges(),
     )
     return groups
+
+
+def identifier_groups(links: pl.DataFrame, shared_max: int, min_size: int) -> tuple[list[set[str]], int]:
+    """The connected components of the shared-identifier graph that have at least `min_size` accounts, and how many
+    identifiers were too widely shared to link anyone.
+
+    `links` is `reads.identifiers`: `account`, `identifier`, `label`, `kind`. An identifier that two to `shared_max`
+    accounts of `links` use links them all; one that more use links none (a landlord's address, a public computer).
+    """
+    if links.is_empty():
+        return [], 0
+    node = ["kind", "label", "identifier"]
+    sizes = links.group_by(node).len(name="used_by")
+    too_shared = sizes.filter(pl.col("used_by") > shared_max).height
+    usable = links.join(sizes.filter(pl.col("used_by").is_between(2, shared_max)).select(node), on=node)
+    # each identifier links its accounts to the lowest of them: the same components as every pair, with far fewer links
+    spokes = usable.with_columns(anchor=pl.col("account").min().over(node)).filter(pl.col("account") != pl.col("anchor"))
+    G = nx.Graph()
+    G.add_edges_from(zip(spokes["anchor"], spokes["account"], strict=True))
+    groups = [set(c) for c in nx.connected_components(G) if len(c) >= min_size]
+    return sorted(groups, key=lambda c: (-len(c), min(c))), too_shared
+
+
+def payment_graph(run: Run, keys: list[str] | None = None) -> nx.Graph:
+    """The accounts in scope as an undirected graph where a payment between two of them, either way and however many,
+    links them once with `LAB_WEIGHT_PAYMENT`. Every account in scope is a node, linked or not."""
+    pairs = reads.payments(run, keys, detail=False).filter(pl.col("src") != pl.col("dst"))
+    lo = pl.when(pl.col("src") < pl.col("dst")).then(pl.col("src")).otherwise(pl.col("dst"))
+    hi = pl.when(pl.col("src") < pl.col("dst")).then(pl.col("dst")).otherwise(pl.col("src"))
+    edges = pairs.select(u=lo, v=hi).unique().sort("u", "v")
+    weight = get_settings().weight_payment
+    G = nx.Graph()
+    G.add_nodes_from(keys if keys is not None else reads.accounts(run)["key"])
+    G.add_edges_from((u, v, {"weight": weight}) for u, v in edges.iter_rows())
+    return G
 
 
 def split_graph(
@@ -68,7 +141,7 @@ def split_graph(
 ) -> list[set[str]]:
     """Components, then Louvain on the ones bigger than `component_min`. The knobs default to the settings.
 
-    `G` is the weighted graph of `to_networkx(how="communities")`: edges carry `weight`.
+    `G` is a weighted graph: edges carry `weight`.
     """
     s = get_settings()
     component_min = s.component_min if component_min is None else component_min
@@ -106,8 +179,8 @@ def ring_recall(
 ) -> dict[str, Any]:
     """How the communities line up with the planted rings and look-alikes (A11). Reports; never raises on a miss.
 
-    `communities` is the scored table (`member_keys` and, for the look-alike count, `score`: what
-    `score_communities` returns and `communities.parquet` holds), or just the member sets `find_communities`
+    `communities` is the scored table (`member_keys` and, for the look-alike count, `score`, and for the kinds `formed`:
+    what `score_communities` returns and `communities.parquet` holds), or just the member sets `find_communities`
     returns. `truth` has `account_id`, `ring_id` and `lookalike_id` (empty or null for none), as the fixture's
     `ground_truth.csv`. A group's accounts that are in no community count as apart. Restrict `truth` to the slice
     first when the run searched one, or the accounts outside it count as missed.
@@ -116,29 +189,39 @@ def ring_recall(
     - `mostly_whole`: more than `mostly` of the ring's members are in one community. It includes the whole ones.
     - `lookalikes_in_high_scoring_community`: look-alike groups whose biggest community scores at or above
       `alert_threshold` (the policy file's, when not given). None when the communities carry no score.
+    - `formed`, on each ring and look-alike: how the community that holds most of it formed, `"identifier"` or
+      `"payment"` (None when the communities do not say). `rings_by_formed` counts the rings, the whole ones and the
+      mostly whole ones by that kind.
 
     A group's biggest community is the one holding most of its members; a tie goes to the higher score.
     """
-    groups, scores = _as_groups(communities)
+    groups, scores, formed = _as_groups(communities)
     scored = isinstance(communities, pl.DataFrame) and "score" in communities.columns
     if scored and alert_threshold is None:
         alert_threshold = _policy_threshold()
 
     rings = _truth_groups(truth, "ring_id")
     lookalikes = _truth_groups(truth, "lookalike_id")
-    by_ring = {name: _together(members, groups, scores) for name, members in rings.items()}
+    by_ring = {name: _together(members, groups, scores, formed) for name, members in rings.items()}
     for r in by_ring.values():
         r["whole"] = r["together"] == r["members"]
         r["mostly_whole"] = r["share"] > mostly
-    by_lookalike = {name: _together(members, groups, scores) for name, members in lookalikes.items()}
+    by_lookalike = {name: _together(members, groups, scores, formed) for name, members in lookalikes.items()}
     for r in by_lookalike.values():
         score = r["community_score"]
         r["high"] = None if not scored else score is not None and score >= alert_threshold - _EDGE
+    by_kind: dict[str, dict[str, int]] = {}
+    for r in by_ring.values():
+        kind = by_kind.setdefault(str(r["formed"]), {"rings": 0, "whole": 0, "mostly_whole": 0})
+        kind["rings"] += 1
+        kind["whole"] += int(r["whole"])
+        kind["mostly_whole"] += int(r["mostly_whole"])
     return {
         "rings": len(by_ring),
         "whole": sum(r["whole"] for r in by_ring.values()),
         "mostly_whole": sum(r["mostly_whole"] for r in by_ring.values()),
         "mostly_share": mostly,
+        "rings_by_formed": dict(sorted(by_kind.items())),
         "by_ring": by_ring,
         "lookalikes": len(by_lookalike),
         "lookalikes_in_high_scoring_community": sum(bool(r["high"]) for r in by_lookalike.values()) if scored else None,
@@ -147,13 +230,16 @@ def ring_recall(
     }
 
 
-def _as_groups(communities: pl.DataFrame | Iterable[Iterable[str]]) -> tuple[list[set[str]], list[float | None]]:
+def _as_groups(
+    communities: pl.DataFrame | Iterable[Iterable[str]],
+) -> tuple[list[set[str]], list[float | None], list[str | None]]:
     if isinstance(communities, pl.DataFrame):
         groups = [set(m) for m in communities["member_keys"].to_list()]
         scores = communities["score"].to_list() if "score" in communities.columns else [None] * len(groups)
-        return groups, scores
-    groups = [set(c) for c in communities]
-    return groups, [None] * len(groups)
+        formed = communities["formed"].to_list() if "formed" in communities.columns else [None] * len(groups)
+        return groups, scores, formed
+    found = list(communities)
+    return [set(c) for c in found], [None] * len(found), [getattr(c, "formed", None) for c in found]
 
 
 def _truth_groups(truth: pl.DataFrame, column: str) -> dict[str, set[str]]:
@@ -164,18 +250,20 @@ def _truth_groups(truth: pl.DataFrame, column: str) -> dict[str, set[str]]:
     return dict(sorted(out.items()))
 
 
-def _together(members: set[str], groups: list[set[str]], scores: list[float | None]) -> dict[str, Any]:
-    """How many of `members` the biggest community holds, which one that is, and its size and score."""
-    best, best_score, best_size = 0, None, 0
-    for group, score in zip(groups, scores, strict=True):
+def _together(
+    members: set[str], groups: list[set[str]], scores: list[float | None], formed: list[str | None]
+) -> dict[str, Any]:
+    """How many of `members` the biggest community holds, which one that is, and its size, score and kind."""
+    best, best_score, best_size, best_formed = 0, None, 0, None
+    for group, score, how in zip(groups, scores, formed, strict=True):
         n = len(members & group)
         if n == 0:
             continue
         if n > best or (n == best and score is not None and (best_score is None or score > best_score)):
-            best, best_score, best_size = n, score, len(group)
+            best, best_score, best_size, best_formed = n, score, len(group), how
     return {
         "members": len(members), "together": best, "share": best / len(members),
-        "community_size": best_size, "community_score": best_score,
+        "community_size": best_size, "community_score": best_score, "formed": best_formed,
     }
 
 
@@ -209,8 +297,10 @@ def embed_communities(run: Run, df: pl.DataFrame) -> pl.DataFrame:
 
 
 def for_stage(run: Run, df: pl.DataFrame) -> pl.DataFrame:
-    """The table `run.stage(df, "community_key", "community")` takes: `df` without `embedding` when it should not go
-    back, which is when the recipe does not write vectors back (`write_back.vectors`) or no member has one yet."""
+    """The table `run.stage(df, "community_key", "community")` takes: `df` without `formed` (it is in the file and in the
+    score parts, not a staged column) and without `embedding` when it should not go back, which is when the recipe does
+    not write vectors back (`write_back.vectors`) or no member has one yet."""
+    df = df.drop("formed", strict=False)
     if run.recipe.write_back.vectors and df["embedding"].null_count() < df.height:
         return df
     return df.drop("embedding")

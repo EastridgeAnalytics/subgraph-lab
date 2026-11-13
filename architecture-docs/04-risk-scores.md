@@ -107,17 +107,38 @@ score is `1 - Π(1 - wᵢ·sᵢ)` over the factors.** `risk_score_rules` is that
 
 ## Communities
 
-Inside each slice the lab links accounts by payments and by shared devices, emails and addresses, with a shared
-device weighing more than one payment. Then NetworkX finds communities.
+Inside each slice the lab groups accounts in two steps (decision 42), and NetworkX does the second.
 
-- **Connected components first. Louvain runs only on the big pieces.**
-- **Louvain is seeded, so a re-run gives the same groups.**
-- Resolution is a knob. Methods that maximise modularity tend to merge small clusters inside big graphs, and
-  fraud rings are small clusters. The slice keeps the graph small, and the measured page reports how many planted
-  rings came out whole. To measure.
+- **Shared identifiers first.** Accounts joined by a device, an email or an address that at most `LAB_SHARED_MAX` accounts
+  of the slice use are linked. Each connected component of at least the policy's `community.min_size` accounts is a
+  community as it stands. A planted ring on one device is one community of its members, whatever else they pay. An
+  identifier used by more accounts than that links none, and a component under `min_size` goes on to the next step.
+- **Then payments, among the accounts left.** A payment links two accounts once, either way. Connected components come
+  first, and Louvain runs only on the big pieces (more than `LAB_COMPONENT_MIN` accounts). **Louvain is seeded, so a
+  re-run gives the same groups.** Louvain never sees an identifier community, because maximising modularity merges small
+  clusters inside big graphs (the resolution limit), and fraud rings are small clusters.
+- Each community is tagged by how it formed, `identifier` or `payment`: the `formed` column of `communities.parquet`, and
+  `formed_by_identifier` (1 or 0) among the `score_parts`. It is not a staged column and not a part of the score. The
+  measured page reports ring recall for each kind. To measure.
+- On the seed slice (run `run-20261113T082716Z-52f819`, 6,546 accounts), the first communities came out as 29 with the
+  largest at 758 accounts and a median of 112. Grouped by identifier first they come out as 65 (45 by identifier, 20 by
+  payment) with the largest at 651 and a median of 6. A ring with no shared identifier still depends on Louvain on
+  payments; the measured page says how many such rings come out whole.
 - Community keys are `sha1(run_id | lowest member key)`. A later run makes new communities and leaves the old
   ones as history.
 - Whole-graph communities with GDS Leiden on Aura Graph Analytics are release 1.1.
+
+The community score's five parts are `member_risk` (the policy's `community.member_risk_share` mixes the share of members
+at the alert threshold with their mean score), `shared_identifiers`, `cycles`, `new_accounts` and `speed`. Three of them
+use the shared definitions in `lab/scoring/signals.py`, which the first pass's summary phrases and the evidence use too:
+
+- **Cycles are time-respecting.** A cycle is a loop of at most `LAB_CYCLE_MAX_LENGTH` accounts where each pays the next and
+  each payment comes after the one before it. A loop paid in the wrong order is not money that came back. Cycles are
+  counted up to `LAB_CYCLE_COUNT_CAP` per community.
+- **Money in and out within a day is the factor's.** The `speed` part and the summary phrase run
+  `factors/in_and_out_within_a_day.cypher` with the factor's threshold (similar amounts within 24 hours). There is no
+  second definition.
+- **New accounts** are those opened within `LAB_NEW_ACCOUNT_DAYS` of the newest payment.
 
 ## The reviewer's decision
 

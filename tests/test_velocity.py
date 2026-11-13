@@ -25,6 +25,7 @@ from lab.contracts.factors import FACTOR_RESULT_COLUMNS
 from lab.contracts.recipe import Recipe
 from lab.runs import Run
 from lab.scoring import load_factor_file, run_factors, velocity
+from lab.settings import get_settings, reload_settings
 from tests.fixtures.graph_loader import GRAPH
 from tests.fixtures.make_fixture import R1, R2
 
@@ -150,7 +151,7 @@ def test_one_statsforecast_call_covers_every_account(fixture_run, monkeypatch):
     df = velocity.score(fixture_run)
     assert len(calls) == 1
     _, kwargs = calls[0]
-    assert kwargs["h"] == velocity.HOLDOUT_DAYS == 14
+    assert kwargs["h"] == get_settings().velocity_holdout_days == 14  # a setting, LAB_VELOCITY_HOLDOUT_DAYS
     fitted_on = kwargs["df"]
     assert fitted_on["unique_id"].n_unique() == df.height > 50  # every scored account is in that one frame
     last = fitted_on["ds"].max()
@@ -177,10 +178,32 @@ def test_an_account_whose_outflow_jumps_scores_higher_than_a_steady_one(story):
 def test_too_little_history_gets_no_row(story):
     got = by_key(velocity.score(story))
     assert set(got) == {"STEADY", "SPIKE", "QUIET"}
-    assert "THIN" not in got  # fewer than MIN_ACTIVE_DAYS days with a payment before the held-out days
-    assert "SHORT" not in got  # a payment every day, but fewer than MIN_HISTORY_DAYS days of history
+    assert "THIN" not in got  # fewer than LAB_VELOCITY_MIN_ACTIVE_DAYS days with a payment before the held-out days
+    assert "SHORT" not in got  # a payment every day, but fewer than LAB_VELOCITY_MIN_HISTORY_DAYS days of history
     assert "NEW" not in got  # its first payment is inside the held-out days: no forecast to measure it against
-    assert velocity.MIN_ACTIVE_DAYS == 3 and velocity.MIN_HISTORY_DAYS == 28
+    s = get_settings()
+    assert (s.velocity_min_active_days, s.velocity_min_history_days) == (3, 28)
+
+
+def test_the_holdout_and_the_history_an_account_needs_are_settings(story, monkeypatch):
+    monkeypatch.setenv("LAB_VELOCITY_HOLDOUT_DAYS", "7")
+    reload_settings()
+    try:
+        got = by_key(velocity.score(story))
+        assert got["SPIKE"]["holdout_days"] == 7 and got["SPIKE"]["actual_total"] == 7_000.0  # a week of 1,000 a day
+        assert got["SPIKE"]["holdout_from"] == (DAY0 + timedelta(days=LAST - 6)).date().isoformat()
+        monkeypatch.delenv("LAB_VELOCITY_HOLDOUT_DAYS")
+        monkeypatch.setenv("LAB_VELOCITY_MIN_HISTORY_DAYS", "110")  # the longest history here is 105 days
+        reload_settings()
+        assert velocity.score(story).is_empty()
+        monkeypatch.delenv("LAB_VELOCITY_MIN_HISTORY_DAYS")
+        monkeypatch.setenv("LAB_VELOCITY_MIN_ACTIVE_DAYS", "1")  # THIN has two payments in its history now enough; SHORT still short
+        reload_settings()
+        got = by_key(velocity.score(story))
+        assert "THIN" in got and "SHORT" not in got
+    finally:
+        monkeypatch.undo()
+        reload_settings()
 
 
 def test_the_history_starts_at_the_accounts_first_payment_not_at_the_window(data_dir):

@@ -1,4 +1,4 @@
-"""Track 3b: summaries (page 05, R16 to R18, A9): the template, the checks, the three writers, the cache, the step.
+"""Track 3b and 5b: summaries (page 05, R16 to R18, A9): the template, the checks, the three writers, the cache, the step.
 
 The Anthropic client is always a fake: no key is set on this machine, no test calls the API, and a test that sets a key
 makes `anthropic.Anthropic` return a fake whose calls it records. `world` (from `test_evidence`) is a run after `score`
@@ -21,6 +21,7 @@ from lab.common.store import rows
 from lab.contracts.evidence import Comparison, Evidence, FactorHit, MemberScore, Money, SharedIdentifier
 from lab.contracts.graph import ALERT_PROPS, COMMUNITY_PROPS
 from lab.contracts.manifest import StepStatus
+from lab.contracts.recipe import Recipe
 from lab.roundtrip.indexes import create_indexes
 from lab.runs import Run
 from lab.scoring import score
@@ -38,6 +39,7 @@ from lab.summaries import (
     summarise,
     template_summary,
 )
+from lab.summaries.cache import evidence_hash as cache_hash
 from lab.summaries.checks import CHECKS, count_words, sentences
 from lab.summaries.writers import MAX_API_ERRORS, SUMMARY_SCHEMA, SYSTEM_PROMPT
 from tests import test_evidence
@@ -445,7 +447,7 @@ def test_the_cache_prevents_a_second_call(world, monkeypatch, tmp_path):
     assert (first.cached, again.cached) == (False, True)
     assert again.summary.source == "api" and again.summary.model == MODEL and again.summary.text == first.summary.text
     (line,) = path.read_text(encoding="utf-8").splitlines()
-    assert {k: json.loads(line)[k] for k in ("evidence_hash", "model")} == {"evidence_hash": ev.hash(), "model": MODEL}
+    assert {k: json.loads(line)[k] for k in ("evidence_hash", "model")} == {"evidence_hash": cache_hash(ev), "model": MODEL}
 
 
 def test_the_cache_key_is_the_evidence_hash_plus_the_model(world, monkeypatch, tmp_path):
@@ -460,7 +462,7 @@ def test_the_cache_key_is_the_evidence_hash_plus_the_model(world, monkeypatch, t
     assert again.cached is False and again.summary.model == "claude-other-1"
     assert len(SummaryCache(path)) == 3
     changed = ev.model_copy(update={"score": 0.1234})  # other numbers, so another hash
-    assert SummaryCache(path).get(changed.hash(), MODEL) is None
+    assert SummaryCache(path).get(cache_hash(changed), MODEL) is None
 
 
 def test_the_template_is_never_cached_as_an_api_answer(world, monkeypatch, tmp_path):
@@ -481,12 +483,43 @@ def test_the_template_is_never_cached_as_an_api_answer(world, monkeypatch, tmp_p
 def test_a_cached_answer_is_checked_again_and_a_bad_one_is_asked_for_again(world, monkeypatch, tmp_path):
     ev = community_evidence(world, R1)
     path = tmp_path / "c.jsonl"
-    SummaryCache(path).put(ev.hash(), MODEL, "Three accounts are a fraudster. That could indicate coordination. A benign cause is a household.")
+    SummaryCache(path).put(cache_hash(ev), MODEL, "Three accounts are a fraudster. That could indicate coordination. A benign cause is a household.")
     path.write_text("not json\n" + path.read_text(encoding="utf-8") + '{"evidence_hash": "x"}\n', encoding="utf-8")  # damaged lines
     api = install(monkeypatch, ideal)
     written = Writer(cache=SummaryCache(path), is_account=lookup(world)).write(ev)
     assert len(api.calls) == 1 and written.cached is False and "fraudster" not in written.summary.text
-    assert SummaryCache(path).get(ev.hash(), MODEL) == written.summary.text  # the new answer wins
+    assert SummaryCache(path).get(cache_hash(ev), MODEL) == written.summary.text  # the new answer wins
+
+
+def test_the_cache_hash_leaves_out_the_run_and_the_key_and_nothing_else(world):
+    ev = community_evidence(world, R1)
+    other_run = ev.model_copy(update={"run_id": "run-another", "key": "another-key"})
+    assert other_run.hash() != ev.hash() and cache_hash(other_run) == cache_hash(ev)  # the object's name is not the pattern
+    assert len(cache_hash(ev)) == 64
+    for change in ({"score": 0.1234}, {"member_count": ev.member_count + 1}, {"member_keys": ev.member_keys[::-1][:-1]},
+                   {"money": ev.money.model_copy(update={"inflow": ev.money.inflow + 0.01})}):
+        assert cache_hash(ev.model_copy(update=change)) != cache_hash(ev)
+
+
+def test_the_same_evidence_in_a_new_run_hits_the_cache(data_dir, fixture_store_path, monkeypatch):
+    """Two runs of the same data: the second finds every answer the first paid for, though its run id and every
+    community and alert key are new."""
+    api = install(monkeypatch, ideal)
+    first, second = Run.create(Recipe(), data_dir=data_dir), Run.create(Recipe(), data_dir=data_dir)
+    try:
+        for run in (first, second):
+            shutil.copytree(fixture_store_path, run.paths.store)
+        a = score(first)
+        calls = len(api.calls)
+        assert (a["from_api"], a["cached"]) == (a["summaries"], 0) and calls == a["summaries"] > 0
+        b = score(second)
+        assert first.id != second.id and (b["from_api"], b["cached"]) == (b["summaries"], b["summaries"])
+        assert len(api.calls) == calls  # no call for the second run
+        keys = lambda run: {r["k"] for r in rows(run.push_store(), "MATCH (n) WHERE n.summary_source IS NOT NULL RETURN coalesce(n.community_key, n.alert_key) AS k")}  # noqa: E731
+        assert keys(first).isdisjoint(keys(second)) and len(keys(first)) == len(keys(second)) == b["summaries"]
+    finally:
+        first.close()
+        second.close()
 
 
 # ---- nothing leaves the container without a key -------------------------------------------------------------------
@@ -502,7 +535,7 @@ def test_with_no_key_no_client_is_ever_built(world, monkeypatch, tmp_path):
         assert written.summary.model is None and written.cached is False
     monkeypatch.setenv("LAB_DATA_DIR", str(tmp_path))
     reload_settings()
-    found, counts = attach_summaries(world.run, world.found, world.factor_run)  # the whole step, no key
+    found, _, counts = attach_summaries(world.run, world.found, world.factor_run)  # the whole step, no key
     assert built == [] and counts["from_api"] == 0 and counts["from_template"] == counts["summaries"] > 0
     assert not (tmp_path / "cache").exists()
     note = Run(world.run.id, world.run.paths.root.parent.parent).manifest.step("summaries").note
@@ -516,13 +549,13 @@ def test_attach_summaries_stages_summaries_on_alerts_and_communities_and_indexes
     assert {k: counts[k] for k in ("summaries", "from_api", "from_template", "failed_checks", "cached")} == {
         "summaries": counts["alerts"] + counts["communities"], "from_api": 0,
         "from_template": counts["alerts"] + counts["communities"], "failed_checks": 0, "cached": 0}
-    assert counts["alerts"] == 14 and counts["communities"] == 9
+    assert counts["alerts"] == 14 and counts["communities"] == 10
 
     # the push store: every community and alert has its evidence and hash; every one here has a template summary
     push = run.push_store()
     communities = rows(push, "MATCH (c:RiskCommunity) RETURN properties(c) AS p")
     alerts = rows(push, "MATCH (a:Alert) RETURN properties(a) AS p")
-    assert len(communities) == 9 and len(alerts) == 14
+    assert len(communities) == 10 and len(alerts) == 14
     for r in (*communities, *alerts):
         p = r["p"]
         ev = Evidence.model_validate_json(p["evidence"])
@@ -533,7 +566,7 @@ def test_attach_summaries_stages_summaries_on_alerts_and_communities_and_indexes
 
     # the run store: each community's node holds its summary, and the full-text index finds the words in it
     nodes = run.table("MATCH (c:RiskCommunity) RETURN c.community_key AS k, c.summary AS summary")
-    assert nodes.height == 9 and nodes["summary"].null_count() == 0
+    assert nodes.height == 10 and nodes["summary"].null_count() == 0
     by_key = {r["p"]["community_key"]: r["p"]["summary"] for r in communities}
     assert dict(zip(nodes["k"], nodes["summary"], strict=True)) == by_key
     create_indexes(run.store())
@@ -547,7 +580,7 @@ def test_attach_summaries_stages_summaries_on_alerts_and_communities_and_indexes
 
     # the manifest
     step = Run(run.id, run.paths.root.parent.parent).manifest.step("summaries")
-    assert step.status == StepStatus.DONE and step.counts == {k: counts[k] for k in step.counts} and step.counts["summaries"] == 23
+    assert step.status == StepStatus.DONE and step.counts == {k: counts[k] for k in step.counts} and step.counts["summaries"] == 24
     assert step.started_at and step.finished_at and "template only" in step.note
 
 
@@ -556,7 +589,7 @@ def test_the_top_communities_and_alerts_by_score_get_summaries(world, monkeypatc
     monkeypatch.setenv("LAB_SUMMARY_ALERTS", "3")
     reload_settings()
     shutil.rmtree(world.run.paths.artifacts / "summaries", ignore_errors=True)
-    found, counts = attach_summaries(world.run, world.found, world.factor_run)
+    found, _, counts = attach_summaries(world.run, world.found, world.factor_run)
     assert counts == {"summaries": 5, "from_api": 0, "from_template": 5, "failed_checks": 0, "cached": 0}
     top_communities = world.communities.sort(pl.col("score"), pl.col("community_key"), descending=[True, False])[
         "community_key"].head(2).to_list()
@@ -570,7 +603,7 @@ def test_the_top_communities_and_alerts_by_score_get_summaries(world, monkeypatc
     for r in found.iter_rows(named=True):
         assert Evidence.model_validate_json(r["evidence"]).hash() == r["evidence_hash"]
     # evidence is saved for all of them, summaries or not
-    assert len(list((world.run.paths.artifacts / "evidence").glob("*.json"))) == 9 + world.found.height
+    assert len(list((world.run.paths.artifacts / "evidence").glob("*.json"))) == 10 + world.found.height
 
 
 def test_the_step_marks_itself_failed_when_it_raises(fixture_run, monkeypatch):
@@ -589,14 +622,14 @@ def test_the_step_marks_itself_failed_when_it_raises(fixture_run, monkeypatch):
 def test_a_rerun_with_the_same_evidence_and_model_makes_no_call_through_the_whole_pipeline(fixture_run, monkeypatch):
     api = install(monkeypatch, ideal)
     first = score(fixture_run)
-    assert (first["from_api"], first["cached"], first["from_template"], first["failed_checks"]) == (23, 0, 0, 0)
-    assert len(api.calls) == 23 and len(api.built) == 1
+    assert (first["from_api"], first["cached"], first["from_template"], first["failed_checks"]) == (24, 0, 0, 0)
+    assert len(api.calls) == 24 and len(api.built) == 1
     again = score(fixture_run)  # the same run, the same evidence, the same model
-    assert len(api.calls) == 23 and len(api.built) == 1
-    assert (again["from_api"], again["cached"], again["summaries"]) == (23, 23, 23)
+    assert len(api.calls) == 24 and len(api.built) == 1
+    assert (again["from_api"], again["cached"], again["summaries"]) == (24, 24, 24)
     push = rows(fixture_run.push_store(), "MATCH (n) WHERE n.summary_source IS NOT NULL "
                                           "RETURN n.summary_source AS s, n.summary_model AS m")
-    assert {(r["s"], r["m"]) for r in push} == {("api", MODEL)} and len(push) == 23
+    assert {(r["s"], r["m"]) for r in push} == {("api", MODEL)} and len(push) == 24
     assert "Anthropic API (claude-sonnet-5-5)" in Run(fixture_run.id, fixture_run.paths.root.parent.parent).manifest.step("summaries").note
 
 
@@ -607,7 +640,7 @@ def test_a_planted_number_in_one_answer_costs_only_that_summary(fixture_run, mon
 
     install(monkeypatch, handler)
     counts = score(fixture_run)
-    assert (counts["from_api"], counts["from_template"], counts["failed_checks"]) == (22, 1, 1)
+    assert (counts["from_api"], counts["from_template"], counts["failed_checks"]) == (23, 1, 1)
     bad = rows(fixture_run.push_store(), "MATCH (a:Alert) WHERE a.summary_source = 'template' RETURN a.account_key AS k")
     assert [r["k"] for r in bad] == [R1[0]]
 
@@ -685,7 +718,8 @@ def test_an_agent_summary_replaces_an_api_summary_and_its_model_name_goes_with_i
     ev = community_evidence(world, R1)
     install(monkeypatch, ideal)
     writer = Writer(cache=SummaryCache(tmp_path / "c.jsonl"), is_account=lookup(world))
-    summarise(world.run, world.found, world.factor_run, writer=writer)
+    done = summarise(world.run, world.found, world.factor_run, writer=writer)
+    world.run.stage(done.communities, "community_key", "community")  # `summarise` stages nothing: `score` does, once
     p = push_props(world.run, "RiskCommunity", "community_key", ev.key)
     assert (p["summary_source"], p["summary_model"]) == ("api", MODEL)
     describe(world.run, ev.key, agent_text(ev))
@@ -720,20 +754,28 @@ def test_a_client_that_cannot_be_built_gives_the_template_with_a_reason(world, m
     assert s.source == "template" and "could not open a client" in s.failed_reason and "not valid" not in s.failed_reason
 
 
-def test_the_restaged_rows_keep_the_columns_the_earlier_stage_gave_them(world, monkeypatch):
-    calls: dict[str, pl.DataFrame] = {}
-    monkeypatch.setattr(world.run, "stage", lambda df, key=None, kind="account": calls.setdefault(kind, df).height)
-    found, _ = attach_summaries(world.run, world.found, world.factor_run)
-    communities, alerts = calls["community"], calls["alert"]
+def test_summarise_stages_nothing_and_hands_back_the_rows_with_their_evidence_and_summaries(world, monkeypatch):
+    calls: list[str] = []
+    monkeypatch.setattr(world.run, "stage", lambda df, key=None, kind="account": calls.append(kind) or df.height)
+    alerts, communities, counts, note = summarise(world.run, world.found, world.factor_run)
+    assert calls == [] and counts["summaries"] == communities.height + alerts.height == 24 and "template only" in note
     assert {"community_key", "member_keys", "score", "size", "score_parts", "run_id", "created_at"} <= set(communities.columns)
     assert {"evidence", "evidence_hash", "summary", "summary_source", "summary_model"} <= set(communities.columns)
+    assert "formed" not in communities.columns  # in the file and the score parts, not a staged column
     assert set(communities.columns) - {"member_keys"} <= set(COMMUNITY_PROPS) and set(alerts.columns) <= set(ALERT_PROPS)
-    assert communities.height == 9 and alerts.height == found.height == world.found.height
+    assert communities.height == 10 and alerts.height == world.found.height
     assert communities["summary"].null_count() == 0 and alerts["summary"].null_count() == 0
 
 
+def test_the_stage_step_counts_each_alert_and_community_once(fixture_run):
+    counts = score(fixture_run)
+    step = Run(fixture_run.id, fixture_run.paths.root.parent.parent).manifest.step("stage")
+    assert (step.counts["alerts"], step.counts["communities"], step.counts["accounts"]) == (counts["alerts"], counts["communities"], 200)
+    assert (counts["alerts"], counts["communities"]) == (14, 10)  # the walk counted 20 and 236 for 10 and 118
+
+
 @pytest.mark.parametrize(("threshold", "min_size", "alerts", "communities"), [
-    ("0.99", "3", 0, 9), ("0.6", "1000", 14, 0), ("0.99", "1000", 0, 0),
+    ("0.99", "3", 0, 10), ("0.6", "1000", 14, 0), ("0.99", "1000", 0, 0),
 ])
 def test_a_run_with_no_alerts_or_no_communities_is_fine(fixture_run, monkeypatch, tmp_path, threshold, min_size, alerts, communities):
     policy = tmp_path / "policy.yaml"

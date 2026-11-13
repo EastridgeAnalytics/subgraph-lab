@@ -1,26 +1,29 @@
-"""Track 3a: the community score, part by part, on hand-made communities of the fixture graph.
+"""Track 3a and 5b: the community score, part by part, on hand-made communities of the fixture graph.
 
 R1 is the mule ring: six accounts opened in the last weeks on one device and one address, money in from outsiders,
 then three fast rounds through the ring. R2 is structuring: eight accounts on one email paying one collector. L1 is a
-family of four on one laptop, older accounts, small payments among themselves. Account scores are made by hand.
+family of four on one laptop, older accounts, small payments among themselves. Account scores are made by hand, except
+where a test says it runs the factors.
 """
 from __future__ import annotations
 
 import json
+import shutil
+from pathlib import Path
 
 import polars as pl
 import pytest
 
-import lab.scoring.community_score as community_score
 from lab.common import community_key
 from lab.contracts.factors import CommunityPolicy, Policy
-from lab.scoring import load_policy
-from lab.scoring.communities import find_communities
-from lab.scoring.community_score import PARTS, SCHEMA, score_communities
+from lab.scoring import FactorRun, account_scores, load_policy, run_factors
+from lab.scoring.communities import IDENTIFIER, PAYMENT, Community, find_communities
+from lab.scoring.community_score import FORMED_PART, PARTS, SCHEMA, score_communities
 from lab.settings import reload_settings
 from tests.fixtures.make_fixture import L1, R1, R2
 
 KEY = "account_id"
+REPO = Path(__file__).resolve().parent.parent
 NORMAL = ["A0001", "A0002", "A0003"]  # three ordinary accounts: no shared identifier, nothing in common
 
 
@@ -60,17 +63,18 @@ def test_the_table_has_the_staged_columns(fixture_run, accounts):
         assert r["community_key"] == community_key(fixture_run.id, members)  # sha1(run id | lowest member key)
         assert members == sorted(members) and r["size"] == len(members) and r["run_id"] == fixture_run.id
         assert r["created_at"].endswith("Z") and len(r["created_at"]) == 20  # UTC ISO-8601 string
-        assert list(json.loads(r["score_parts"])) == sorted(PARTS)  # canonical JSON: sorted keys, all five parts
+        assert list(json.loads(r["score_parts"])) == sorted([*PARTS, FORMED_PART])  # canonical JSON: the five parts and how it formed
+        assert r["formed"] == PAYMENT  # plain sets are taken to have formed by payment
 
 
 def test_every_part_and_the_score_are_in_zero_to_one(fixture_run, accounts):
     groups = find_communities(fixture_run)
     risk = {a: 0.9 for a in [*R1, *R2]} | {a: 1.0 for a in L1}
     df = score_communities(fixture_run, groups, scores_frame(accounts, risk), load_policy(fixture_run))
-    assert df.height == len(groups) == 9 and df["size"].sum() == 200
+    assert df.height == len(groups) == 10 and df["size"].sum() == 200
     for r in df.iter_rows(named=True):
         parts = json.loads(r["score_parts"])
-        assert set(parts) == set(PARTS) and all(0.0 <= v <= 1.0 for v in parts.values())
+        assert set(parts) == {*PARTS, FORMED_PART} and all(0.0 <= v <= 1.0 for v in parts.values())
         assert 0.0 <= r["score"] <= 1.0
     assert df["score"].to_list() == sorted(df["score"].to_list(), reverse=True)  # best first
 
@@ -82,10 +86,19 @@ def test_member_risk_blends_the_share_at_the_threshold_with_the_mean(fixture_run
     got = parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts, risk), policy), R1)
     share, mean = 2 / 6, sum(risk.values()) / 6  # 0.6 is at the threshold and counts; 0.59 is not
     assert got["member_risk"] == pytest.approx(0.5 * share + 0.5 * mean)
-    assert community_score.MEMBER_RISK_SHARE == 0.5  # "the plain average", said on the page and here
+    assert policy.community.member_risk_share == 0.5  # "the plain average", read from the policy file's default
     hot = {a: 1.0 for a in R1}
     assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts, hot), policy), R1)["member_risk"] == 1.0
     assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy), R1)["member_risk"] == 0.0
+
+
+def test_the_policy_sets_the_mix_in_member_risk(fixture_run, accounts):
+    risk = {R1[0]: 0.6, R1[1]: 0.9, R1[2]: 0.59, R1[3]: 0.0, R1[4]: 0.3, R1[5]: 0.0}
+    share, mean = 2 / 6, sum(risk.values()) / 6
+    for mix in (0.0, 0.25, 1.0):
+        policy = Policy(community=CommunityPolicy(min_size=3, member_risk_share=mix))
+        got = parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts, risk), policy), R1)
+        assert got["member_risk"] == pytest.approx(mix * share + (1 - mix) * mean)
 
 
 def test_an_account_with_no_score_counts_zero(fixture_run, accounts):
@@ -136,13 +149,31 @@ def test_cycles_is_the_share_of_the_money_on_cycle_edges(fixture_run, accounts):
     assert parts_of(three, set(R1[:3]))["cycles"] == 0.0  # the first three of the ring: no way back to the start
 
 
-def test_cycles_stops_at_the_bound(fixture_run, accounts, monkeypatch):
+def test_cycles_stops_at_the_bound(fixture_run, accounts, restore_settings):
     policy = load_policy(fixture_run)
-    assert community_score.CYCLE_MAX_LENGTH == 6  # the fixture's ring has six accounts
-    monkeypatch.setattr(community_score, "CYCLE_MAX_LENGTH", 5)
+    assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy), R1)["cycles"] == 1.0  # six accounts
+    restore_settings.setenv("LAB_CYCLE_MAX_LENGTH", "5")  # the fixture's ring has six
+    reload_settings()
     assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy), R1)["cycles"] == 0.0
-    monkeypatch.setattr(community_score, "CYCLE_MAX_LENGTH", 6)
+    restore_settings.setenv("LAB_CYCLE_MAX_LENGTH", "6")
+    reload_settings()
     assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy), R1)["cycles"] == 1.0
+
+
+def test_cycles_count_only_when_each_payment_comes_after_the_one_before(fixture_run, accounts):
+    """The ring's payments run forward round the loop. Turn the ring's own payments round in time, so each comes before the
+    one it pays on to, and the same six accounts with the same money no longer have a cycle."""
+    policy = load_policy(fixture_run)
+    assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy), R1)["cycles"] == 1.0
+    ring = fixture_run.table(
+        "MATCH (a:Account)-[t:TX]->(b:Account) WHERE a.account_id IN $ring AND b.account_id IN $ring "
+        "RETURN t.tx_id AS id, t.ts AS ts", {"ring": R1})
+    first, last = ring["ts"].min(), ring["ts"].max()
+    turned = [{"id": i, "ts": (first + (last - t)).strftime("%Y-%m-%dT%H:%M:%SZ")} for i, t in ring.iter_rows()]
+    fixture_run.store().execute(
+        "UNWIND $rows AS r MATCH (:Account)-[t:TX {tx_id: r.id}]->(:Account) SET t.ts = datetime(r.ts)", {"rows": turned})
+    got = parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy), R1)
+    assert got["cycles"] < 1.0  # the money still moves round the ring, in the wrong order for a cycle
 
 
 def test_new_accounts_is_the_share_opened_near_the_newest_payment(fixture_run, accounts, restore_settings):
@@ -159,14 +190,68 @@ def test_new_accounts_is_the_share_opened_near_the_newest_payment(fixture_run, a
     assert parts_of(short, R1)["new_accounts"] == 0.0
 
 
-def test_speed_is_the_share_of_members_with_money_in_and_out_within_the_window(fixture_run, accounts, restore_settings):
-    df = score_communities(fixture_run, [set(R1), set(R2)], scores_frame(accounts), load_policy(fixture_run))
-    assert parts_of(df, R1)["speed"] == 1.0  # each member sends on within hours of being paid
-    assert parts_of(df, R2)["speed"] == pytest.approx(1 / 8)  # only the collector receives and pays out the same day
-    restore_settings.setenv("LAB_PASS_THROUGH_HOURS", "0")
+def test_speed_is_the_share_of_members_the_in_and_out_factor_fires_on(fixture_run, accounts):
+    df = score_communities(fixture_run, [set(R1), set(R2), set(L1)], scores_frame(accounts), load_policy(fixture_run))
+    assert parts_of(df, R1)["speed"] == 1.0  # each member sends on within hours of being paid, in a similar amount
+    assert parts_of(df, R2)["speed"] == 0.0  # the collector pays out one lump sum, not a sum like each payment in
+    assert parts_of(df, L1)["speed"] == 0.0
+
+
+def test_speed_takes_the_factors_threshold_and_the_factors_rows(fixture_run, accounts, tmp_path, restore_settings):
+    """One definition: the factor's query and its threshold. Raise the threshold past what the ring's members match (three
+    outgoing payments each) and `speed` falls to nothing; the factor and the part agree because they are one query."""
+    folder = tmp_path / "factors"
+    shutil.copytree(REPO / "factors", folder)
+    text = (folder / "factors.yaml").read_text(encoding="utf-8")
+    start = text.index("- id: in_and_out_within_a_day")
+    stop = text.index("- id: just_under_threshold")
+    block = text[start:stop].replace("threshold: 3", "threshold: 4")
+    assert block != text[start:stop]
+    (folder / "factors.yaml").write_text(text[:start] + block + text[stop:], encoding="utf-8")
+    restore_settings.setenv("LAB_FACTORS_FILE", str(folder / "factors.yaml"))
     reload_settings()
-    none = score_communities(fixture_run, [set(R1)], scores_frame(accounts), load_policy(fixture_run))
-    assert parts_of(none, R1)["speed"] == 0.0
+    policy = load_policy(fixture_run)
+    assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy), R1)["speed"] == 0.0
+    fired = run_factors(fixture_run, None).results.filter(pl.col("factor_id") == "in_and_out_within_a_day")
+    assert fired.filter(pl.col("key").is_in(R1)).height == 0
+
+
+def test_a_factor_run_is_used_and_gives_the_same_parts(fixture_run, accounts):
+    policy = load_policy(fixture_run)
+    factor_run = run_factors(fixture_run, None)
+    groups = find_communities(fixture_run)
+    own = score_communities(fixture_run, groups, scores_frame(accounts), policy)
+    given = score_communities(fixture_run, groups, scores_frame(accounts), policy, factor_run)
+    assert own.drop("created_at").equals(given.drop("created_at"))
+    # the rows of the factor run are what count: a factor run that fired on nobody says nobody is fast
+    none = FactorRun(path=factor_run.path, file=factor_run.file, results=factor_run.results.head(0), status=[], keys=None)
+    assert parts_of(score_communities(fixture_run, [set(R1)], scores_frame(accounts), policy, none), R1)["speed"] == 0.0
+
+
+def test_the_planted_rings_and_the_look_alike_by_the_real_account_scores(fixture_run):
+    """R1 and R2 are identifier communities of their own; L1, the family, is one too, and scores below the alert line."""
+    policy = load_policy(fixture_run)
+    factor_run = run_factors(fixture_run, None)
+    scores = account_scores(fixture_run, factor_run, policy)
+    groups = find_communities(fixture_run)
+    df = score_communities(fixture_run, groups, scores, policy, factor_run)
+    by = {frozenset(m): r for m, r in zip(df["member_keys"], df.iter_rows(named=True), strict=True)}
+    r1, r2, l1 = by[frozenset(R1)], by[frozenset(R2)], by[frozenset(L1)]
+    assert (r1["formed"], r2["formed"], l1["formed"]) == (IDENTIFIER, IDENTIFIER, IDENTIFIER)
+    assert r1["score"] >= policy.alert_threshold > l1["score"]  # the family has the shared laptop and the money back and forth, no more
+    print(f"\nfixture community scores: R1 {r1['score']:.3f}, R2 {r2['score']:.3f}, L1 {l1['score']:.3f}; threshold {policy.alert_threshold}")
+
+
+def test_a_community_says_how_it_formed_in_a_part_and_a_column(fixture_run, accounts):
+    policy = load_policy(fixture_run)
+    df = score_communities(fixture_run, [Community(R1, IDENTIFIER), Community(NORMAL, PAYMENT), set(L1)], scores_frame(accounts), policy)
+    by = {r["size"]: r for r in df.iter_rows(named=True)}
+    assert (by[6]["formed"], by[3]["formed"], by[4]["formed"]) == (IDENTIFIER, PAYMENT, PAYMENT)  # a plain set: by payment
+    assert json.loads(by[6]["score_parts"])[FORMED_PART] == 1.0 and json.loads(by[3]["score_parts"])[FORMED_PART] == 0.0
+    assert df.schema == SCHEMA and "formed" not in policy.community.weights
+    only_formed = Policy(community=CommunityPolicy(min_size=3, weights={FORMED_PART: 1.0}))
+    with pytest.raises(ValueError, match="the parts are"):  # it is not a part of the score and takes no weight
+        score_communities(fixture_run, [set(R1)], scores_frame(accounts), only_formed)
 
 
 def test_the_planted_ring_outscores_the_look_alike_and_an_ordinary_group(fixture_run, accounts):

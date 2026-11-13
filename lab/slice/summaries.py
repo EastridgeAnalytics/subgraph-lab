@@ -7,7 +7,7 @@ is read from the run store. The phrases:
 | Phrase | When |
 |---|---|
 | `new account` | opened no more than `LAB_NEW_ACCOUNT_DAYS` before the newest payment in the store |
-| `money in and out within a day (N times)` | N payments out each came within 24 hours after a payment in |
+| `money in and out within a day (N times)` | The `in_and_out_within_a_day` factor fires on the account: N outgoing payments each came within 24 hours after an incoming payment of about the same amount (`lab/scoring/signals.py` runs the factor's own query, so this and the factor and the community's `speed` agree) |
 | `shares a device with N other accounts` | one clause per identifier kind: device, email, address, phone, or the label |
 | `shares a device with 50 or more other accounts` | the same, when an identifier is shared by more than `LAB_SHARED_MAX` |
 | `N payments just under 10,000` | payments, in or out, from 95 percent of 10,000 up to but not including it |
@@ -17,22 +17,19 @@ Full-text has no stemming, so the words are fixed: "account" and "accounts" are 
 """
 from __future__ import annotations
 
-from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import polars as pl
 
 from lab.adapters import reads
-from lab.roundtrip.queries import ident
+from lab.scoring import signals
 from lab.settings import get_settings
 
 if TYPE_CHECKING:
     from lab.runs import Run
 
-# The thresholds behind the phrases. Judgment numbers: to move into settings if the project owner wants them tuned.
-
-# The phrases' thresholds are settings (page 07): LAB_NEW_ACCOUNT_DAYS, LAB_PASS_THROUGH_HOURS,
-# LAB_ROUND_THRESHOLD, LAB_JUST_UNDER.
+# The phrases' thresholds are settings (page 07): LAB_NEW_ACCOUNT_DAYS, LAB_ROUND_THRESHOLD, LAB_JUST_UNDER. "Money in and
+# out within a day" is the factor's own definition (`signals.in_and_out_within_a_day`), so its 24 hours live in the factor's query.
 NEW_ACCOUNT = "new account"
 PASS_THROUGH = "money in and out within a day"
 
@@ -44,15 +41,14 @@ def account_summaries(run: Run, keys: list[str] | None = None) -> pl.DataFrame:
     slice. The first pass runs on the whole store.
     """
     g = run.recipe.graph
-    acc = _accounts(run, keys)
+    acc = signals.account_opened(run, keys)
     pay = reads.payments(run, keys, detail=True)
     pay = pay.with_columns(ts=reads.utc_naive(pay["ts"]))
 
-    as_of = pay["ts"].max() if pay.height else None
-    new = _new_accounts(acc, as_of)
+    new = signals.new_accounts(acc, pay)
     n_in = _count(pay, "dst", "n_in")
     n_out = _count(pay, "src", "n_out")
-    passes = _pass_through(pay)
+    passes = signals.in_and_out_within_a_day(run, keys).rename({"count": "passes"})
     under = _just_under(pay)
     shared = _shared(run, keys)
 
@@ -90,44 +86,8 @@ def _plural(n: int, noun: str) -> str:
     return noun if n == 1 else noun + "s"
 
 
-def _accounts(run: Run, keys: list[str] | None) -> pl.DataFrame:
-    """`key` and `opened` (a naive UTC datetime, null when the mapping has no opened property) of each account."""
-    g = run.recipe.graph
-    ret = f"a.{ident(g.account_key)} AS key"
-    if g.account_opened:
-        ret += f", a.{ident(g.account_opened)} AS opened"
-    where = "" if keys is None else f"WHERE a.{ident(g.account_key)} IN $keys"
-    query = f"MATCH (a:{ident(g.account_label)}) {where} RETURN {ret}"
-    frames = [run.table(query, {} if b is None else {"keys": b}) for b in reads.key_batches(keys)]
-    if not frames:  # keys == []
-        return pl.DataFrame(schema={"key": pl.Utf8, "opened": pl.Datetime("us")})
-    df = pl.concat(frames, how="vertical_relaxed")
-    if "opened" not in df.columns:
-        df = df.with_columns(opened=pl.lit(None, dtype=pl.Datetime("us")))
-    df = df.select(pl.col("key").cast(pl.Utf8), opened=reads.utc_naive(df["opened"]))
-    return df.drop_nulls("key").unique("key").sort("key")
-
-
-def _new_accounts(acc: pl.DataFrame, as_of) -> set[str]:
-    if as_of is None:
-        return set()
-    cutoff = as_of - timedelta(days=get_settings().new_account_days)
-    return set(acc.filter(pl.col("opened") >= cutoff)["key"])
-
-
 def _count(pay: pl.DataFrame, side: str, name: str) -> pl.DataFrame:
     return pay.group_by(side).len(name=name).rename({side: "key"})
-
-
-def _pass_through(pay: pl.DataFrame) -> pl.DataFrame:
-    """`key` and `passes`: the payments out that came within 24 hours after a payment in, per account."""
-    ins = pay.select(key="dst", ts_in="ts").sort("ts_in")
-    outs = pay.select(key="src", ts="ts").sort("ts")
-    matched = outs.join_asof(
-        ins, left_on="ts", right_on="ts_in", by="key", strategy="backward",
-        tolerance=timedelta(hours=get_settings().pass_through_hours), check_sortedness=False,  # both sorted by time above
-    )
-    return matched.filter(pl.col("ts_in").is_not_null()).group_by("key").len(name="passes")
 
 
 def _just_under(pay: pl.DataFrame) -> pl.DataFrame:

@@ -6,31 +6,37 @@ number is read from the run store or from the account scores; nothing is guessed
 
 | Part | How it is worked out |
 |---|---|
-| `member_risk` | The average of two numbers: the share of members at or above the policy's `alert_threshold`, and the members' mean `risk_score` (an account with no score counts 0). The share says how many; the mean says how hot. `MEMBER_RISK_SHARE` sets the mix |
-| `shared_identifiers` | The share of members that share a device, email or address with another member. An identifier used by more than `LAB_SHARED_MAX` accounts of the slice counts for nothing, as in the account graph |
-| `cycles` | The share of the money paid between members that moves along a payment that lies on a cycle of at most `CYCLE_MAX_LENGTH` accounts (a pays b, b pays a is a cycle of two): money that comes back to where it started |
-| `new_accounts` | The share of members opened within `LAB_NEW_ACCOUNT_DAYS` of the newest payment in the slice |
-| `speed` | The share of members that sent a payment out within `LAB_PASS_THROUGH_HOURS` after one came in |
+| `member_risk` | The mix of two numbers: the share of members at or above the policy's `alert_threshold`, and the members' mean `risk_score` (an account with no score counts 0). The share says how many; the mean says how hot. The policy's `community.member_risk_share` sets the mix (0.5 is the plain average) |
+| `shared_identifiers` | The share of members that share a device, email or address with another member. An identifier used by more than `LAB_SHARED_MAX` accounts of the slice counts for nothing, as it does in forming the communities |
+| `cycles` | The share of the money paid between members that moves along a payment pair that lies on a time-respecting cycle of at most `LAB_CYCLE_MAX_LENGTH` accounts (`signals.payment_cycles`: each payment after the one before it; a pays b, then b pays a is a cycle of two): money that comes back to where it started, in the order it moved. Cycles are counted up to `LAB_CYCLE_COUNT_CAP` per community |
+| `new_accounts` | The share of members opened within `LAB_NEW_ACCOUNT_DAYS` of the newest payment in the slice (`signals.new_accounts`) |
+| `speed` | The share of members the `in_and_out_within_a_day` factor fires on (`signals.in_and_out_within_a_day`): money in and out of similar size within a day, by the factor's own query and threshold |
 
-The last two are the first pass's own definitions (`lab/slice/summaries.py`): a member is flagged here for what its
-template summary already says. A community smaller than the policy's `min_size` is not scored, and an account may be
-in only one community. A part the policy gives no weight is still worked out and shown in `score_parts`, and adds
-nothing to the score; a weight that names no part is an error.
+The last two are the first pass's own definitions: a member is flagged here for what its template summary already says,
+and the three of them, the factor, the phrase and this part, share one definition. A community smaller than the policy's
+`min_size` is not scored, and an account may be in only one community. A part the policy gives no weight is still worked
+out and shown in `score_parts`, and adds nothing to the score; a weight that names no part is an error.
+
+`score_parts` also names how the community formed (`formed_by_identifier`: 1 for a community made of accounts that share
+an identifier, 0 for one made of payments), so a reader of the staged node can tell the kinds apart. It is not a part of
+the score and takes no weight. The same fact is the `formed` column of `communities.parquet`, which is not staged.
 """
 from __future__ import annotations
 
 from collections.abc import Iterable
+from math import fsum
 from typing import TYPE_CHECKING
 
-import networkx as nx
 import polars as pl
 
 from lab.adapters import reads
 from lab.common import canonical_json, community_key, get_logger, iso_utc
 from lab.contracts.factors import Policy
+from lab.scoring import signals
+from lab.scoring.communities import IDENTIFIER, PAYMENT
+from lab.scoring.factors import FactorRun
 from lab.scoring.policy import _EDGE
 from lab.settings import get_settings
-from lab.slice.summaries import _accounts, _new_accounts, _pass_through
 
 if TYPE_CHECKING:
     from lab.runs import Run
@@ -38,10 +44,7 @@ if TYPE_CHECKING:
 log = get_logger("scoring.community_score")
 
 PARTS = ("member_risk", "shared_identifiers", "cycles", "new_accounts", "speed")
-
-# Two numbers of the score that no policy or setting holds yet, named here so they can be moved or promoted.
-MEMBER_RISK_SHARE = 0.5  # the mix in `member_risk`: 0.5 is the plain average of the share and the mean
-CYCLE_MAX_LENGTH = 6  # the longest payment cycle looked for, in accounts: the fixture's ring has six
+FORMED_PART = "formed_by_identifier"  # in `score_parts` only: not a part of the score, and it takes no weight
 
 SCHEMA = {
     "community_key": pl.Utf8,
@@ -51,29 +54,33 @@ SCHEMA = {
     "score_parts": pl.Utf8,
     "run_id": pl.Utf8,
     "created_at": pl.Utf8,
+    "formed": pl.Utf8,  # "identifier" or "payment": in communities.parquet, not a staged column (`for_stage` drops it)
 }
 
 
 def score_communities(
-    run: Run, communities: Iterable[Iterable[str]], scores: pl.DataFrame, policy: Policy
+    run: Run, communities: Iterable[Iterable[str]], scores: pl.DataFrame, policy: Policy,
+    factor_run: FactorRun | None = None,
 ) -> pl.DataFrame:
-    """One row per community at or above `policy.community.min_size`, best score first: the staged columns.
+    """One row per community at or above `policy.community.min_size`, best score first: the staged columns, and `formed`.
 
-    `communities` are sets of account keys, disjoint (`find_communities` makes them so). `scores` is the account
-    scores of the slice, with the mapping's account key and `risk_score`; its accounts, with every member, are the
-    scope that payments and identifiers are read for. Columns: `community_key` (`community_key(run.id, members)`),
-    `member_keys` (sorted), `score`, `size`, `score_parts` (a JSON string of the five parts), `run_id`, `created_at`.
+    `communities` are sets of account keys, disjoint (`find_communities` makes them so, as `Community` sets that say
+    how each formed; a plain set is taken to have formed by payment). `scores` is the account scores of the slice, with
+    the mapping's account key and `risk_score`; its accounts, with every member, are the scope that payments and
+    identifiers are read for. `factor_run`, when scoring has one, supplies the `in_and_out_within_a_day` factor's rows so
+    the query is not run twice (`signals.in_and_out_within_a_day`). Columns: `community_key` (`community_key(run.id,
+    members)`), `member_keys` (sorted), `score`, `size`, `score_parts` (a JSON string of the five parts and
+    `formed_by_identifier`), `run_id`, `created_at`, `formed`.
     """
     cp = policy.community
     unknown = sorted(set(cp.weights) - set(PARTS))
     if unknown:
         raise ValueError(f"community.weights names {unknown}; the parts are {list(PARTS)}")
-    groups = sorted(
-        ({str(m) for m in c} for c in communities if len({str(m) for m in c}) >= cp.min_size),
-        key=lambda c: min(c),
-    )
-    if not groups:
+    kept = [({str(m) for m in c}, getattr(c, "formed", PAYMENT)) for c in communities]
+    kept = sorted((k for k in kept if len(k[0]) >= cp.min_size), key=lambda k: min(k[0]))
+    if not kept:
         return pl.DataFrame(schema=SCHEMA)
+    groups = [members for members, _ in kept]
     member_of = {m: i for i, g in enumerate(groups) for m in g}
     if len(member_of) != sum(len(g) for g in groups):
         raise ValueError("an account is in two communities; a community's members must not overlap")
@@ -81,19 +88,20 @@ def score_communities(
     key = run.recipe.graph.account_key
     scope = list(dict.fromkeys([*scores[key].to_list(), *member_of]))
     parts = {
-        "member_risk": _member_risk(scores, key, groups, policy.alert_threshold),
-        **_shape_parts(run, scope, groups, member_of),
+        "member_risk": _member_risk(scores, key, groups, policy.alert_threshold, cp.member_risk_share),
+        **_shape_parts(run, scope, groups, member_of, factor_run),
     }
 
     total = sum(cp.weights.values())
     now = iso_utc()
     rows = []
-    for i, members in enumerate(groups):
+    for i, (members, formed) in enumerate(kept):
         mine = {p: _unit(parts[p][i]) for p in PARTS}
         score = sum(w * mine[p] for p, w in cp.weights.items()) / total if total > 0 else 0.0
         rows.append({
             "community_key": community_key(run.id, members), "member_keys": sorted(members), "score": _unit(score),
-            "size": len(members), "score_parts": canonical_json(mine), "run_id": run.id, "created_at": now,
+            "size": len(members), "score_parts": canonical_json({**mine, FORMED_PART: float(formed == IDENTIFIER)}),
+            "run_id": run.id, "created_at": now, "formed": formed,
         })
     return pl.DataFrame(rows, schema=SCHEMA).sort(
         pl.col("score"), pl.col("size"), pl.col("community_key"), descending=[True, True, False]
@@ -105,25 +113,27 @@ def _unit(x: float) -> float:
     return min(1.0, max(0.0, float(x)))
 
 
-def _member_risk(scores: pl.DataFrame, key: str, groups: list[set[str]], alert_threshold: float) -> list[float]:
+def _member_risk(
+    scores: pl.DataFrame, key: str, groups: list[set[str]], alert_threshold: float, member_risk_share: float
+) -> list[float]:
     risk = dict(zip(scores[key], scores["risk_score"].fill_null(0.0), strict=True))
     out = []
     for members in groups:
         values = [risk.get(m, 0.0) for m in members]
         share = sum(v >= alert_threshold - _EDGE for v in values) / len(values)
-        mean = sum(values) / len(values)
-        out.append(MEMBER_RISK_SHARE * share + (1 - MEMBER_RISK_SHARE) * mean)
+        mean = fsum(values) / len(values)  # the same to the last digit whatever order a set walks its members in
+        out.append(member_risk_share * share + (1 - member_risk_share) * mean)
     return out
 
 
-def _shape_parts(run: Run, scope: list[str], groups: list[set[str]], member_of: dict[str, int]) -> dict[str, list[float]]:
+def _shape_parts(
+    run: Run, scope: list[str], groups: list[set[str]], member_of: dict[str, int], factor_run: FactorRun | None
+) -> dict[str, list[float]]:
     """The four parts that come from the run store: identifiers, cycles, new accounts, speed."""
     pay = reads.payments(run, scope, detail=True)
     pay = pay.with_columns(ts=reads.utc_naive(pay["ts"]))
-    acc = _accounts(run, scope)
-    as_of = pay["ts"].max() if pay.height else None
-    new = _new_accounts(acc, as_of)
-    fast = set(_pass_through(pay)["key"]) if pay.height else set()
+    new = signals.new_accounts(signals.account_opened(run, scope), pay)
+    fast = set(signals.in_and_out_within_a_day(run, scope, factor_run)["key"])
     n = [len(g) for g in groups]
 
     covered = _identifier_cover(reads.identifiers(run, scope), member_of)
@@ -152,13 +162,11 @@ def _identifier_cover(links: pl.DataFrame, member_of: dict[str, int]) -> dict[in
 
 
 def _cycle_share(pay: pl.DataFrame, member_of: dict[str, int], count: int) -> list[float]:
-    """Per community, the share of the money paid between its members that moves along an edge on a short cycle.
-
-    A payment from u to v lies on a cycle of at most L accounts exactly when v reaches u in at most L - 1 payments.
-    That is a bounded breadth-first search from each payee, so the work stays small however many cycles there are.
-    """
+    """Per community, the share of the money paid between its members that moves between two accounts that lie on a
+    time-respecting cycle together: along a payment pair that is one hop of a cycle `signals.payment_cycles` found."""
     out = [0.0] * count
-    if pay.is_empty():
+    cycles = signals.cycles_by_group(pay, member_of)
+    if not cycles:
         return out
     community = pl.DataFrame({"account": list(member_of), "community": list(member_of.values())})
     inside = (
@@ -166,22 +174,21 @@ def _cycle_share(pay: pl.DataFrame, member_of: dict[str, int], count: int) -> li
         .join(community.rename({"account": "src", "community": "c_src"}), on="src")
         .join(community.rename({"account": "dst", "community": "c_dst"}), on="dst")
         .filter(pl.col("c_src") == pl.col("c_dst"))
-        .group_by("c_src", "src", "dst")
-        .agg(money=pl.col("amount").fill_null(0.0).sum())
+        .select("c_src", "src", "dst", pl.col("amount").fill_null(0.0))
     )
-    reach = CYCLE_MAX_LENGTH - 1
-    for (index,), edges in inside.partition_by("c_src", as_dict=True).items():
-        money = edges["money"].sum()
-        if money <= 0:
-            continue
-        D = nx.DiGraph()
-        D.add_edges_from(zip(edges["src"], edges["dst"], strict=True))
-        back: dict[str, dict[str, int]] = {}  # payee -> the accounts it reaches within `reach` payments
-        on_cycle = 0.0
-        for u, v, m in edges.select("src", "dst", "money").iter_rows():
-            if v not in back:
-                back[v] = nx.single_source_shortest_path_length(D, v, cutoff=reach)
-            if u in back[v]:
-                on_cycle += m
-        out[index] = on_cycle / money
+    paid: dict[tuple[int, str, str], list[float]] = {}
+    for g, a, b, amount in inside.iter_rows():
+        paid.setdefault((g, a, b), []).append(amount)
+    hops = {(g, a, b) for g, found in cycles.items() for c in found for a, b in zip(c, (*c[1:], c[0]), strict=True)}
+    # exact sums, so the share is the same however the payments came in
+    total: dict[int, list[float]] = {}
+    on_cycle: dict[int, list[float]] = {}
+    for (g, a, b), amounts in paid.items():
+        money = fsum(amounts)
+        total.setdefault(g, []).append(money)
+        if (g, a, b) in hops:
+            on_cycle.setdefault(g, []).append(money)
+    for g, moneys in on_cycle.items():
+        if (everything := fsum(total[g])) > 0:
+            out[g] = fsum(moneys) / everything
     return out

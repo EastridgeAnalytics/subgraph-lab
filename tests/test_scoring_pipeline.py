@@ -57,22 +57,20 @@ def test_score_stages_the_account_scores_and_the_alerts(fixture_run, staged, tru
     found, alert_key_col = staged["alert"]
     assert (key, alert_key_col) == (KEY, "alert_key")
 
-    # the account frame is a valid staged table, one row per account, with the four scores and the stamp
+    # the account frame is a valid staged table, one row per account, with the four scores; staging adds the stamp
     assert staged_errors(accounts, KEY) == []
     assert accounts.height == 200
-    assert {"risk_score", "risk_score_model", "risk_score_rules", "risk_factors", "risk_run_id", "risk_at"} <= set(
-        accounts.columns)
+    assert {"risk_score", "risk_score_model", "risk_score_rules", "risk_factors"} <= set(accounts.columns)
     assert set(accounts.columns) - {KEY} <= set(ACCOUNT_RESULT_PROPS)
-    assert set(accounts["risk_run_id"]) == {fixture_run.id} and accounts["risk_at"][0].endswith("Z")
     assert len(json.loads(accounts["risk_factors"][0])) == 7  # every factor in the file, scored or not
 
     # the alert frame has the Alert node's columns, keyed by the documented hash
-    assert {"alert_key", "account_key", "window", "score", "evidence", "run_id", "created_at"} <= set(found.columns)
+    assert {"alert_key", "account_key", "window", "score", "evidence"} <= set(found.columns)
     assert set(found.columns) <= set(ALERT_PROPS)
     assert found.height > 0 and found["alert_key"].n_unique() == found.height
     for r in found.iter_rows(named=True):
         assert r["alert_key"] == alert_key(fixture_run.id, r["account_key"], r["window"])
-        assert r["run_id"] == fixture_run.id and json.loads(r["evidence"])["factors"]
+        assert json.loads(r["evidence"])["factors"]
 
     # R1 and R2 outscore L1, the look-alike
     scores = dict(zip(accounts[KEY], accounts["risk_score"], strict=True))
@@ -81,6 +79,37 @@ def test_score_stages_the_account_scores_and_the_alerts(fixture_run, staged, tru
     assert counts["accounts"] == 200 and counts["alerts"] == found.height
     precision, recall = precision_recall(found, truth)
     print(f"\nfixture alerts at the shipped policy: {found.height} alerts, precision {precision:.2f}, recall {recall:.2f}")
+
+
+def test_each_table_is_staged_once_and_staging_alone_stamps_the_rows(fixture_run):
+    """The wave 4 walk counted 236 communities and 20 alerts for 118 and 10: `attach_summaries` staged them, and so did
+    `score`. Now `score` stages accounts, communities and alerts once each, and `pipeline.stamp` is gone: the stage fills
+    `risk_run_id` and `risk_at` on the accounts and `run_id` and `created_at` on the others."""
+    from lab.common.store import rows
+
+    calls: list[str] = []
+    real = fixture_run.stage
+
+    def counting(df, key=None, kind="account"):
+        calls.append(kind)
+        return real(df, key, kind)
+
+    fixture_run.stage = counting  # the real stage, counted
+    try:
+        counts = score(fixture_run)
+    finally:
+        del fixture_run.stage
+    assert calls == ["account", "community", "alert"]
+    assert not hasattr(pipeline, "stamp")
+    step = reread(fixture_run).manifest.step("stage")
+    assert (step.counts["accounts"], step.counts["communities"], step.counts["alerts"]) == (
+        200, counts["communities"], counts["alerts"])
+    push = fixture_run.push_store()
+    stamped = rows(push, "MATCH (a:Account) WHERE a.risk_score IS NOT NULL RETURN a.risk_run_id AS r, a.risk_at AS t")
+    assert {r["r"] for r in stamped} == {fixture_run.id} and all(r["t"].endswith("Z") for r in stamped)
+    for label in ("Alert", "RiskCommunity"):
+        made = rows(push, f"MATCH (n:{label}) RETURN n.run_id AS r, n.created_at AS t")
+        assert made and {r["r"] for r in made} == {fixture_run.id} and all(r["t"].endswith("Z") for r in made)
 
 
 def test_the_manifest_records_the_score_step_the_factor_version_and_what_was_skipped(fixture_run, staged):
@@ -266,20 +295,22 @@ def test_communities_and_summaries_join_through_named_functions(fixture_run, sta
     """3a and 3b replace these two functions; the pipeline stages what they return and counts what they report."""
     seen = {}
 
-    def communities(run, scores, keys):
-        seen["communities"] = (scores.height, keys)
+    def communities(run, scores, keys, factor_run=None):
+        seen["communities"] = (scores.height, keys, factor_run is not None)
         return scores.with_columns(pl.lit("c1").alias("risk_community_key")), {"communities": 3}
 
     def summaries(run, found, factor_run):
         seen["summaries"] = (found.height, factor_run.version)
-        return found.with_columns(pl.lit("template").alias("summary_source")), {"summaries": found.height}
+        rows = pl.DataFrame({"community_key": ["c1"], "member_keys": [["A0001", "A0002", "A0003"]], "score": [0.5], "size": [3]})
+        return found.with_columns(pl.lit("template").alias("summary_source")), rows, {"summaries": found.height}
 
     monkeypatch.setattr(pipeline, "attach_communities", communities)
     monkeypatch.setattr(pipeline, "attach_summaries", summaries)
     counts = score(fixture_run)
-    assert seen["communities"] == (200, None) and seen["summaries"][0] == counts["alerts"]
+    assert seen["communities"] == (200, None, True) and seen["summaries"][0] == counts["alerts"]  # the factor run is handed on
     assert set(staged["account"][0]["risk_community_key"]) == {"c1"}
     assert set(staged["alert"][0]["summary_source"]) == {"template"}
+    assert staged["community"][0]["community_key"].to_list() == ["c1"]  # what the summaries step returns is what is staged
     assert counts["communities"] == 3 and counts["summaries"] == counts["alerts"]
     assert reread(fixture_run).manifest.step("score").counts["communities"] == 3
 
