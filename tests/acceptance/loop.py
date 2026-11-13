@@ -134,6 +134,25 @@ def main() -> int:
         say(f"push: LabRun {run.id} landed at {rows[0]['f']}")
         scored = master_rows("MATCH (a:Account {risk_run_id: $id}) RETURN count(a) AS n", {"id": run.id})[0]["n"]
         say(f"master graph: {scored} accounts carry this run's scores")
+        top = master_rows(
+            "MATCH (c:RiskCommunity {run_id: $id}) OPTIONAL MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c) "
+            "WITH c, count(a) AS members ORDER BY c.score DESC LIMIT 1 "
+            "RETURN c.community_key AS key, c.score AS score, c.summary AS summary, c.summary_source AS source, members",
+            {"id": run.id})
+        communities = master_rows("MATCH (c:RiskCommunity {run_id: $id}) RETURN count(c) AS n", {"id": run.id})[0]["n"]
+        if communities:
+            t0c = top[0]
+            say(f"master graph: {communities} RiskCommunity nodes; the top one scores {t0c['score']:.2f} with "
+                f"{t0c['members']} members linked, summary from {t0c['source']}: {(t0c['summary'] or '')[:160]}")
+            assert t0c["members"] > 0 and t0c["summary"], "the top community landed without members or a summary"
+            from lab.api import results
+            from lab.api.view import RunView
+
+            try:
+                detail = results.community_detail(RunView(run.id), t0c["key"])
+                say("communities like this one: " + ", ".join(f"{r.key[:8]} ({r.score:.2f})" for r in detail.similar[:3]))
+            except Exception as e:  # noqa: BLE001 (reported, not fatal: the push already landed)
+                say(f"communities like this one: not available ({type(e).__name__}: {e})")
         if not a.keep:
             from lab.roundtrip.retract import retract
 
