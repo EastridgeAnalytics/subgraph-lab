@@ -43,10 +43,13 @@ class Settings(BaseSettings):
     weight_email: float = Field(2.0, alias="LAB_WEIGHT_EMAIL")
     weight_address: float = Field(1.5, alias="LAB_WEIGHT_ADDRESS")
     weight_payment: float = Field(1.0, alias="LAB_WEIGHT_PAYMENT")
+    weight_phone: float = Field(2.0, alias="LAB_WEIGHT_PHONE")
+    weight_other: float = Field(1.0, alias="LAB_WEIGHT_OTHER")
     seed: int = Field(42, alias="LAB_SEED")
     delta_sample: int = Field(1_000, alias="LAB_DELTA_SAMPLE")
     embedding_dim: int = Field(64, alias="LAB_EMBEDDING_DIM")
     shared_max: int = Field(50, alias="LAB_SHARED_MAX")
+    key_batch: int = Field(500, alias="LAB_KEY_BATCH")
 
     # Where things live
     data_dir: Path = Field(Path("data"), alias="LAB_DATA_DIR")

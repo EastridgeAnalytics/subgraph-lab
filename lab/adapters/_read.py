@@ -5,7 +5,7 @@ list of account keys; each reader takes `keys` (None means the whole run store).
 
 A long key list does not go into one `IN $keys`: in Relate 1.0.1 the lookup slows with the square of the list
 (an account lookup took 0.02 s for 500 keys and 4.6 s for 5,000, in track 1c's check on a synthetic store of 20,000
-accounts and 100,000 payments; to re-measure on the 1M seed). The readers send `KEY_BATCH` keys at a time,
+accounts and 100,000 payments; to re-measure on the 1M seed). The readers send `LAB_KEY_BATCH` keys at a time,
 restrict the account that a relationship leaves from, and keep only the ones that land inside the slice
 in Polars, where a semi join is linear.
 """
@@ -17,11 +17,11 @@ from typing import TYPE_CHECKING
 import polars as pl
 
 from lab.contracts.graph import GraphMapping, IdentifierLink
+from lab.settings import get_settings
 
 if TYPE_CHECKING:
     from lab.runs import Run
 
-KEY_BATCH = 500  # keys per Cypher statement; see the module note
 
 
 def q(name: str) -> str:
@@ -35,8 +35,9 @@ def key_batches(keys: list[str] | None) -> Iterator[list[str] | None]:
         yield None
         return
     distinct = list(dict.fromkeys(keys))
-    for i in range(0, len(distinct), KEY_BATCH):
-        yield distinct[i : i + KEY_BATCH]
+    size = get_settings().key_batch
+    for i in range(0, len(distinct), size):
+        yield distinct[i : i + size]
 
 
 def _read(run: Run, query: str, keys: list[str] | None, columns: list[str]) -> pl.DataFrame:

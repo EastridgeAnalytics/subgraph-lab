@@ -374,7 +374,8 @@ def test_a_slice_longer_than_one_batch_reads_the_same(fixture_run: Run, monkeypa
     keys = [*R1, *L1, *R2, *[f"A{i:04d}" for i in range(20, 60)], R1[0], "nobody"]
     one = (to_pyg(fixture_run, keys=keys), to_temporal(fixture_run, keys=keys), to_networkx(fixture_run, keys=keys),
            to_series(fixture_run, keys=keys), to_networkx(fixture_run, keys=keys, how="raw"))
-    monkeypatch.setattr(_read, "KEY_BATCH", 7)
+    monkeypatch.setenv("LAB_KEY_BATCH", "7")
+    reload_settings()
     many = (to_pyg(fixture_run, keys=keys), to_temporal(fixture_run, keys=keys), to_networkx(fixture_run, keys=keys),
             to_series(fixture_run, keys=keys), to_networkx(fixture_run, keys=keys, how="raw"))
     assert one[0].node_keys == many[0].node_keys and one[0].data.edge_index.tolist() == many[0].data.edge_index.tolist()
@@ -385,11 +386,11 @@ def test_a_slice_longer_than_one_batch_reads_the_same(fixture_run: Run, monkeypa
     assert one[0].data.num_nodes > 60 and one[1].data.num_events > 0 and one[2].number_of_edges() > 0
 
 
-def test_key_batches():
+def test_key_batches(data_dir):
+    size = get_settings().key_batch
     assert list(_read.key_batches(None)) == [None]
     assert list(_read.key_batches([])) == []
-    assert [len(b) for b in _read.key_batches([str(i) for i in range(_read.KEY_BATCH * 2 + 1)])] == [
-        _read.KEY_BATCH, _read.KEY_BATCH, 1]
+    assert [len(b) for b in _read.key_batches([str(i) for i in range(size * 2 + 1)])] == [size, size, 1]
     assert list(_read.key_batches(["a", "b", "a"])) == [["a", "b"]]
 
 
@@ -446,16 +447,16 @@ def test_mapped_temporal_leaves_out_what_it_cannot_place(mapped_run: Run):
     assert tg.data.src.tolist() == [0, 1, 2, 0] and tg.data.dst.tolist() == [1, 0, 3, 2]
 
 
-def test_mapped_communities_and_unweighted_kinds(mapped_run: Run):
+def test_mapped_communities_and_every_kind_weighted(mapped_run: Run):
     s = get_settings()
     G = to_networkx(mapped_run)
     assert set(G.nodes) == {"c1", "c2", "c3", "c4", "c5"}
     assert G["c1"]["c2"] == {"weight": s.weight_device + s.weight_address + s.weight_payment,
                              "kinds": ["address", "device", "payment"]}
-    assert G["c1"]["c3"] == {"weight": s.weight_payment, "kinds": ["payment"]}
+    assert G["c1"]["c3"]["kinds"] == ["payment"] and G["c1"]["c3"]["weight"] == s.weight_payment
     assert G["c4"]["c5"]["weight"] == s.weight_payment
-    assert not G.has_edge("c2", "c3")  # they share a phone, and a phone has no weight setting
-    assert G.graph["unweighted_kinds"] == ["phone"] and G.graph["skipped_identifiers"] == 0
+    assert G["c2"]["c3"] == {"weight": s.weight_phone, "kinds": ["phone"]}  # LAB_WEIGHT_PHONE
+    assert "unweighted_kinds" not in G.graph and G.graph["skipped_identifiers"] == 0
 
 
 def test_mapped_raw_and_series(mapped_run: Run):

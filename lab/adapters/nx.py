@@ -47,7 +47,8 @@ def _communities(run: Run, keys: list[str] | None) -> nx.Graph:
     import networkx as nx
 
     s = get_settings()
-    weights = {"device": s.weight_device, "email": s.weight_email, "address": s.weight_address}
+    weights = {"device": s.weight_device, "email": s.weight_email, "address": s.weight_address,
+               "phone": s.weight_phone, "other": s.weight_other}
     ident_key = ["kind", "label", "identifier"]
 
     acc = _read.accounts(run, keys)

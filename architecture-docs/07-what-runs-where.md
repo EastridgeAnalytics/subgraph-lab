@@ -65,10 +65,11 @@ inline in code.
 | `LAB_LOAD_START_ROWS` | 20,000 | Where the loader starts before it raises or backs off |
 | `LAB_SUMMARY_COMMUNITIES` · `LAB_SUMMARY_ALERTS` · `LAB_SUMMARY_WORDS` | 20 · 50 · 120 | How many summaries, and how long |
 | `LAB_LOUVAIN_RESOLUTION` · `LAB_COMPONENT_MIN` | 1.0 · 30 | Louvain's resolution, and the component size above which Louvain runs |
-| `LAB_WEIGHT_DEVICE` · `LAB_WEIGHT_EMAIL` · `LAB_WEIGHT_ADDRESS` · `LAB_WEIGHT_PAYMENT` | 3.0 · 2.0 · 1.5 · 1.0 | Link weights for communities |
+| `LAB_WEIGHT_DEVICE` · `LAB_WEIGHT_EMAIL` · `LAB_WEIGHT_ADDRESS` · `LAB_WEIGHT_PHONE` · `LAB_WEIGHT_OTHER` · `LAB_WEIGHT_PAYMENT` | 3.0 · 2.0 · 1.5 · 2.0 · 1.0 · 1.0 | Link weights for communities |
 | `LAB_SEED` | 42 | The random seed for the generator, Node2Vec and Louvain |
 | `LAB_EMBEDDING_DIM` | 64 | Node2Vec's embedding size, and the vector indexes' dimensions |
 | `LAB_SHARED_MAX` | 50 | An identifier shared by more accounts than this links none of them for communities, and is counted |
+| `LAB_KEY_BATCH` | 500 | Account keys per Relate statement. Relate 1.0.1's `IN $keys` slows with the square of the list |
 | `LAB_DELTA_SAMPLE` | 1,000 | Accounts sampled from the master graph for the review's delta |
 | `LAB_DATA_DIR` | `data` | Run stores, push stores and manifests |
 | `LAB_PORT` · `LAB_RELATE_BOLT_PORT` · `LAB_RELATE_HTTP_PORT` · `LAB_RELATE_MCP_PORT` | 8000 · 7687 · 7474 · 7475 | Host ports for the lab and Relate |
