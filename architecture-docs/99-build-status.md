@@ -9,7 +9,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 1 · the data and the way in | Done, 13 November 2026 | [wave-1](reviews/wave-1.md) |
 | 2 · find and score | Done, 13 November 2026 | [wave-2](reviews/wave-2.md) |
 | 3 · communities, summaries, the rest of the app | Done, 13 November 2026 | [wave-3](reviews/wave-3.md) |
-| 4 · the director's review | Not started | |
+| 4 · the director's review | Done, 13 November 2026 | [mvp-review](reviews/mvp-review.md) |
 | 5 · fix and redesign | Not started | |
 | 6 · measured numbers, packaging | Not started | |
 

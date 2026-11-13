@@ -5,11 +5,17 @@ about 10,500 lines of Python in `lab/`, `examples/` and `generator/`, about 4,40
 and the tests. No builders ran in this wave. Each finding names a file, what happens, and the smallest fix; the
 redesign items say what the new shape is. Wave 5 takes them as briefs.
 
-**Verdict.** The loop works end to end on the seed and through an agent, the safety rules hold under test (no push
-without confirm and a fresh review, no customer node created, nothing deleted), and A2 to A7 and A9 to A11 pass as
-runnable tests. Four things are worth changing before the measured page: the account score lowers every account
-when a factor is added and misses most of one planted pattern; the search slice is not selective on a dense graph;
-the app has only ever run against the mock API; and the same jobs are done in two or three places.
+**Verdict.** The loop works end to end on the seed, through the app and through an agent; the safety rules hold under
+test (no push without confirm and a fresh review, no customer node created, nothing deleted); and A2 to A7 and A9 to
+A11 pass as runnable tests. The app, built against a mock, worked against the real lab on its first walk. Five things
+are worth changing before the measured page, in this order:
+
+1. **Communities bury the rings (R6).** On the seed slice the largest communities hold 450 to 758 accounts; 45 of 60
+   planted rings come out whole, but mostly whole inside groups that large, where their signal is diluted.
+2. **The account score (R1).** It lowers every account when a factor is added, and recall is 0.36 at precision 1.00.
+3. **The search slice is not selective (R2).** Two hops from 50 hits reached 6,546 of 10,000 accounts.
+4. **The same jobs in two or three places (section 3)** and judgment numbers in code (section 4).
+5. **Time to a first result (R5).** TGN took 966 seconds and the first pass 332 on the seed slice.
 
 ## 1. Pages against the code
 
@@ -36,7 +42,7 @@ the app has only ever run against the mock API; and the same jobs are done in tw
 | A8 · every measured number names its run | Not yet: the measured page is wave 6 |
 | A9 · a planted number sends a summary to the template | Passes |
 | A10 · a factor by YAML alone | Passes |
-| A11 · ring recall | Passes on the fixture; the seed's numbers go on the measured page |
+| A11 · ring recall | Passes on the fixture. On the seed slice (run `run-20261113T082716Z-52f819`): 45 of 60 rings whole, 48 mostly whole, no look-alike in a high-scoring community; but see R6 on community size |
 
 ## 3. The same job in more than one place
 
@@ -96,8 +102,8 @@ the window), and `speed` uses the one "in and out within a day, similar amounts"
 against the lab: see section 7. Plus the contract gaps the screen builders named: paging (`limit`, `offset`) in
 `client.ts`; a route that returns a factor's source so Models can show it; choosing factors in a recipe.
 
-**R5 · Time to the first result.** On the seed the first pass took 226 to 399 seconds and TGN trains at about 2.4
-seconds an epoch per 2,000 payments. For A1 the walk uses the small seed's slice and a recipe whose models are listed
+**R5 · Time to the first result.** On the seed the first pass took 226 to 399 seconds, and TGN 966 seconds on the
+loop's slice (4,100 accounts scored). For A1 the walk uses the small seed's slice and a recipe whose models are listed
 on the Models screen; the measured page reports each step's time.
 
 **R6 · Communities that keep rings apart.** The walk below opened the top community of a seed slice: 68 accounts,
