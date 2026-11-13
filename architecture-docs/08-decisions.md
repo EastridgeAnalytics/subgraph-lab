@@ -97,6 +97,8 @@ Decisions 39 to 42 come from the wave 4 review ([mvp-review](reviews/mvp-review.
     `LAB_SHARED_MAX` accounts form the first communities; Louvain runs on the payment graph of the accounts left.
     Cycles count only when each payment comes after the one before it, and "money in and out within a day" has one
     definition (similar amounts) used by the factor, the summary phrase and the community's speed (R3).
+43. **The Models screen shows real code.** `GET /api/models/{name}/source` returns a factor's Cypher or Python, or a
+    model's example, read only, from paths inside the lab's own folders.
 
 ## Open
 

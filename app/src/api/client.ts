@@ -38,6 +38,7 @@ export const api = {
   sliceEstimate: (b: T.SliceRequest) => call<T.SliceEstimate>("POST", "/api/slice/estimate", b),
   sliceRun: (b: T.SliceRequest) => call<T.RunStarted>("POST", "/api/slice/run", b),
   models: () => call<T.ModelsList>("GET", "/api/models"),
+  source: (name: string) => call<T.SourceFile>("GET", `/api/models/${encodeURIComponent(name)}/source`),
   startRun: (recipe: T.Recipe) => call<T.RunStarted>("POST", "/api/runs", { recipe }),
   runs: () => call<T.RunsList>("GET", "/api/runs"),
   run: (id: string) => call<T.RunManifest>("GET", `/api/runs/${id}`),

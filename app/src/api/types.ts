@@ -56,6 +56,7 @@ export interface Factor {
   source?: string | null; threshold?: number | null; weight: number; description?: string | null;
 }
 export interface ModelInfo { name: string; kind: "model" | "factor"; description: string; code_path: string; factor?: Factor | null }
+export interface SourceFile { name: string; path: string; language: "cypher" | "python" | "yaml"; text: string }
 export interface ModelsList { models: ModelInfo[]; factor_version: string; policy: Record<string, unknown> }
 
 export interface AccountRow {

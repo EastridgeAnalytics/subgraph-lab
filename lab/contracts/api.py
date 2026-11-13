@@ -20,6 +20,7 @@ ROUTES: list[tuple[str, str, str | None, str]] = [
     ("POST", "/api/slice/estimate", "SliceRequest", "SliceEstimate"),
     ("POST", "/api/slice/run", "SliceRequest", "RunStarted"),
     ("GET", "/api/models", None, "ModelsList"),
+    ("GET", "/api/models/{name}/source", None, "SourceFile"),
     ("POST", "/api/runs", "RunRequest", "RunStarted"),
     ("GET", "/api/runs", None, "RunsList"),
     ("GET", "/api/runs/{run_id}", None, "RunManifest"),
@@ -103,6 +104,15 @@ class ModelInfo(BaseModel):
     description: str
     code_path: str
     factor: Factor | None = None
+
+
+class SourceFile(BaseModel):
+    """A factor's Cypher or Python, or a model's example, as text (decision 43). Read only; the lab never writes it."""
+
+    name: str
+    path: str  # relative to the lab's root, such as factors/shared_device.cypher or examples/tgn/example.py
+    language: Literal["cypher", "python", "yaml"]
+    text: str
 
 
 class ModelsList(BaseModel):

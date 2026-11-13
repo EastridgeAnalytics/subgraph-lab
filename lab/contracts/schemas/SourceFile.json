@@ -1,0 +1,34 @@
+{
+  "description": "A factor's Cypher or Python, or a model's example, as text (decision 43). Read only; the lab never writes it.",
+  "properties": {
+    "language": {
+      "enum": [
+        "cypher",
+        "python",
+        "yaml"
+      ],
+      "title": "Language",
+      "type": "string"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "path": {
+      "title": "Path",
+      "type": "string"
+    },
+    "text": {
+      "title": "Text",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "path",
+    "language",
+    "text"
+  ],
+  "title": "SourceFile",
+  "type": "object"
+}

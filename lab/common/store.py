@@ -76,6 +76,20 @@ def list_runs(data_dir: Path | None = None) -> list[str]:
     return sorted((p.name for p in base.iterdir() if (p / "manifest.json").exists()), reverse=True)
 
 
+def newest_run_with(step: str, data_dir: Path | None = None) -> str | None:
+    """The newest run whose `step` is done, or None. One place for the choice a search makes when it names no run
+    (decision 31)."""
+    from lab.contracts.manifest import RunManifest, StepStatus
+
+    for rid in list_runs(data_dir):  # newest first
+        try:
+            if RunManifest.load(run_paths(rid, data_dir).manifest).step(step).status is StepStatus.DONE:
+                return rid
+        except Exception:  # noqa: BLE001 (a manifest being written right now is skipped, not fatal)
+            continue
+    return None
+
+
 def summary_cache_path(data_dir: Path | None = None) -> Path:
     """Summaries are cached across runs on evidence hash plus model (page 05)."""
     return Path(data_dir or get_settings().data_dir) / "cache" / "summaries.jsonl"
