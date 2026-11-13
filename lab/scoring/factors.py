@@ -13,6 +13,10 @@ A factor that cannot run yet is never dropped without a word. It is `skipped` wi
 function or its model output is missing, and `failed` with the error when it raised or returned something that
 breaks the contract. Either way the policy counts it as 0, the others still run, and the manifest says so.
 
+A recipe can choose its factors (decision 40): `recipe.factors` lists factor ids, and unset means every factor in the
+file. A factor the recipe does not list is `not chosen`: it does not run, it is neither skipped nor failed, and the
+policy leaves it out of every score (`chosen_factors`). An id the file does not have is an error that names it.
+
 The factor file is the customer's: nothing here names a threshold, a weight or a label.
 """
 from __future__ import annotations
@@ -40,7 +44,7 @@ log = get_logger("scoring.factors")
 RESULT_SCHEMA = {"factor_id": pl.Utf8, "key": pl.Utf8, "score": pl.Float64, "evidence": pl.Utf8}
 _EDGE = 1e-9  # a score this far outside [0, 1] is rounding, not a bad factor
 
-Status = Literal["ran", "skipped", "failed"]
+Status = Literal["ran", "skipped", "failed", "not chosen"]
 
 
 class _Skip(Exception):
@@ -82,12 +86,17 @@ class FactorRun:
     def failed(self) -> list[FactorStatus]:
         return self.with_status("failed")
 
+    @property
+    def not_chosen(self) -> list[FactorStatus]:
+        return self.with_status("not chosen")
+
     def counts(self) -> dict[str, int]:
         return {
             "factors": len(self.status),
             "factors_ran": len(self.with_status("ran")),
             "factors_skipped": len(self.skipped),
             "factors_failed": len(self.failed),
+            "factors_not_chosen": len(self.not_chosen),
             "factor_rows": self.results.height,
         }
 
@@ -109,18 +118,40 @@ def load_factor_file(run: Run) -> tuple[Path, FactorFile]:
     return path, FactorFile.load(path)
 
 
+def chosen_factors(run: Run, factor_file: FactorFile) -> list[Factor]:
+    """The factors this run scores with, in file order: `run.recipe.factors`, or every factor when it is unset.
+
+    An id the file does not have raises a `ValueError` that names it. An empty list chooses nothing.
+    """
+    wanted = run.recipe.factors
+    if wanted is None:
+        return list(factor_file.factors)
+    have = {f.id for f in factor_file.factors}
+    unknown = [i for i in dict.fromkeys(wanted) if i not in have]
+    if unknown:
+        raise ValueError(f"the recipe chooses factors the factor file does not have: {', '.join(unknown)} "
+                         f"(the file has {', '.join(sorted(have)) or 'none'})")
+    keep = set(wanted)
+    return [f for f in factor_file.factors if f.id in keep]
+
+
 def empty_results() -> pl.DataFrame:
     return pl.DataFrame(schema=RESULT_SCHEMA)
 
 
 # ---- run them ----------------------------------------------------------------------------------------------
 def run_factors(run: Run, keys: list[str] | None = None) -> FactorRun:
-    """Every factor in the file, on `keys` (a slice of account keys) or on every account in the run store."""
+    """The recipe's factors (every factor in the file when it names none), on `keys` (a slice of account keys) or on
+    every account in the run store. A factor the recipe does not choose is reported `not chosen` and not run."""
     path, factor_file = load_factor_file(run)
+    chosen = {f.id for f in chosen_factors(run, factor_file)}  # raises on an unknown id, before anything runs
     keys = None if keys is None else list(dict.fromkeys(keys))
     frames: list[pl.DataFrame] = []
     status: list[FactorStatus] = []
     for factor in factor_file.factors:
+        if factor.id not in chosen:
+            status.append(FactorStatus(factor.id, factor.kind, "not chosen", "the recipe does not list it"))
+            continue
         started = time.perf_counter()
         try:
             df = _RUNNERS[factor.kind](run, factor, path.parent, keys)
