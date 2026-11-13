@@ -91,22 +91,66 @@ def slice_keys(run: Run) -> list[str] | None:
 
 
 def attach_communities(run: Run, scores: pl.DataFrame, keys: list[str] | None) -> tuple[pl.DataFrame, dict[str, int]]:
-    """Track 3a joins here. Today it changes nothing.
+    """Level three (page 04): find the slice's communities, score them, stage them, and say who is in which.
 
-    Takes the account scores and the slice; returns the scores, with `risk_community_key` added once communities
-    exist, and the counts to put on the manifest step. It stages the `RiskCommunity` rows itself
-    (`run.stage(df, "community_key", "community")`).
+    Takes the account scores and the slice; returns the scores with `risk_community_key` added (null for an account
+    in no community) and the counts for the manifest step `communities`. Communities under the policy's `min_size`
+    are dropped. The `RiskCommunity` rows are staged here (`run.stage(df, "community_key", "community")`, which also
+    puts `risk_community_key` on each member in the push store), each community goes into the run store with the mean
+    of its members' embeddings, and `artifacts/communities.parquet` holds them with their members for track 3b.
     """
-    return scores, {}
+    from lab.scoring import communities as cm
+    from lab.scoring.community_score import score_communities
+
+    run.manifest.start("communities")
+    run.save()
+    try:
+        policy = load_policy(run)
+        groups = cm.find_communities(run, keys)
+        found = cm.embed_communities(run, score_communities(run, groups, scores, policy))
+        cm.write_communities(run, found)
+        run.paths.artifacts.mkdir(parents=True, exist_ok=True)
+        found.write_parquet(run.paths.artifacts / cm.COMMUNITIES_FILE)
+        run.stage(cm.for_stage(run, found), "community_key", "community")
+        scores = cm.add_community_keys(run, scores, found)
+    except Exception as e:
+        run.manifest.fail("communities", f"{type(e).__name__}: {e}"[:500])
+        run.save()
+        raise
+    counts = {
+        "communities": found.height,
+        "community_members": int(found["size"].sum() or 0),
+        "largest": int(found["size"].max() or 0),
+    }
+    note = f"{len(groups) - found.height} under min_size {policy.community.min_size}"
+    run.manifest.finish("communities", counts, note=note)
+    run.save()
+    log.info("%d communities, %d members, largest %d", *counts.values())
+    return scores, counts
 
 
 def attach_summaries(run: Run, found: pl.DataFrame, factor_run: FactorRun) -> tuple[pl.DataFrame, dict[str, int]]:
-    """Track 3b joins here. Today it changes nothing.
+    """Page 05, track 3b: the evidence object and the summary per alert and community (`lab/summaries/store.py`).
 
     Takes the alerts and the factor run, whose results hold every fired factor's evidence; returns the alerts with
-    the summary columns on `ALERT_PROPS` filled in, and the counts for the manifest step.
+    `evidence` (the evidence object's JSON), `evidence_hash` and, for the top `LAB_SUMMARY_ALERTS`, `summary`,
+    `summary_source` and `summary_model`; and the counts for the manifest step `summaries`. The communities were staged
+    by `attach_communities`; their evidence and summaries are restaged here, and each summary goes onto the community's
+    node in the run store. With no `ANTHROPIC_API_KEY` every summary is the template and nothing leaves the container.
     """
-    return found, {}
+    from lab.summaries import summarise
+
+    run.manifest.start("summaries")
+    run.save()
+    try:
+        found, counts, note = summarise(run, found, factor_run)
+    except Exception as e:
+        run.manifest.fail("summaries", f"{type(e).__name__}: {e}"[:500])
+        run.save()
+        raise
+    run.manifest.finish("summaries", counts, note=note)
+    run.save()
+    return found, counts
 
 
 def attach_embeddings(run: Run, scores: pl.DataFrame) -> pl.DataFrame:
