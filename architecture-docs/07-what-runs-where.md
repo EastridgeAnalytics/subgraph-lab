@@ -28,9 +28,10 @@ flowchart LR
 | Service | What it is | Ports and profiles |
 |---|---|---|
 | `lab` | Python 3.12, FastAPI, Relate's library and the checked `relate` binary, PyTorch 2.12 and PyG on CPU, the built React app, the lab's MCP server. It runs one `relate serve --read-only=live` for the current run's store and restarts it when a new run starts | 8000, plus 7687, 7474 and 7475 for Relate. All published on 127.0.0.1 only |
-| `generate` | The lab image running the generator once, writing the seed CSVs to a volume | Profile `local` |
-| `seed` | `neo4j-admin database import` of those CSVs, once, before Neo4j first starts | Profile `local` |
+| `generate` | The lab image running `python -m generator` once: the import CSVs, `ground_truth.parquet` and `generator.json`, written to a volume. `LAB_SEED_SIZE` picks `small` or `1m`, `LAB_SEED` the seed | Profile `local` |
+| `seed` | `generator/import.sh`: `neo4j-admin database import full` of those CSVs into the Neo4j data volume, once, before Neo4j first starts. A marker file on the volume makes every later start a no-op | Profile `local` |
 | `neo4j` | `neo4j:2026.08.1` community with the seed | 17687, 17474. Profile `local` |
+| `seed-schema` | `cypher-shell -f generator/schema.cypher` once the bundled Neo4j is healthy: a uniqueness constraint on each node key, `IF NOT EXISTS` | Profile `local` |
 
 Volumes are named, not bind mounts. No Relate server image is published, so the lab carries the binary itself
 (decision 21 on [08](08-decisions.md)).
