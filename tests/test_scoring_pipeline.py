@@ -88,13 +88,13 @@ def test_the_manifest_records_the_score_step_the_factor_version_and_what_was_ski
     step = run.manifest.step("score")
     assert step.status == StepStatus.DONE and step.started_at and step.finished_at
     assert step.counts == counts
-    assert counts["factors"] == 7 and counts["factors_ran"] == 5 and counts["factors_skipped"] == 2
+    assert counts["factors"] == 7 and counts["factors_ran"] == 6 and counts["factors_skipped"] == 1
     assert counts["factors_failed"] == 0
     version = FactorFile.load(REPO / "factors" / "factors.yaml").version
     assert run.manifest.factor_version == version
     # skipped is said, with the factor and the reason
     assert version in step.note
-    assert "skipped velocity_anomaly: module lab.scoring.velocity not found" in step.note
+    assert "skipped velocity_anomaly" not in step.note  # it runs since 3c
     assert "skipped tgn: no model output at artifacts/models/tgn.parquet" in step.note
     assert (run.paths.artifacts / "factor_results.parquet").exists()
 
@@ -118,7 +118,7 @@ def test_a_model_factor_output_joins_the_score(fixture_run, staged):
     pl.DataFrame({"key": [*R1, *R2], "score": [1.0] * 14}).write_parquet(folder / "tgn.parquet")
     counts = score(fixture_run)
     after = dict(zip(*staged["account"][0].select(KEY, "risk_score"), strict=True))
-    assert counts["factors_ran"] == 6 and counts["factors_skipped"] == 1
+    assert counts["factors_ran"] == 7 and counts["factors_skipped"] == 0
     weight = {f.id: f.weight for f in FactorFile.load(REPO / "factors" / "factors.yaml").factors}
     assert after[R1[0]] == pytest.approx(before[R1[0]] + weight["tgn"] / sum(weight.values()))
     assert after["A0001"] == before["A0001"]  # no model score for it, so nothing moved
@@ -142,7 +142,7 @@ def test_the_slice_limits_who_is_scored(fixture_run, staged, monkeypatch):
 def test_a_slice_of_nothing_scores_nothing(fixture_run, staged, monkeypatch):
     fake_slice_module(monkeypatch, lambda run: [])
     counts = score(fixture_run)
-    assert counts["accounts"] == 0 and counts["alerts"] == 0 and counts["factors_ran"] == 5
+    assert counts["accounts"] == 0 and counts["alerts"] == 0 and counts["factors_ran"] == 6
     assert staged["account"][0].height == 0 and staged["alert"][0].height == 0
 
 
@@ -184,7 +184,7 @@ def test_a_new_factor_in_the_file_is_in_the_next_scores(fixture_run, staged, tmp
     counts = score(fixture_run)
 
     after = staged["account"][0]
-    assert counts["factors"] == 8 and counts["factors_ran"] == 6
+    assert counts["factors"] == 8 and counts["factors_ran"] == 7
     listed = json.loads(after["risk_factors"][0])
     assert [f["id"] for f in listed][-1] == "big_payment" and listed[-1]["weight"] == 0.5
     hit = {r[KEY]: json.loads(r["risk_factors"])[-1]["score"] for r in after.iter_rows(named=True)}

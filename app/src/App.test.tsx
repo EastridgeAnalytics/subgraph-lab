@@ -14,6 +14,6 @@ test("the nav lists the seven screens in the order of the loop", () => {
 test("the mock switch answers without the lab", async () => {
   setMock(true);
   expect((await api.health()).relate).toBe("1.0.1");
-  await expect(api.models()).rejects.toThrow(/no mock/);
+  await expect(api.resume("run-unknown")).rejects.toThrow(/no mock/); // a route no screen has a mock for
   setMock(null);
 });

@@ -438,14 +438,17 @@ def test_accounts_are_paged_highest_score_first(client, scored_run):
     assert quiet and all(r.disposition is None for r in quiet)
 
 
-def test_communities_are_empty_until_there_are_some(client, scored_run):
-    body = client.get(f"/api/runs/{scored_run.id}/results/communities").json()
+def test_communities_are_empty_until_there_are_some(client, fixture_run):
+    fixture_run.stage(pl.DataFrame({"account_id": ["A0001"], "risk_score": [0.5]}), kind="account")
+    fixture_run.close()  # staged accounts, no communities yet
+    body = client.get(f"/api/runs/{fixture_run.id}/results/communities").json()
     assert contract.CommunitiesPage.model_validate(body).total == 0 and body["rows"] == []
-    r = client.get(f"/api/runs/{scored_run.id}/results/community/anything")
+    r = client.get(f"/api/runs/{fixture_run.id}/results/community/anything")
     assert r.status_code == 404 and "no communities are staged" in r.json()["detail"]
 
 
-def test_staged_communities_page_open_and_find_their_likes(client, scored_run):
+def test_staged_communities_page_open_and_find_their_likes(client, fixture_run):
+    scored_run = fixture_run  # a run with no communities of its own, so these three are all there are
     members = list(R1)
     one = with_summary(community_frame("c-one", members, score=0.9), "c-one", members, [1.0, 0.0, 0.0])
     two = with_summary(community_frame("c-two", ["A0101", "A0102", "A0103"], score=0.5), "c-two", ["A0101", "A0102", "A0103"],

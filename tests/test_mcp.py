@@ -312,15 +312,15 @@ def test_explain_alert_returns_an_evidence_object_or_says_not_yet(served, data_d
     assert "no alert" in text(call(served, "explain_alert", run_id=run.id, key="A0003"))  # scored, but no alert
 
 
-def test_describe_alert_stores_nothing_until_the_checks_exist(served, data_dir, monkeypatch):
+def test_describe_alert_stores_nothing_without_evidence_and_hands_text_to_the_checks(served, data_dir, monkeypatch):
     import lab.summaries
 
     run = staged(data_dir)
     before = run.paths.manifest.read_bytes(), sorted(p.name for p in run.paths.staged.iterdir())
     result = call(served, "describe_alert", run_id=run.id, key="alert-A0001", text="Fraud ring of 1,000,000 accounts.")
-    assert result.is_error and "not available yet" in text(result) and "Nothing was stored" in text(result)
+    assert result.is_error and "no evidence" in text(result)  # track 3b: nothing to check the text against
     assert (run.paths.manifest.read_bytes(), sorted(p.name for p in run.paths.staged.iterdir())) == before
-    # the seam: when track 3b provides `lab.summaries.describe(run, key, text)`, the tool hands the text to it
+    # the tool hands an agent's text to `lab.summaries.describe(run, key, text)`
     from lab.contracts.evidence import Summary
 
     def describe(run, key, text):

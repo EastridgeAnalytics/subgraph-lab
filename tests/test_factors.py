@@ -147,11 +147,11 @@ def test_run_factors_reports_a_status_per_factor(shipped):
     s = status(shipped)
     assert list(s) == [f.id for f in shipped.file.factors]
     assert all(s[i].status == "ran" and s[i].accounts > 0 for i in RULES)
-    assert s["velocity_anomaly"].status == "skipped" and "lab.scoring.velocity" in s["velocity_anomaly"].reason
+    assert s["velocity_anomaly"].status == "ran"  # lab.scoring.velocity exists since 3c
     assert s["tgn"].status == "skipped" and "no model output" in s["tgn"].reason and "examples/tgn" in s["tgn"].reason
-    assert shipped.counts() == {"factors": 7, "factors_ran": 5, "factors_skipped": 2, "factors_failed": 0,
+    assert shipped.counts() == {"factors": 7, "factors_ran": 6, "factors_skipped": 1, "factors_failed": 0,
                                 "factor_rows": shipped.results.height}
-    assert "skipped tgn" in shipped.note() and "skipped velocity_anomaly" in shipped.note()
+    assert "skipped tgn" in shipped.note() and "skipped velocity_anomaly" not in shipped.note()
     assert shipped.version == FactorFile.load(FACTORS / "factors.yaml").version
 
 
@@ -328,7 +328,7 @@ def test_a_model_factor_reads_the_examples_parquet(fixture_run):
     tgn = {r["key"]: r for r in fr.results.filter(pl.col("factor_id") == "tgn").iter_rows(named=True)}
     assert tgn[R1[0]]["score"] == 0.9 and json.loads(tgn[R1[0]]["evidence"]) == {"rank": 1}
     assert json.loads(tgn[R1[1]]["evidence"]) == {"source": "examples/tgn"}  # no evidence column value: the source
-    assert status(fr)["velocity_anomaly"].status == "skipped"  # the other missing factor is still said
+    assert status(fr)["velocity_anomaly"].status == "ran"
 
 
 def test_a_missing_model_output_is_skipped_with_its_reason(fixture_run):
