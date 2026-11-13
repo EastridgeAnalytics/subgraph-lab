@@ -237,14 +237,10 @@ def egress(state: LabState, request: EgressIn) -> EgressOut:
 
     recipe = request.recipe if request.pull is None else request.recipe.model_copy(update={"pull": request.pull})
     run = keep_saving(Run.create(recipe))
-    with state.worker.exclusive(run.id):
-        try:
-            result = run.pull()
-            if "first_pass" in wanted(run):
-                run.first_pass()
-        finally:
-            run.close()
-    return EgressOut(run_id=run.id, nodes=result.nodes, relationships=result.relationships, route=result.route.value)
+    until = "first_pass" if "first_pass" in wanted(run) else "pull"
+    run.close()
+    state.worker.submit(run.id, until=until)  # decision 38: queued, answered at once; run_status follows it
+    return EgressOut(run_id=run.id, status="queued")
 
 
 def search_slice(state: LabState, request: SearchSliceIn) -> SliceEstimate:
@@ -266,12 +262,17 @@ def score(state: LabState, run_id: str) -> ScoreOut:
         try:
             if run.manifest.step("pull").status is not StepStatus.DONE:
                 raise NotReady(f"run {run_id} has not been pulled: run egress first")
-            counts = run.score()
-            run.reload()
-            return ScoreOut(run_id=run_id, accounts_scored=counts["accounts"], alerts=counts["alerts"],
-                            communities=counts.get("communities", 0), manifest=run.manifest)
+            manifest = run.manifest
         finally:
             run.close()
+    state.worker.submit(run_id, until="score")  # decision 38: queued, answered at once; run_status follows it
+    return ScoreOut(run_id=run_id, status="queued", manifest=manifest)
+
+
+def run_status(run_id: str) -> RunManifest:
+    """The manifest as it is now: what `run_status` returns while an agent waits on egress or score."""
+    check_run_id(run_id)
+    return read_manifest(run_paths(run_id).manifest)
 
 
 def explain(run_id: str, key: str) -> ExplainOut:

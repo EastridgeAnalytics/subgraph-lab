@@ -38,6 +38,7 @@ class Worker:
         self._on_idle = on_idle
         self._cv = threading.Condition()
         self._queue: deque[str] = deque()
+        self._until: dict[str, str | None] = {}  # decision 38: the step a queued run stops after, or None for all
         self._current: str | None = None
         self._held: set[str] = set()
         self._stopping = False
@@ -58,6 +59,7 @@ class Worker:
         with self._cv:
             self._stopping = True
             self._queue.clear()
+            self._until.clear()
             self._cv.notify_all()
             thread = self._thread
         if thread is None:
@@ -76,9 +78,10 @@ class Worker:
                 if self._stopping:
                     return
                 run_id = self._queue.popleft()
+                until = self._until.pop(run_id, None)
                 self._current = run_id
             try:
-                self._run(run_id)
+                self._run(run_id, until)
             finally:
                 with self._cv:
                     self._current = None
@@ -88,7 +91,7 @@ class Worker:
                     except Exception:  # noqa: BLE001 (a supervisor problem must not stop the worker)
                         log.exception("the worker's idle hook failed")
 
-    def _run(self, run_id: str) -> None:
+    def _run(self, run_id: str, until: str | None = None) -> None:
         from lab.runs import Run
 
         try:
@@ -102,22 +105,23 @@ class Worker:
                 import lab.pipeline
 
                 runner = lab.pipeline.resume  # looked up now, so a test can patch it
-            runner(run)
+            runner(run) if until is None else runner(run, until=until)
         except Exception as e:  # noqa: BLE001 (the pipeline has put the failure on the manifest; the worker goes on)
             log.warning("run %s stopped: %s: %s", run_id, type(e).__name__, str(e)[:300])
         finally:
             run.close()  # the lab's writers off the stores; Relate's live server reads on
 
     # ---- queueing -------------------------------------------------------------------------------------------
-    def submit(self, run_id: str) -> bool:
-        """Queue a run. False when it is already queued or running (nothing is added twice). `RunBusy` when a
-        request holds it."""
+    def submit(self, run_id: str, until: str | None = None) -> bool:
+        """Queue a run, to stop after the step `until` or to run to its review. False when it is already queued or
+        running (nothing is added twice). `RunBusy` when a request holds it."""
         with self._cv:
             if run_id in self._held:
                 raise RunBusy(f"run {run_id} is in use by another request; try again in a moment")
             if run_id == self._current or run_id in self._queue:
                 return False
             self._queue.append(run_id)
+            self._until[run_id] = until
             self._cv.notify()
             return True
 

@@ -32,9 +32,9 @@ def test_schemas_on_disk_match_the_models():
     assert not stale, f"schemas out of date: {stale}; a contract change is a decision on 08"
 
 
-def test_eight_tools_and_the_routes():
-    assert set(TOOLS) == {"egress", "search_slice", "score", "preview_push", "apply_push", "explain_alert",
-                          "describe_alert", "graph_diff"}
+def test_nine_tools_and_the_routes():
+    assert set(TOOLS) == {"egress", "run_status", "search_slice", "score", "preview_push", "apply_push",
+                          "explain_alert", "describe_alert", "graph_diff"}  # run_status: decision 38
     paths = {p for _, p, _, _ in ROUTES}
     assert "/api/runs/{run_id}/push" in paths and "/api/slice/estimate" in paths
 

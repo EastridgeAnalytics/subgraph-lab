@@ -96,7 +96,7 @@ Run each of these and fix the page where 1.0.1 differs, with a decision on 08 fo
 | Staged results table | a key column, `run_id`, `risk_*` columns, an optional `kind` (account, alert, community), an optional vector column |
 | Recipe file | YAML: connect, slice (by schema, by Cypher, by search with `k` and `h`), models and factors, write-back |
 | REST routes | `/connect/test`, `/slice/estimate`, `/slice/run`, `/models`, `/runs`, `/runs/{id}`, `/results/accounts`, `/results/communities`, `/results/community/{key}`, `/review/{run}`, `/push/{run}`, `/dispositions`, `/timeline` |
-| The eight MCP tools | `egress`, `search_slice`, `score`, `preview_push`, `apply_push`, `explain_alert`, `describe_alert`, `graph_diff`, each with its input and output schema |
+| The MCP tools (nine since decision 38) | `egress`, `search_slice`, `score`, `preview_push`, `apply_push`, `explain_alert`, `describe_alert`, `graph_diff`, each with its input and output schema |
 | `factors.yaml` | id, name, kind (cypher, python, model), query or function or source, threshold, weight |
 | Policy file | how factors combine into `risk_score`, `risk_score_model`, `risk_score_rules`, `risk_factors` |
 | Evidence object | the six fields on 05, with ids and totals only |

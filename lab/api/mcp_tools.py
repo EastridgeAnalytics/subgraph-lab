@@ -22,7 +22,8 @@ from lab.api.errors import as_api_error
 from lab.contracts.tools import TOOLS
 
 INSTRUCTIONS = (
-    "subgraph-lab: pull a slice of the master graph into a run store (egress), search it (search_slice), score it, "
+    "subgraph-lab: pull a slice of the master graph into a run store (egress, queued: poll run_status until "
+    "first_pass is done), search it (search_slice), score it (score, queued: poll run_status until score is done), "
     "read the dry-run plan (preview_push), and push (apply_push, which needs confirm=true and writes to the master "
     "graph). Read the subgraph itself through Relate's own MCP server, read-only."
 )
@@ -32,6 +33,7 @@ def implementations(state: ops.LabState) -> dict[str, Callable[[Any], BaseModel]
     """Tool name to the function that does it, taking the tool's input model."""
     return {
         "egress": lambda i: ops.egress(state, i),
+        "run_status": lambda i: ops.run_status(i.run_id),
         "search_slice": lambda i: ops.search_slice(state, i),
         "score": lambda i: ops.score(state, i.run_id),
         "preview_push": lambda i: ops.review(state, i.run_id),
@@ -66,7 +68,7 @@ def _tool(name: str, model_in: type[BaseModel], model_out: type[BaseModel], call
 
 
 def build_mcp(state: ops.LabState) -> MCPServer:
-    """The eight tools on one MCP server, ready to be served over streamable HTTP."""
+    """The nine tools on one MCP server, ready to be served over streamable HTTP."""
     server = MCPServer("subgraph-lab", instructions=INSTRUCTIONS)
     calls = implementations(state)
     for name, (model_in, model_out, description) in TOOLS.items():

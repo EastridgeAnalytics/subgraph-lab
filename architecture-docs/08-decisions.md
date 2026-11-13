@@ -25,7 +25,8 @@ Settled, then open. A later decision can replace an earlier one. The number stay
 11. **One lab container**, serving the store read-only through Relate beside it (decision 21), the bundled
     Neo4j optional.
 12. **The app is React 18, Vite, TypeScript and Tailwind on FastAPI.** Seven screens in the MVP.
-13. **The agent reads through Relate's MCP server and skill, and acts through the lab's eight tools.**
+13. **The agent reads through Relate's MCP server and skill, and acts through the lab's tools** (nine since
+    decision 38).
     `apply_push` with confirm set is the only writer to the master graph.
 14. **No model code of our own.** Adapters to PyTorch Geometric, the TGB layout, NetworkX and Arrow, and the
     libraries' own examples.
@@ -78,6 +79,9 @@ Decisions 18 to 28 come from wave 0, which ran every Relate claim against 1.0.1
     the account policy. Each part is in [0, 1] and the score is their weighted mean.
 37. **A push from the API or an agent needs a review newer than the last thing staged** (A2). Without one the
     route and the `apply_push` tool answer 409 and nothing is sent. `apply` itself still runs a dry run first.
+38. **The agent's long tools queue their work and answer at once.** `egress` (the pull and the first pass) and
+    `score` return the run id with status queued; a ninth tool, `run_status`, returns the manifest to poll. A
+    blocking call longer than an agent's tool timeout left half-done runs behind (wave 2).
 
 ## Open
 

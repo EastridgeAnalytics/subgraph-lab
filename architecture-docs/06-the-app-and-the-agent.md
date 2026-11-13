@@ -44,18 +44,20 @@ the seed data in 15 minutes. To measure.
 ## The agent
 
 Install Relate's skill with `relate skill install`. Connect the agent to two MCP servers: Relate's, serving the
-lab's store read-only and following the lab's writes, and the lab's.
+lab's store read-only and following the lab's writes, and the lab's. The two long tools queue their work and
+answer at once; the agent polls `run_status` (decision 38).
 
 | The lab's tool | Does |
 |---|---|
-| `egress` | Pull a slice from the master graph into a fresh store |
+| `egress` | Queue a fresh run: pull a slice from the master graph into a new store, then its first pass. Answers at once with the run id |
+| `run_status` | The run's manifest: each step's status, counts and note. An agent polls it after `egress` and `score` |
 | `search_slice` | Hybrid search plus hops; returns the hits, the size and the memory |
-| `score` | Run the factors and the policy on the slice |
+| `score` | Queue the models, factors, policy, communities and summaries on the slice. Answers at once |
 | `preview_push` | The dry-run plan plus the delta |
-| `apply_push` | Push. Fails without `confirm=true` |
+| `apply_push` | Push. Fails without `confirm=true`, and without a review newer than the last thing staged (decision 37) |
 | `explain_alert` | The evidence object for an account or a community |
 | `describe_alert` | Store a summary for an account or a community, after the checks |
-| `graph_diff` | What changed between two runs, or as of two times |
+| `graph_diff` | What changed between two runs |
 
 - **The agent reads the subgraph and the evidence through Relate's `read_cypher`. It never writes to the store directly.**
 - **`apply_push` with confirm set is the only tool that writes to the master graph.**

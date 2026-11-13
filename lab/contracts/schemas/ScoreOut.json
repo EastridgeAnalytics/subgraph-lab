@@ -265,18 +265,43 @@
       "type": "string"
     }
   },
+  "description": "Decision 38: `score` queues the slice, the models and the scoring and answers at once; poll `run_status`.",
   "properties": {
     "accounts_scored": {
-      "title": "Accounts Scored",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Accounts Scored"
     },
     "alerts": {
-      "title": "Alerts",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Alerts"
     },
     "communities": {
-      "title": "Communities",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Communities"
     },
     "manifest": {
       "$ref": "#/$defs/RunManifest"
@@ -284,13 +309,19 @@
     "run_id": {
       "title": "Run Id",
       "type": "string"
+    },
+    "status": {
+      "default": "queued",
+      "enum": [
+        "queued",
+        "done"
+      ],
+      "title": "Status",
+      "type": "string"
     }
   },
   "required": [
     "run_id",
-    "accounts_scored",
-    "alerts",
-    "communities",
     "manifest"
   ],
   "title": "ScoreOut",

@@ -54,7 +54,7 @@ model hash and factor file version. R26 Bolt fallback for retractions and for se
 
 **App, agent, packaging.** R27 Seven screens: Connect, Slice, Models, Run, Results, Review and push, Timeline.
 React, Vite, TypeScript and Tailwind on FastAPI. R28 Defaults everywhere, estimates before anything slow, "show
-code" on every screen. R29 Eight lab MCP tools. `explain_alert` and `describe_alert` take an account or community
+code" on every screen. R29 Nine lab MCP tools; the long ones queue and answer at once, and `run_status` follows them. `explain_alert` and `describe_alert` take an account or community
 id. R30 The agent reads through Relate's MCP server, read-only, with Relate's skill. R31 One `lab` image (CPU
 default, GPU profile), Relate serving read-only beside it, an optional bundled Neo4j with the seed,
 `DO_NOT_TRACK=1`.

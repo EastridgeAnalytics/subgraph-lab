@@ -106,6 +106,11 @@ def main() -> int:
         assert est.hits, "the demo search found nothing"
 
     if stop >= PHASES.index("score"):
+        if "tgn" in run.recipe.models and has("examples.tgn", "run_model"):
+            from lab.pipeline import _models
+
+            t = time.time()
+            say(f"models: {_models(run)} in {time.time() - t:.1f}s")
         if has("lab.scoring.pipeline", "score"):
             t = time.time()
             say(f"score: {run.score()} in {time.time() - t:.1f}s")

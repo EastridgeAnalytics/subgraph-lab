@@ -73,9 +73,13 @@ def _do(run: Run, step: str) -> None:
         run.preview_push()
 
 
-def resume(run: Run) -> Run:
-    """Run every wanted step that is not done, in order. A failure is on the manifest; it is raised too."""
-    for step in wanted(run):
+def resume(run: Run, until: str | None = None) -> Run:
+    """Run every wanted step that is not done, in order, stopping after `until` when it is given (decision 38: the
+    agent's `egress` and `score` ask for part of the loop). A failure is on the manifest; it is raised too."""
+    steps = wanted(run)
+    if until is not None and until in steps:
+        steps = steps[: steps.index(until) + 1]
+    for step in steps:
         run.reload()
         if run.manifest.step(step).status is StepStatus.DONE:
             continue
@@ -95,7 +99,7 @@ def resume(run: Run) -> Run:
         if step not in wanted(run) and run.manifest.step(step).status is StepStatus.PENDING:
             run.manifest.step(step).status = StepStatus.SKIPPED
             run.manifest.step(step).note = "the recipe does not ask for it"
-    run.manifest.status = StepStatus.DONE  # the loop is done up to the review; the push waits for a person
+    run.manifest.status = StepStatus.DONE  # what was asked for is done; the push waits for a person
     run.save()
     return run
 

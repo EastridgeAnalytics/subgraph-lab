@@ -1,31 +1,62 @@
 {
+  "description": "Decision 38: `egress` queues the pull and the first pass and answers at once with `status` queued; the counts\nand the route are on the run's manifest (`run_status`) when the pull is done.",
   "properties": {
     "nodes": {
-      "title": "Nodes",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Nodes"
     },
     "relationships": {
-      "title": "Relationships",
-      "type": "integer"
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Relationships"
     },
     "route": {
-      "enum": [
-        "relate",
-        "bolt"
+      "anyOf": [
+        {
+          "enum": [
+            "relate",
+            "bolt"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
       ],
-      "title": "Route",
-      "type": "string"
+      "default": null,
+      "title": "Route"
     },
     "run_id": {
       "title": "Run Id",
       "type": "string"
+    },
+    "status": {
+      "default": "queued",
+      "enum": [
+        "queued",
+        "done"
+      ],
+      "title": "Status",
+      "type": "string"
     }
   },
   "required": [
-    "run_id",
-    "nodes",
-    "relationships",
-    "route"
+    "run_id"
   ],
   "title": "EgressOut",
   "type": "object"

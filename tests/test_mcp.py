@@ -114,13 +114,13 @@ def master(monkeypatch) -> FakeSession:
 
 
 # ---- the tools -------------------------------------------------------------------------------------------------
-def test_the_eight_tools_are_listed_with_the_contracts_schemas(served):
+def test_the_nine_tools_are_listed_with_the_contracts_schemas(served):
     async def go():
         async with Client(served.url) as client:
             return (await client.list_tools()).tools
 
     tools = {t.name: t for t in asyncio.run(go())}
-    assert set(tools) == set(TOOLS) and len(tools) == 8
+    assert set(tools) == set(TOOLS) and len(tools) == 9
     for name, (model_in, model_out, description) in TOOLS.items():
         tool = tools[name]
         assert tool.description == description
@@ -183,8 +183,29 @@ def test_a_bad_run_is_an_error_an_agent_can_read(served):
     assert call(served, "preview_push").is_error  # a missing argument is refused too
 
 
-def test_score_runs_the_step_and_answers_with_the_manifest(served, data_dir, monkeypatch):
-    run = Run.create(Recipe(), data_dir=data_dir)
+def wait_for_step(served, run_id: str, step: str, timeout: float = 20.0) -> RunManifest:
+    """Poll run_status the way an agent does (decision 38) until `step` is done or failed."""
+    seen: dict = {}
+
+    def done() -> bool:
+        seen["m"] = RunManifest.model_validate(call(served, "run_status", run_id=run_id).structured_content)
+        return seen["m"].step(step).status in (StepStatus.DONE, StepStatus.FAILED)
+
+    wait_until(done, timeout=timeout, what=f"{step} on {run_id}")
+    return seen["m"]
+
+
+@pytest.fixture
+def working(served):
+    """The served app with its worker running, as `serve()` has it (the fixture builds it with supervise=False)."""
+    served.state.worker.start()
+    yield served
+    served.state.worker.stop()
+
+
+def test_score_queues_the_step_answers_at_once_and_run_status_follows_it(working, data_dir, monkeypatch):
+    served = working
+    run = Run.create(Recipe(models=["communities"]), data_dir=data_dir)
     assert "has not been pulled" in text(call(served, "score", run_id=run.id))
     run.manifest.finish("pull")
     run.save()
@@ -197,8 +218,10 @@ def test_score_runs_the_step_and_answers_with_the_manifest(served, data_dir, mon
     monkeypatch.setattr(Run, "score", score)
     result = call(served, "score", run_id=run.id)
     out = tool_contract.ScoreOut.model_validate(result.structured_content)
-    assert (out.accounts_scored, out.alerts, out.communities) == (7, 2, 1)
-    assert out.manifest.run_id == run.id and out.manifest.step("score").status is StepStatus.DONE
+    assert out.status == "queued" and out.run_id == run.id and out.accounts_scored is None
+    manifest = wait_for_step(served, run.id, "score")
+    assert manifest.step("score").status is StepStatus.DONE and manifest.step("score").counts == {"accounts": 7}
+    assert manifest.step("review").status is StepStatus.PENDING  # it stopped after score, as asked
     assert served.state.worker.snapshot()["held"] == []
 
 
@@ -212,21 +235,37 @@ def test_a_run_the_worker_has_is_not_written_to_by_a_tool(served, data_dir):
             assert result.is_error and "in use" in text(result), name
 
 
-def test_egress_pulls_and_runs_the_first_pass_when_the_recipe_asks(served, data_dir, monkeypatch):
+def test_egress_pulls_and_runs_the_first_pass_when_the_recipe_asks(working, data_dir, monkeypatch):
+    served = working
     calls: list[str] = []
 
     def pull(self):
         calls.append("pull")
         return PullResult(route=Route.RELATE, nodes=5, relationships=7, constraints=0, seconds=0.1)
 
-    monkeypatch.setattr(Run, "pull", pull)
-    monkeypatch.setattr(Run, "first_pass", lambda self: calls.append("first_pass") or {})
+    def first_pass(self):
+        calls.append("first_pass")
+        self.manifest.finish("first_pass", {})
+        self.save()
+        return {}
+
+    def pull_done(self):
+        result = pull(self)
+        self.manifest.finish("pull", {"nodes": 5, "relationships": 7})
+        self.save()
+        return result
+
+    monkeypatch.setattr(Run, "pull", pull_done)
+    monkeypatch.setattr(Run, "first_pass", first_pass)
     result = call(served, "egress", recipe={"models": ["node2vec", "communities"]})
     out = tool_contract.EgressOut.model_validate(result.structured_content)
-    assert (out.nodes, out.relationships, out.route) == (5, 7, "relate") and Run(out.run_id).id == out.run_id
-    assert calls == ["pull", "first_pass"]
+    assert out.status == "queued" and Run(out.run_id).id == out.run_id  # decision 38: answered at once
+    manifest = wait_for_step(served, out.run_id, "first_pass")
+    assert calls == ["pull", "first_pass"] and manifest.step("pull").counts == {"nodes": 5, "relationships": 7}
+    assert manifest.step("score").status is StepStatus.PENDING  # it stopped after the first pass, as asked
     calls.clear()
     second = call(served, "egress", recipe={"models": ["communities"]}, pull={"mode": "schema", "labels": ["Account"]})
+    wait_for_step(served, second.structured_content["run_id"], "pull")
     assert calls == ["pull"]  # nothing in this recipe needs embeddings
     saved = Recipe.load(Run(second.structured_content["run_id"]).paths.recipe)
     assert saved.pull.labels == ["Account"]  # the pull argument overrides the recipe's
@@ -327,16 +366,21 @@ def test_mcp_live_an_agent_pulls_searches_scores_previews_and_pushes_and_apply_n
         return master_rows("MATCH (l:LabRun {run_id: $r}) RETURN count(l) AS n", {"r": run_id})[0]["n"]
 
     try:
+        served.state.worker.start()
         egress = tool_contract.EgressOut.model_validate(call(
             served, "egress", recipe={"name": "mcp-live", "models": ["node2vec", "communities"]}).structured_content)
-        assert egress.nodes > 0 and egress.relationships > 0 and egress.route in ("relate", "bolt")
+        assert egress.status == "queued"
         run_id = egress.run_id
+        pulled = wait_for_step(served, run_id, "first_pass", timeout=900)
+        assert pulled.step("pull").counts.get("nodes", 0) > 0 and pulled.routes["pull"] in ("relate", "bolt")
         hits = tool_contract.SliceEstimate.model_validate(call(
             served, "search_slice", run_id=run_id,
             search={"text": "money in and out within a day across new accounts", "k": 10, "hops": 1}).structured_content)
         assert hits.mode == "search" and hits.hits and not hits.over_cap
         scored = tool_contract.ScoreOut.model_validate(call(served, "score", run_id=run_id).structured_content)
-        assert scored.accounts_scored > 0 and scored.manifest.step("score").status is StepStatus.DONE
+        assert scored.status == "queued"
+        done = wait_for_step(served, run_id, "score", timeout=900)
+        assert done.step("score").status is StepStatus.DONE and done.step("score").counts["accounts"] > 0
         review = contract.Review.model_validate(call(served, "preview_push", run_id=run_id).structured_content)
         assert {e.entity for e in review.plan} >= {"Account"} and labruns(run_id) == 0
         refused = call(served, "apply_push", run_id=run_id)
