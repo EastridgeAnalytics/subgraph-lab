@@ -4,6 +4,7 @@
 //
 // Sorting: click a header to sort by it, again to reverse. A row with no value for the column goes last either way,
 // and rows that tie keep the order they came in. The header carries `aria-sort`; the footer says which rows are shown.
+// A screen that pages through the server itself passes `footer={false}` and draws its own range and buttons.
 import { useMemo, useState, type ReactNode } from "react";
 import { Button, cx } from "./ui";
 
@@ -41,7 +42,7 @@ export function sortRows<Row>(rows: Row[], column: DataColumn<Row> | undefined, 
     .map((x) => x.row);
 }
 
-export function DataTable<Row extends object>({ columns, rows, rowKey, caption, noun = "rows", pageSize = 10, initialSort = null, empty = "Nothing to show yet." }: {
+export function DataTable<Row extends object>({ columns, rows, rowKey, caption, noun = "rows", pageSize = 10, initialSort = null, empty = "Nothing to show yet.", footer = true }: {
   columns: DataColumn<Row>[];
   rows: Row[];
   rowKey: (row: Row, index: number) => string | number;
@@ -52,6 +53,8 @@ export function DataTable<Row extends object>({ columns, rows, rowKey, caption, 
   pageSize?: number;
   initialSort?: Sort | null;
   empty?: ReactNode;
+  /** False leaves out the range and the Previous and Next buttons, for a screen that pages through the server. */
+  footer?: boolean;
 }) {
   const [sort, setSort] = useState<Sort | null>(initialSort);
   const [page, setPage] = useState(0);
@@ -110,7 +113,7 @@ export function DataTable<Row extends object>({ columns, rows, rowKey, caption, 
           </tbody>
         </table>
       </div>
-      {sorted.length > 0 && (
+      {footer && sorted.length > 0 && (
         <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-slate-600">
           <p role="status">Showing {first + 1} to {first + visible.length} of {sorted.length} {noun}</p>
           {pages > 1 && (

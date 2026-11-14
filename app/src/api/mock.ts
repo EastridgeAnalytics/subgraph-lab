@@ -11,7 +11,7 @@ export const mockData = {
     pull_route: "relate", message: "Connected. relate pull will use the Query API.",
   } satisfies T.ConnectResult,
   estimate: {
-    mode: "search", hits: [{ key: "A0011", rrf: 0.0328, found_by: ["vector", "fulltext"] }], hops: 2,
+    mode: "search", hits: [{ key: "A0011", rrf: 0.0328, found_by: ["vector", "fulltext"] }], hops: 1,
     nodes: 412, relationships: 1630, memory_bytes: 1332000, over_cap: false, cap: 200000,
   } satisfies T.SliceEstimate,
   run: {
@@ -69,7 +69,7 @@ export async function mockHandler(method: string, path: string, body?: unknown):
   if (method === "GET" && /^\/api\/runs\/[^/]+\/timeline$/.test(p)) return mockTimelineAnswer(path);
   const added = mockRunsAnswer(method, p, body);
   if (added !== undefined) return added;
-  const shown = mockModelsAndResults(method, p, body);
+  const shown = mockModelsAndResults(method, path, body);
   if (shown !== undefined) return shown;
   throw new Error(`no mock for ${method} ${p}`);
 }
@@ -262,32 +262,35 @@ function mockTimelineAnswer(path: string): T.Timeline {
 }
 
 // ---- Added by 3d: the Models and Results screens ---------------------------------------------------------------------
-// Every number below is invented for the mock, not measured. The factors and their weights are the ones factors.yaml
-// ships; the model list is the one the lab builds from its own settings. `GET /api/models` and the results routes
-// answer for the five runs above. The `failed` run has no results, like a real run that stopped before `score`.
+// Every number below is invented for the mock, not measured. The factors, their thresholds and their three weight tiers
+// (0.65 enough alone, 0.20 supporting, 0.05 unproven) are the ones factors.yaml ships; the model list is the one the lab
+// builds from its own settings. `GET /api/models`, `GET /api/models/{name}/source` and the results routes answer for the
+// five runs above. The `failed` run has no results, like a real run that stopped before `score`. The results routes
+// take `limit` and `offset` like the lab's, over a list longer than one page.
 const MOCK_FACTORS: T.Factor[] = [
   { id: "shared_device_5plus", name: "Five or more accounts on one device", kind: "cypher", query: "shared_device.cypher",
     threshold: 5, weight: 0.2,
     description: "Accounts that share a device with at least four others. Shared hardware is the hardest link to fake." },
   { id: "new_accounts_shared_identifier", name: "New accounts sharing an identifier", kind: "cypher",
-    query: "new_accounts_shared_identifier.cypher", threshold: 3, weight: 0.25,
+    query: "new_accounts_shared_identifier.cypher", threshold: 3, weight: 0.65,
     description: "Three or more accounts opened within 30 days of each other that share a device, an email or an address." },
   { id: "in_and_out_within_a_day", name: "Money in and out of similar size within a day", kind: "cypher",
-    query: "in_and_out_within_a_day.cypher", threshold: 2, weight: 0.2,
-    description: "Outgoing payments within 24 hours of an incoming payment of about the same amount, counted. Pass-through." },
+    query: "in_and_out_within_a_day.cypher", threshold: 3, weight: 0.65,
+    description: "Three or more outgoing payments within 24 hours of an incoming payment of about the same amount. Pass-through." },
   { id: "just_under_threshold", name: "Payments just under 10,000", kind: "cypher", query: "just_under_threshold.cypher",
-    threshold: 3, weight: 0.15,
+    threshold: 3, weight: 0.65,
     description: "Three or more payments between 9,000 and 9,999.99 in or out of the account. Structuring." },
   { id: "fan_in_new_accounts", name: "Fan-in from new accounts", kind: "cypher", query: "fan_in_new_accounts.cypher",
-    threshold: 5, weight: 0.05,
+    threshold: 5, weight: 0.2,
     description: "Payments in from five or more different accounts that were 30 days old or less when they paid." },
   { id: "velocity_anomaly", name: "Outflow far above the account's own forecast", kind: "python",
     function: "lab.scoring.velocity:score", weight: 0.05,
     description: "Outflow against the account's own statsforecast forecast. Written by the velocity example." },
-  { id: "tgn", name: "Temporal model score", kind: "model", source: "examples/tgn", weight: 0.1,
+  { id: "tgn", name: "Temporal model score", kind: "model", source: "examples/tgn", weight: 0.05,
     description: "The TGN score per account from timed payment events. Written by the TGN example." },
 ];
-const MOCK_COMMUNITY_WEIGHTS = { member_risk: 0.35, shared_identifiers: 0.2, cycles: 0.15, new_accounts: 0.15, speed: 0.15 };
+// The community score is a noisy-or too (decision 45): 1 - the product of (1 - weight x part), over the five parts.
+const MOCK_COMMUNITY_WEIGHTS = { member_risk: 0.65, shared_identifiers: 0.2, cycles: 0.2, new_accounts: 0.2, speed: 0.2 };
 
 export const mockModels: T.ModelsList = {
   models: [
@@ -306,8 +309,8 @@ export const mockModels: T.ModelsList = {
   ],
   factor_version: "9c1e4a7b02d3",
   policy: {
-    version: "1", combine: "weighted_mean", alert_threshold: 0.6, window: "P30D",
-    community: { min_size: 3, weights: MOCK_COMMUNITY_WEIGHTS },
+    version: "1", combine: "noisy_or", alert_threshold: 0.6, window: "P30D",
+    community: { min_size: 3, combine: "noisy_or", weights: MOCK_COMMUNITY_WEIGHTS },
   },
 };
 
@@ -323,25 +326,32 @@ export const mockCommunityKeys = {
 interface MockSeed {
   key: string; size: number; parts: [number, number, number, number, number]; source: T.Summary["source"] | null;
   replaced?: boolean; disposition?: T.Disposition;
+  formed: 0 | 1; // `formed_by_identifier` in score_parts: 1 formed by a shared identifier, 0 by payments. A tag, not a part
 }
 const PART_NAMES = ["member_risk", "shared_identifiers", "cycles", "new_accounts", "speed"] as const;
+// Five named communities and then plain ones, 120 in all: more than one page of 100, so Results has a second page.
+const MOCK_COMMUNITY_TOTAL = 120;
 const SEEDS: MockSeed[] = [
-  { key: mockCommunityKeys.ring, size: 7, parts: [0.86, 0.75, 0.6, 0.8, 0.7], source: "api" },
-  { key: mockCommunityKeys.agent, size: 5, parts: [0.78, 0.6, 0.5, 0.7, 0.6], source: "agent" },
-  { key: mockCommunityKeys.replaced, size: 4, parts: [0.7, 0.55, 0.4, 0.6, 0.5], source: "template", replaced: true },
-  { key: mockCommunityKeys.template, size: 6, parts: [0.6, 0.5, 0.3, 0.55, 0.4], source: "template", disposition: "false_positive" },
-  { key: mockCommunityKeys.noEvidence, size: 3, parts: [0.45, 0.3, 0.2, 0.4, 0.3], source: null },
-  ...Array.from({ length: 7 }, (_, i): MockSeed => {
-    const n = i + 1, v = (x: number) => Math.max(0.05, Math.round((x - n * 0.03) * 100) / 100);
-    return { key: `cf${String(n).padStart(2, "0")}7a3d1e`, size: 3, parts: [v(0.4), v(0.3), v(0.2), v(0.35), v(0.25)], source: null };
+  { key: mockCommunityKeys.ring, size: 7, parts: [0.86, 0.75, 0.6, 0.8, 0.7], source: "api", formed: 1 },
+  { key: mockCommunityKeys.agent, size: 5, parts: [0.78, 0.6, 0.5, 0.7, 0.6], source: "agent", formed: 1 },
+  { key: mockCommunityKeys.replaced, size: 4, parts: [0.7, 0.55, 0.4, 0.6, 0.5], source: "template", replaced: true, formed: 1 },
+  { key: mockCommunityKeys.template, size: 6, parts: [0.6, 0.5, 0.3, 0.55, 0.4], source: "template", disposition: "false_positive", formed: 1 },
+  { key: mockCommunityKeys.noEvidence, size: 3, parts: [0.45, 0.3, 0.2, 0.4, 0.3], source: null, formed: 0 },
+  ...Array.from({ length: MOCK_COMMUNITY_TOTAL - 5 }, (_, i): MockSeed => {
+    const n = i + 1, k = 1 - i / 120, v = (x: number) => Math.round(x * k * 100) / 100; // each one a little lower than the last
+    return {
+      key: `cf${String(n).padStart(2, "0")}7a3d1e`, size: 3, parts: [v(0.4), v(0.3), v(0.2), v(0.35), v(0.25)], source: null,
+      formed: n % 4 === 0 ? 1 : 0,
+    };
   }),
 ];
 const round = (x: number, places: number) => Math.round(x * 10 ** places) / 10 ** places;
-const seedScore = (s: MockSeed) => round(s.parts.reduce((t, p, i) => t + p * MOCK_COMMUNITY_WEIGHTS[PART_NAMES[i]], 0), 3);
+const seedScore = (s: MockSeed) => round(1 - s.parts.reduce((t, p, i) => t * (1 - p * MOCK_COMMUNITY_WEIGHTS[PART_NAMES[i]]), 1), 3);
 
 // Members are numbered A1001, A1002 ... across the communities in order, so the accounts table and the graphs agree.
 const memberKey = (g: number) => `A${String(1001 + g).padStart(4, "0")}`;
-const memberScore = (g: number) => Math.max(0.05, round(0.95 - 0.02 * g, 2));
+const MOCK_ACCOUNT_TOTAL = 230; // more than one page of 100: Results has a second and a third page
+const memberScore = (g: number) => (g <= 45 ? round(0.95 - 0.02 * g, 2) : Math.max(0, round(0.05 * (1 - (g - 45) / 200), 4)));
 const SEED_START = SEEDS.map((_, i) => SEEDS.slice(0, i).reduce((t, s) => t + s.size, 0));
 const membersOf = (i: number) => Array.from({ length: SEEDS[i].size }, (_, j) => memberKey(SEED_START[i] + j));
 const seedOfMember = (g: number) => SEEDS.findIndex((s, i) => g >= SEED_START[i] && g < SEED_START[i] + s.size);
@@ -357,7 +367,7 @@ function mockFiredFactors(score: number): { id: string; score: number; weight: n
   return [f("velocity_anomaly", 0.4)];
 }
 
-const MOCK_ACCOUNT_ROWS: T.AccountRow[] = Array.from({ length: 26 }, (_, g): T.AccountRow => {
+const MOCK_ACCOUNT_ROWS: T.AccountRow[] = Array.from({ length: MOCK_ACCOUNT_TOTAL }, (_, g): T.AccountRow => {
   const score = memberScore(g);
   const seed = seedOfMember(g);
   return {
@@ -419,7 +429,8 @@ function mockCommunityDetail(i: number): T.CommunityDetail {
     ...members.slice(0, shared).map((id): T.GraphEdge => ({ source: id, target: `Device:${device}`, type: "USES_DEVICE", props: {} })),
     ...members.slice(0, 2).map((id): T.GraphEdge => ({ source: id, target: `Email:${email}`, type: "USES_EMAIL", props: {} })),
   ];
-  const parts = Object.fromEntries(PART_NAMES.map((n, j) => [n, s.parts[j]]));
+  // The five parts, and how the community formed beside them: a tag the lab keeps in score_parts, not a part of the score.
+  const parts: Record<string, number> = { ...Object.fromEntries(PART_NAMES.map((n, j) => [n, s.parts[j]])), formed_by_identifier: s.formed };
   const evidence: T.Evidence = {
     subject: "community", key: s.key, run_id: RUN, member_count: s.size, member_keys: members, score: seedScore(s), score_parts: parts,
     shared_identifiers: [
@@ -447,19 +458,76 @@ function mockDisposition(body: unknown): T.DispositionResult {
   return { ok: true, staged: true };
 }
 
-// GET /api/models and the results routes; undefined for anything else, so an unknown route still fails loudly.
-function mockModelsAndResults(method: string, p: string, body: unknown): unknown {
+// ---- the source route (decision 43) -----------------------------------------------------------------------------------
+// Short texts for the mock, not the lab's files. A cypher factor gets Cypher, a python factor and a model get Python.
+const MOCK_SHARED_DEVICE = [
+  "// Five or more accounts on one device. Returns one row per account on such a device.",
+  "// key: the account key; value: how many accounts share the device; evidence_ids: the device key.",
+  "// $threshold: the factor's threshold. $keys: a list of account keys to score, or null for every account.",
+  "MATCH (a:Account)-[:USES_DEVICE]->(d:Device)<-[:USES_DEVICE]-(other:Account)",
+  "WHERE $keys IS NULL OR a.account_id IN $keys",
+  "WITH a, d, count(DISTINCT other) + 1 AS sharing",
+  "WHERE sharing >= $threshold",
+  "RETURN a.account_id AS key, sharing AS value, [d.device_id] AS evidence_ids",
+  "",
+].join("\n");
+
+function mockSource(name: string): T.SourceFile {
+  const info = mockModels.models.find((m) => m.name === name); // the first match, as the lab does: the model before the factor
+  if (!info) throw new Error(`no model or factor named '${name}'`);
+  const f = info.factor;
+  if (info.kind === "factor" && f?.kind === "cypher") {
+    const text = f.id === "shared_device_5plus" ? MOCK_SHARED_DEVICE : [
+      `// ${f.name}. Mock text: the lab shows the real file here.`,
+      "// $threshold: the factor's threshold. $keys: a list of account keys to score, or null for every account.",
+      "MATCH (a:Account)",
+      "WHERE $keys IS NULL OR a.account_id IN $keys",
+      "RETURN a.account_id AS key, 0 AS value, [] AS evidence_ids",
+      "",
+    ].join("\n");
+    return { name, path: info.code_path, language: "cypher", text };
+  }
+  const path = info.kind === "factor" && f?.kind === "python" ? info.code_path : `${info.code_path}/example.py`;
+  const text = [
+    `"""${info.description} Mock text: the lab shows the real file here."""`,
+    "from __future__ import annotations",
+    "",
+    "",
+    "def run_model(run, current_slice):",
+    "    ...",
+    "",
+  ].join("\n");
+  return { name, path, language: "python", text };
+}
+
+// ---- paging, like the lab's: `limit` 1 to 1000 (default 100), `offset` from 0 -----------------------------------------
+const MOCK_MAX_LIMIT = 1000;
+function mockPage<R>(rows: R[], path: string): { total: number; rows: R[] } {
+  const q = new URLSearchParams(path.split("?")[1] ?? "");
+  const whole = (name: string, fallback: number, min: number, max: number) => {
+    const text = q.get(name);
+    if (text === null) return fallback;
+    const n = Number(text);
+    if (!Number.isInteger(n) || n < min || n > max) throw new Error(`${name} must be a whole number from ${min} to ${max}, got ${text}`);
+    return n;
+  };
+  const limit = whole("limit", 100, 1, MOCK_MAX_LIMIT);
+  const offset = whole("offset", 0, 0, Number.MAX_SAFE_INTEGER);
+  return { total: rows.length, rows: rows.slice(offset, offset + limit) };
+}
+
+// GET /api/models, its source route and the results routes; undefined for anything else, so an unknown route still fails loudly.
+function mockModelsAndResults(method: string, path: string, body: unknown): unknown {
+  const p = path.split("?")[0];
   if (method === "GET" && p === "/api/models") return mockModels;
+  const source = /^\/api\/models\/([^/]+)\/source$/.exec(p);
+  if (method === "GET" && source) return mockSource(decodeURIComponent(source[1]));
   const m = /^\/api\/runs\/([^/]+)\/(results\/accounts|results\/communities|results\/community\/([^/]+)|dispositions)$/.exec(p);
   if (!m || !(Object.values(mockRunIds) as string[]).includes(m[1])) return undefined;
   const [, id, what, key] = m;
   const none = id === mockRunIds.failed;
-  if (method === "GET" && what === "results/accounts") {
-    return none ? { total: 0, rows: [] } : { total: MOCK_ACCOUNT_ROWS.length, rows: MOCK_ACCOUNT_ROWS };
-  }
-  if (method === "GET" && what === "results/communities") {
-    return none ? { total: 0, rows: [] } : { total: SEEDS.length, rows: SEEDS.map((_, i) => mockCommunityRow(i)) };
-  }
+  if (method === "GET" && what === "results/accounts") return mockPage(none ? [] : MOCK_ACCOUNT_ROWS, path);
+  if (method === "GET" && what === "results/communities") return mockPage(none ? [] : SEEDS.map((_, i) => mockCommunityRow(i)), path);
   if (method === "GET" && key !== undefined) {
     const i = none ? -1 : SEEDS.findIndex((s) => s.key === key);
     if (i < 0) throw new Error(`run ${id} has no community ${key}`);

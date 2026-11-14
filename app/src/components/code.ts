@@ -107,7 +107,7 @@ function py(value: unknown, indent: number): string {
 
 export function recipeToPython(recipe: Recipe): string {
   const search = recipe.search
-    ? "run.search()        # hybrid search, then hops out from each hit"
+    ? "run.search()        # hybrid search, then account steps out from each hit"
     : "# no search in this recipe: the models work on the whole pull";
   return [
     "import lab",

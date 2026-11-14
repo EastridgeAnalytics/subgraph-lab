@@ -36,7 +36,8 @@ test("it offers three ways to slice, each with its own fields and a default in e
   expect(screen.getByLabelText("Search text")).toHaveValue("");
   expect(screen.getByLabelText("Account key")).toHaveValue("");
   expect(screen.getByLabelText(/hits to keep/i)).toHaveValue(50);
-  expect(screen.getByLabelText(/hops out from each hit/i)).toHaveValue(2);
+  expect(screen.getByLabelText(/account steps out from each hit/i)).toHaveValue(1); // a hop is one account-to-account step (decision 41)
+  expect(screen.getByText("Default 1. A step is a payment or a shared identifier.")).toBeInTheDocument();
   expect(screen.getByText("Search needs the first pass")).toBeInTheDocument();
 });
 
@@ -78,21 +79,21 @@ test("Estimate in search mode shows the hits, which list found them, the hops, t
   expect(within(row).getByText("0.0328")).toBeInTheDocument();
   expect(within(row).getByText("Vector, Full text")).toBeInTheDocument();
   expect(within(panel).getByText("Hops")).toBeInTheDocument();
-  expect(within(panel).getByText("2")).toBeInTheDocument();
+  expect(within(panel).getByText("1", { selector: "dd" })).toBeInTheDocument();
   expect(within(panel).getByText("412")).toBeInTheDocument();
   expect(within(panel).getByText("1,630")).toBeInTheDocument();
   expect(within(panel).getByText("1.3 MB")).toBeInTheDocument();
   expect(within(panel).queryByRole("alert")).not.toBeInTheDocument();
 
   const sent = estimate.mock.calls[0][0].recipe!;
-  expect(sent.search).toEqual({ text: "accounts moving money in a ring", account: null, k: 50, hops: 2 });
+  expect(sent.search).toEqual({ text: "accounts moving money in a ring", account: null, k: 50, hops: 1 });
   expect(sent.pull.mode).toBe("schema");
 });
 
 test("over the cap: a warning says so and Run is disabled", async () => {
   mount();
   searchFor("ring");
-  fireEvent.change(screen.getByLabelText(/hops out from each hit/i), { target: { value: "5" } });
+  fireEvent.change(screen.getByLabelText(/account steps out from each hit/i), { target: { value: "5" } });
   fireEvent.click(estimateButton());
 
   const panel = await screen.findByRole("region", { name: "Estimate" });
@@ -190,13 +191,13 @@ test("API errors show in a notice and the screen stays usable", async () => {
 });
 
 test("the slice survives a reload: the fields come back from the stored recipe", () => {
-  const recipe: Recipe = { ...defaultRecipe(), search: { text: "ring", account: null, k: 20, hops: 1 } };
+  const recipe: Recipe = { ...defaultRecipe(), search: { text: "ring", account: null, k: 20, hops: 3 } };
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify({ recipe, runId: null, runRecipe: null }));
   mount();
   expect(screen.getByRole("tab", { name: "By search" })).toHaveAttribute("aria-selected", "true");
   expect(screen.getByLabelText("Search text")).toHaveValue("ring");
   expect(screen.getByLabelText(/hits to keep/i)).toHaveValue(20);
-  expect(screen.getByLabelText(/hops out from each hit/i)).toHaveValue(1);
+  expect(screen.getByLabelText(/account steps out from each hit/i)).toHaveValue(3); // not the default, so it came from the stored recipe
 });
 
 test("busy state while the estimate is on its way", async () => {

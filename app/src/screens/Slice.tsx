@@ -17,9 +17,10 @@ const TABS = [
 ];
 
 // The documented defaults for a search slice (page 02; LAB_SEARCH_K and LAB_SEARCH_HOPS on page 07), shown as the
-// starting values. Clearing a field sends nothing, and then the lab uses its own setting.
+// starting values. Clearing a field sends nothing, and then the lab uses its own setting. A hop is one account-to-account
+// step, by a payment or by a shared identifier (decision 41), so the default is 1.
 const DEFAULT_K = 50;
-const DEFAULT_HOPS = 2;
+const DEFAULT_HOPS = 1;
 
 // An example that runs on the bundled seed: October's payments with both accounts.
 const EXAMPLE_QUERY = `MATCH (a:Account)-[t:TX]->(b:Account)
@@ -180,8 +181,8 @@ export default function Slice() {
                   placeholder="A0011" hint="Or an account already flagged. Give text, a key, or both." />
                 <Field label="Hits to keep (k)" type="number" min={1} step={1} value={fields.k} error={kCheck.error}
                   onChange={(e) => set({ k: e.target.value })} hint={`Default ${DEFAULT_K}. Empty uses the lab's setting.`} />
-                <Field label="Hops out from each hit (h)" type="number" min={0} step={1} value={fields.hops} error={hopsCheck.error}
-                  onChange={(e) => set({ hops: e.target.value })} hint={`Default ${DEFAULT_HOPS}. Empty uses the lab's setting.`} />
+                <Field label="Account steps out from each hit (h)" type="number" min={0} step={1} value={fields.hops} error={hopsCheck.error}
+                  onChange={(e) => set({ hops: e.target.value })} hint={`Default ${DEFAULT_HOPS}. A step is a payment or a shared identifier.`} />
               </div>
             </div>
           )}

@@ -46,7 +46,7 @@ test("it reads the run from the address", async () => {
   const accounts = vi.spyOn(api, "accounts");
   mount();
   await accountsTable();
-  expect(accounts).toHaveBeenCalledWith(DONE);
+  expect(accounts).toHaveBeenCalledWith(DONE, { limit: 100, offset: 0 });
   expect(card("Who is reviewing")).toBeInTheDocument();
   expect(within(card("Who is reviewing")).getByRole("link", { name: "Review and push" })).toHaveAttribute("href", `/review?run=${DONE}`);
 });
@@ -56,7 +56,7 @@ test("it reads the run from the run context when the address has none", async ()
   const accounts = vi.spyOn(api, "accounts");
   mount("/results");
   await accountsTable();
-  expect(accounts).toHaveBeenCalledWith(DONE);
+  expect(accounts).toHaveBeenCalledWith(DONE, { limit: 100, offset: 0 });
   expect(within(card("Who is reviewing")).getByRole("link", { name: "Review and push" })).toHaveAttribute("href", "/review");
 });
 
@@ -72,14 +72,15 @@ test("the accounts tab shows each account's score and its parts, the factors tha
   expect(row).toHaveTextContent("0.95");
   expect(row).toHaveTextContent("model 1.00, rules 0.91");
   expect(row).toHaveTextContent("shared_device_5plus score 1.00, weight 0.20");
-  expect(row).toHaveTextContent("tgn score 0.80, weight 0.10");
+  expect(row).toHaveTextContent("tgn score 0.80, weight 0.05");
   expect(within(row).getByRole("link", { name: `Open community ${KEYS.ring}` })).toBeInTheDocument();
   expect(row).toHaveTextContent("al-A1001");
   expect(within(row).getAllByRole("button")).toHaveLength(3);
 
-  // the lowest score has no alert
+  // the lowest score on the page has no alert
   fireEvent.click(within(table).getByRole("button", { name: "Risk score" })); // ascending
-  expect(rowOf(table, "A1026")).toHaveTextContent("no alert");
+  expect(firstKey(table)).toBe("A1100");
+  expect(dataRows(table)[0]).toHaveTextContent("no alert");
 });
 
 test("factor names from the models list are on the factor ids", async () => {
@@ -88,38 +89,99 @@ test("factor names from the models list are on the factor ids", async () => {
   await waitFor(() => expect(within(rowOf(table, "A1001")).getByText("shared_device_5plus").closest("li")).toHaveAttribute("title", "Five or more accounts on one device"));
 });
 
-test("the accounts are paged ten at a time, with Previous off on the first page and Next off on the last", async () => {
+test("the accounts page through the server, 100 a page, and say which rows are shown", async () => {
+  const accounts = vi.spyOn(api, "accounts");
   mount();
   const table = await accountsTable();
-  expect(dataRows(table)).toHaveLength(10);
-  expect(screen.getByText("Showing 1 to 10 of 26 accounts")).toBeInTheDocument();
+  expect(dataRows(table)).toHaveLength(100); // one server page, with no second pager inside it
+  expect(screen.getByText("Showing 1 to 100 of 230 accounts")).toBeInTheDocument();
+  expect(screen.getByText("230 accounts scored, highest risk score first. Click a column heading to sort the page you are on.")).toBeInTheDocument();
   const pager = screen.getByRole("navigation", { name: "Pages of Accounts and their risk scores" });
   expect(within(pager).getByText("Page 1 of 3")).toBeInTheDocument();
   expect(within(pager).getByRole("button", { name: "Previous" })).toBeDisabled();
+  expect(screen.getAllByRole("navigation", { name: /^Pages of/ })).toHaveLength(1);
 
   fireEvent.click(within(pager).getByRole("button", { name: "Next" }));
-  expect(screen.getByText("Showing 11 to 20 of 26 accounts")).toBeInTheDocument();
-  expect(firstKey(table)).toBe("A1011");
+  await screen.findByText("Showing 101 to 200 of 230 accounts");
+  expect(accounts).toHaveBeenLastCalledWith(DONE, { limit: 100, offset: 100 });
+  expect(dataRows(table)).toHaveLength(100);
+  expect(firstKey(table)).toBe("A1101");
+  expect(within(pager).getByText("Page 2 of 3")).toBeInTheDocument();
+  await waitFor(() => expect(screen.getByText(/^230 accounts scored/)).toHaveFocus()); // the pressed button is gone, so focus goes to the list
+
   fireEvent.click(within(pager).getByRole("button", { name: "Next" }));
-  expect(screen.getByText("Showing 21 to 26 of 26 accounts")).toBeInTheDocument();
-  expect(dataRows(table)).toHaveLength(6);
+  await screen.findByText("Showing 201 to 230 of 230 accounts");
+  expect(accounts).toHaveBeenLastCalledWith(DONE, { limit: 100, offset: 200 });
+  expect(dataRows(table)).toHaveLength(30);
   expect(within(pager).getByRole("button", { name: "Next" })).toBeDisabled();
+
   fireEvent.click(within(pager).getByRole("button", { name: "Previous" }));
-  expect(firstKey(table)).toBe("A1011");
+  await screen.findByText("Showing 101 to 200 of 230 accounts");
+  expect(accounts).toHaveBeenLastCalledWith(DONE, { limit: 100, offset: 100 });
 });
 
-test("a column sorts on click, again to reverse, marks the heading, and goes back to the first page", async () => {
+test("while the next page loads the page on screen stays, the buttons are off, and the range says it is loading", async () => {
+  const real = api.accounts;
+  let release!: () => void;
+  vi.spyOn(api, "accounts").mockImplementation((id, page) => page?.offset === 100
+    ? new Promise((res) => { release = () => res(real(id, page)); })
+    : real(id, page));
+  mount();
+  const table = await accountsTable();
+  const pager = screen.getByRole("navigation", { name: "Pages of Accounts and their risk scores" });
+  fireEvent.click(within(pager).getByRole("button", { name: "Next" }));
+  expect(await screen.findByText("Loading page 2…")).toBeInTheDocument();
+  expect(firstKey(table)).toBe("A1001"); // still the first page
+  expect(within(pager).getByRole("button", { name: "Next" })).toBeDisabled();
+  expect(within(pager).getByRole("button", { name: "Previous" })).toBeDisabled();
+  release();
+  await screen.findByText("Showing 101 to 200 of 230 accounts");
+  expect(firstKey(table)).toBe("A1101");
+});
+
+test("a page that will not load says why, and Back to the first page gets out of it", async () => {
+  const real = api.accounts;
+  vi.spyOn(api, "accounts").mockImplementation((id, page) => page?.offset === 100
+    ? Promise.reject(new Error("the staged scores could not be read just now"))
+    : real(id, page));
+  mount();
+  await accountsTable();
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Pages of Accounts and their risk scores" })).getByRole("button", { name: "Next" }));
+  const notice = await screen.findByRole("alert");
+  expect(notice).toHaveTextContent("The accounts did not load");
+  expect(notice).toHaveTextContent("could not be read just now");
+  fireEvent.click(within(notice).getByRole("button", { name: "Back to the first page" }));
+  expect(await screen.findByText("Showing 1 to 100 of 230 accounts")).toBeInTheDocument();
+});
+
+test("the offset is asked of the lab as a query: the client adds limit and offset to the path", async () => {
+  const fetched: string[] = [];
+  vi.stubGlobal("fetch", vi.fn(async (path: string) => { fetched.push(path); return { ok: true, json: async () => ({ total: 0, rows: [] }) }; }));
+  setMock(false); // the real client, with fetch stubbed
+  try {
+    await api.accounts(DONE, { limit: 100, offset: 100 });
+    await api.communities(DONE, { limit: 50 });
+    await api.accounts(DONE);
+  } finally {
+    vi.unstubAllGlobals();
+  }
+  expect(fetched).toEqual([
+    `/api/runs/${DONE}/results/accounts?limit=100&offset=100`,
+    `/api/runs/${DONE}/results/communities?limit=50`,
+    `/api/runs/${DONE}/results/accounts`,
+  ]);
+});
+
+test("a column sorts the page on screen on click, again to reverse, and marks the heading", async () => {
   mount();
   const table = await accountsTable();
   const heading = (name: string) => within(table).getByRole("columnheader", { name: new RegExp(`^${name}`) });
   expect(heading("Risk score")).toHaveAttribute("aria-sort", "descending"); // the lab's own order
   expect(firstKey(table)).toBe("A1001");
 
-  fireEvent.click(within(screen.getByRole("navigation", { name: "Pages of Accounts and their risk scores" })).getByRole("button", { name: "Next" }));
   fireEvent.click(within(table).getByRole("button", { name: "Risk score" }));
   expect(heading("Risk score")).toHaveAttribute("aria-sort", "ascending");
-  expect(screen.getByText("Showing 1 to 10 of 26 accounts")).toBeInTheDocument();
-  expect(firstKey(table)).toBe("A1026"); // the lowest score
+  expect(firstKey(table)).toBe("A1100"); // the lowest score on this page, not in the whole list
   fireEvent.click(within(table).getByRole("button", { name: "Risk score" }));
   expect(heading("Risk score")).toHaveAttribute("aria-sort", "descending");
   expect(firstKey(table)).toBe("A1001");
@@ -129,19 +191,21 @@ test("a column sorts on click, again to reverse, marks the heading, and goes bac
   expect(heading("Risk score")).toHaveAttribute("aria-sort", "none");
   expect(firstKey(table)).toBe("A1001");
   fireEvent.click(within(table).getByRole("button", { name: "Account" }));
-  expect(firstKey(table)).toBe("A1026");
+  expect(firstKey(table)).toBe("A1100");
 
   fireEvent.click(within(table).getByRole("button", { name: "Factors that fired" })); // most factors first
   expect(within(dataRows(table)[0]).getAllByRole("listitem").length).toBe(4);
   expect(within(heading("Decision")).queryByRole("button")).not.toBeInTheDocument(); // not sortable
 });
 
-test("when the lab sent only the top of a longer list the screen says so", async () => {
-  const real = await api.accounts(DONE);
-  vi.spyOn(api, "accounts").mockResolvedValue({ total: 96, rows: real.rows });
+test("a sort stays when the next page comes", async () => {
   mount();
-  await accountsTable();
-  expect(screen.getByText(/The lab sent the top 26 of 96 accounts, highest score first/)).toBeInTheDocument();
+  const table = await accountsTable();
+  fireEvent.click(within(table).getByRole("button", { name: "Account" })); // ascending by key
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Pages of Accounts and their risk scores" })).getByRole("button", { name: "Next" }));
+  await screen.findByText("Showing 101 to 200 of 230 accounts");
+  expect(within(table).getByRole("columnheader", { name: /^Account/ })).toHaveAttribute("aria-sort", "ascending");
+  expect(firstKey(table)).toBe("A1101");
 });
 
 test("a run that has not scored anything shows empty tables, not errors", async () => {
@@ -185,13 +249,13 @@ test("the communities tab shows each community's size, score, the start of its s
   expect(screen.getByRole("tab", { name: "Communities" })).toHaveAttribute("aria-selected", "true");
   expect(within(table).getAllByRole("columnheader").map((h) => h.textContent?.replace(/[▲▼↕]/g, ""))).toEqual(
     ["Community", "Members", "Risk score", "Summary", "Decision"]);
-  expect(dataRows(table)).toHaveLength(10);
-  expect(screen.getByText("Showing 1 to 10 of 12 communities")).toBeInTheDocument();
+  expect(dataRows(table)).toHaveLength(100);
+  expect(screen.getByText("Showing 1 to 100 of 120 communities")).toBeInTheDocument();
 
   const ring = rowOf(table, KEYS.ring.slice(0, 12));
   expect(ring).toHaveTextContent("Source: api");
   expect(ring).toHaveTextContent("5 of the 7 accounts share device D-4400");
-  expect(ring).toHaveTextContent("0.77");
+  expect(ring).toHaveTextContent("0.76");
   expect(rowOf(table, KEYS.agent)).toHaveTextContent("Source: agent");
   expect(rowOf(table, KEYS.template)).toHaveTextContent("Source: template");
   expect(rowOf(table, KEYS.noEvidence)).toHaveTextContent("No summary");
@@ -203,9 +267,46 @@ test("the communities tab shows each community's size, score, the start of its s
   expect(decided).toHaveTextContent("Staged: it will travel with the next push.");
 
   const pager = screen.getByRole("navigation", { name: "Pages of Communities and their risk scores" });
+  expect(within(pager).getByText("Page 1 of 2")).toBeInTheDocument();
+  expect(within(pager).getByRole("button", { name: "Previous" })).toBeDisabled();
   fireEvent.click(within(pager).getByRole("button", { name: "Next" }));
-  expect(screen.getByText("Showing 11 to 12 of 12 communities")).toBeInTheDocument();
-  expect(dataRows(table)).toHaveLength(2);
+  await screen.findByText("Showing 101 to 120 of 120 communities");
+  expect(dataRows(table)).toHaveLength(20);
+  expect(within(pager).getByRole("button", { name: "Next" })).toBeDisabled();
+});
+
+test("the communities page through the server too: Next asks for offset 100, and Previous comes back", async () => {
+  const communities = vi.spyOn(api, "communities");
+  mount();
+  await accountsTable();
+  tab("Communities");
+  const table = await communitiesTable();
+  expect(communities).toHaveBeenCalledWith(DONE, { limit: 100, offset: 0 });
+  const pager = screen.getByRole("navigation", { name: "Pages of Communities and their risk scores" });
+  fireEvent.click(within(pager).getByRole("button", { name: "Next" }));
+  await screen.findByText("Showing 101 to 120 of 120 communities");
+  expect(communities).toHaveBeenLastCalledWith(DONE, { limit: 100, offset: 100 });
+  // a community on the second page opens like any other
+  fireEvent.click(within(dataRows(table)[0]).getByRole("link"));
+  await screen.findByRole("heading", { level: 2, name: /^Community cf/ });
+  fireEvent.click(screen.getByRole("button", { name: "All communities" }));
+  await communitiesTable();
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Pages of Communities and their risk scores" })).getByRole("button", { name: "Previous" }));
+  await screen.findByText("Showing 1 to 100 of 120 communities");
+  expect(communities).toHaveBeenLastCalledWith(DONE, { limit: 100, offset: 0 });
+});
+
+test("another run starts on its first page", async () => {
+  const accounts = vi.spyOn(api, "accounts");
+  const first = mount();
+  await accountsTable();
+  fireEvent.click(within(screen.getByRole("navigation", { name: "Pages of Accounts and their risk scores" })).getByRole("button", { name: "Next" }));
+  await screen.findByText("Showing 101 to 200 of 230 accounts");
+  first.unmount();
+  mount(`/results?run=${mockRunIds.partialPush}`);
+  await accountsTable();
+  expect(accounts).toHaveBeenLastCalledWith(mockRunIds.partialPush, { limit: 100, offset: 0 });
+  expect(screen.getByText("Showing 1 to 100 of 230 accounts")).toBeInTheDocument();
 });
 
 test("communities sort by members and by score", async () => {
@@ -231,8 +332,8 @@ test("a community opens to its decision, score, summary with its source, score p
   expect(screen.queryByRole("table", { name: "Communities and their risk scores" })).not.toBeInTheDocument(); // the list is put away
 
   expect(screen.getByRole("region", { name: "Your decision on this community" })).toBeInTheDocument();
-  expect(screen.getByText("Risk score", { selector: "dt" }).closest("dl")).toHaveTextContent("0.77");
-  expect(screen.getByText("Rank").closest("dl")).toHaveTextContent("1 of 12");
+  expect(screen.getByText("Risk score", { selector: "dt" }).closest("dl")).toHaveTextContent("0.76");
+  expect(screen.getByText("Rank").closest("dl")).toHaveTextContent("1 of 120");
 
   const summary = card("Summary");
   expect(summary).toHaveTextContent("Source: api");
@@ -248,8 +349,14 @@ test("a community opens to its decision, score, summary with its source, score p
   expect(meters.map((m) => m.getAttribute("aria-label"))).toEqual(
     ["Member risk", "Shared identifiers", "Cycles", "New accounts", "Speed"]);
   expect(within(parts).getByRole("meter", { name: "Member risk" })).toHaveAttribute("aria-valuenow", "0.86");
-  expect(parts).toHaveTextContent("0.86 × 0.35 = 0.30");
-  expect(parts).toHaveTextContent("The parts add up to 0.77, the score the lab stored (0.77).");
+  expect(parts).toHaveTextContent("Each part runs from 0 to 1. A part that is absent changes nothing; each part alone can raise the score up to its weight.");
+  expect(parts).toHaveTextContent("0.86 × 0.65 = 0.56"); // a noisy-or: the weight as it is, not a share
+  expect(parts).toHaveTextContent("The parts combine as 1 − Π(1 − w·v) = 0.76, the score the lab stored (0.76).");
+  expect(parts).not.toHaveTextContent("add up to");
+  expect(parts).not.toHaveTextContent("weighted mean");
+  expect(parts).toHaveTextContent("Formed by a shared identifier"); // a tag, not a sixth part
+  expect(within(parts).getAllByRole("meter")).toHaveLength(5);
+  expect(within(parts).queryByRole("meter", { name: /formed/i })).not.toBeInTheDocument();
 
   const members = card("Members and links");
   const graph = within(members).getByRole("img", { name: /^Graph of community c3f9a1d2: 7 accounts, 2 shared identifiers and 7 payment links$/ });
@@ -268,13 +375,52 @@ test("a community opens to its decision, score, summary with its source, score p
   expect(evidence.querySelector("dl")).toHaveTextContent("First payment2026-10-03 14:02 UTC");
   expect(within(evidence).getByRole("table", { name: "Risk factors that fired in this community" })).toHaveTextContent("Five or more accounts on one device");
   expect(within(evidence).getByRole("table", { name: "Top members by risk score" })).toHaveTextContent("A1001");
-  expect(evidence).toHaveTextContent("Ranks 1 of 12 communities by score. The median community has 3 members and a score of 0.41.");
+  expect(evidence).toHaveTextContent("Ranks 1 of 120 communities by score. The median community has 3 members and a score of 0.41.");
 
   const like = card("Communities like this one");
   expect(within(like).getAllByRole("link").map((l) => l.textContent)).toEqual([KEYS.agent, KEYS.replaced, KEYS.template]);
   expect(like).toHaveTextContent("Source: agent");
 
   expect(document.body.textContent).not.toMatch(/fraud/i); // a risk score, never a verdict
+});
+
+test("a community formed by payments says so, and the parts and the foot are the same five", async () => {
+  await openCommunity("cf017a3d1e");
+  const parts = card("Score and its parts");
+  expect(parts).toHaveTextContent("Formed by payments");
+  expect(parts).not.toHaveTextContent("Formed by a shared identifier");
+  expect(within(parts).getAllByRole("meter").map((m) => m.getAttribute("aria-label"))).toEqual(
+    ["Member risk", "Shared identifiers", "Cycles", "New accounts", "Speed"]);
+  expect(parts).toHaveTextContent(/The parts combine as 1 − Π\(1 − w·v\) = 0\.\d\d, the score the lab stored/);
+  expect(parts.querySelector('[role="note"]')).toBeNull(); // the sum agrees with the stored score
+});
+
+test("the parts say what speed and cycles mean in the lab's words", async () => {
+  await openCommunity(KEYS.ring);
+  const parts = card("Score and its parts");
+  expect(parts).toHaveTextContent("Money in and out of similar size within a day: the in_and_out_within_a_day factor's rows.");
+  expect(parts).toHaveTextContent("Money that comes back to where it started, each payment after the one before it.");
+});
+
+test("under a weighted mean community policy the card keeps the old line and shares, and nothing is a noisy-or", async () => {
+  const real = await api.models();
+  const policy = real.policy as { community: Record<string, unknown> };
+  vi.spyOn(api, "models").mockResolvedValue({ ...real, policy: { ...real.policy, community: { ...policy.community, combine: "weighted_mean" } } });
+  await openCommunity(KEYS.ring);
+  const parts = card("Score and its parts");
+  await waitFor(() => expect(parts).toHaveTextContent("Each part runs from 0 to 1. The score is their weighted mean."));
+  expect(parts).toHaveTextContent("× 0.45 = 0.39"); // 0.65 of a total weight of 1.45, times 0.86
+  expect(parts).not.toHaveTextContent("1 − Π");
+  expect(parts).toHaveTextContent("Formed by a shared identifier");
+});
+
+test("without the policy the card claims nothing about how the parts combine", async () => {
+  vi.spyOn(api, "models").mockRejectedValue(new Error("the factor file could not be read"));
+  await openCommunity(KEYS.ring);
+  const parts = card("Score and its parts");
+  expect(parts).toHaveTextContent("Each part runs from 0 to 1.");
+  expect(parts).not.toHaveTextContent(/weighted mean|noisy/);
+  expect(parts).toHaveTextContent("Formed by a shared identifier");
 });
 
 test("a link to a similar community opens it, and All communities goes back to the list", async () => {
@@ -307,7 +453,7 @@ test("a summary from the template says so plainly, and does not claim a model wr
   const summary = card("Summary");
   expect(summary).toHaveTextContent("Source: template");
   expect(summary).toHaveTextContent("Built from the evidence by a template. No model wrote this text.");
-  expect(summary).toHaveTextContent("6 accounts form this community, with a risk score of 0.50.");
+  expect(summary).toHaveTextContent("6 accounts form this community, with a risk score of 0.58.");
   expect(within(summary).queryByText(/replaced/i)).not.toBeInTheDocument();
   expect(summary).not.toHaveTextContent("Written by");
 });

@@ -1,6 +1,8 @@
 // A side panel of code, in the style of the header's Show code: a titled dialog on the right, tabs for each piece of
 // text, a Copy button, Escape and Close to leave, focus kept inside while it is open and returned to the button that
 // opened it. Unlike the header's, this one is told what to show: the Models screen uses it for one model or one factor.
+// A tab can name its language (the lab says "cypher", "python" or "yaml"), which is written above the text and set as the
+// code element's class. There is no highlighter: no new dependency, and the text stays plain and selectable.
 // It renders nothing while `open` is false.
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
@@ -8,7 +10,10 @@ import { Button, Tabs } from "./ui";
 
 const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
-export interface CodeTab { id: string; label: string; text: string }
+export type CodeLanguage = "cypher" | "python" | "yaml";
+const LANGUAGE_NAMES: Record<CodeLanguage, string> = { cypher: "Cypher", python: "Python", yaml: "YAML" };
+
+export interface CodeTab { id: string; label: string; text: string; language?: CodeLanguage }
 
 export function CodeDrawer({ open, title, description, path, notice, tabs, onClose }: {
   open: boolean;
@@ -76,15 +81,18 @@ export function CodeDrawer({ open, title, description, path, notice, tabs, onClo
         {notice}
         <Tabs tabs={tabs.map(({ id, label }) => ({ id, label }))} value={shown?.id ?? ""} onChange={(t) => { setTab(t); setCopy("idle"); }} label="Code">
           <div className="space-y-3">
-            <div className="flex items-center justify-end gap-3">
-              <span role="status" className="text-sm text-slate-600">
-                {copy === "copied" ? "Copied to the clipboard." : copy === "failed" ? "Could not copy. Select the text and copy it." : ""}
-              </span>
-              <Button onClick={onCopy} disabled={!shown}>{copy === "copied" ? "Copied" : "Copy"}</Button>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-sm font-medium text-slate-700">{shown?.language ? LANGUAGE_NAMES[shown.language] : ""}</span>
+              <div className="flex items-center gap-3">
+                <span role="status" className="text-sm text-slate-600">
+                  {copy === "copied" ? "Copied to the clipboard." : copy === "failed" ? "Could not copy. Select the text and copy it." : ""}
+                </span>
+                <Button onClick={onCopy} disabled={!shown}>{copy === "copied" ? "Copied" : "Copy"}</Button>
+              </div>
             </div>
             <pre tabIndex={0} aria-label={shown?.label ?? "Code"}
               className="max-h-[60vh] overflow-auto rounded-md border border-slate-200 bg-slate-50 p-4 text-sm leading-relaxed text-slate-800">
-              <code>{shown?.text ?? ""}</code>
+              <code className={shown?.language ? `language-${shown.language}` : undefined}>{shown?.text ?? ""}</code>
             </pre>
           </div>
         </Tabs>
