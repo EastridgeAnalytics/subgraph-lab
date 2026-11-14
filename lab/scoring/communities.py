@@ -211,8 +211,8 @@ def ring_recall(
     - `mostly_whole`: more than `mostly` of the ring's members are in one community. It includes the whole ones.
     - `lookalikes_in_high_scoring_community`: look-alike groups whose biggest community scores at or above
       `alert_threshold` (the policy file's, when not given). None when the communities carry no score.
-    - `formed`, on each ring and look-alike: how the community that holds most of it formed, `"identifier"` or
-      `"payment"` (None when the communities do not say). `rings_by_formed` counts the rings, the whole ones and the
+    - `formed`, on each ring and look-alike: how the community that holds most of it formed, `"identifier"`, `"flow"`
+      or `"payment"` (None when the communities do not say). `rings_by_formed` counts the rings, the whole ones and the
       mostly whole ones by that kind.
 
     A group's biggest community is the one holding most of its members; a tie goes to the higher score.

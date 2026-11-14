@@ -10,7 +10,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 2 · find and score | Done, 13 November 2026 | [wave-2](reviews/wave-2.md) |
 | 3 · communities, summaries, the rest of the app | Done, 13 November 2026 | [wave-3](reviews/wave-3.md) |
 | 4 · the director's review | Done, 13 November 2026 | [mvp-review](reviews/mvp-review.md) |
-| 5 · fix and redesign | Not started | |
+| 5 · fix and redesign | Done, 13 November 2026 | [wave-5](reviews/wave-5.md) |
 | 6 · measured numbers, packaging | Not started | |
 
 ## The MVP, by 11 December 2026
@@ -28,7 +28,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 9 | Summaries | The evidence schema and hash. Community and account summaries through the Anthropic API or the agent, the template otherwise. The number, member and wording checks. The cache | Scoring | Done (3b): `lab/summaries/`. The API writer is tested against a mocked client; the template writes every summary until a key is set. The cache key leaves out the run id (5b) |
 | 10 | Review and push | The dry-run plan plus the delta. `relate push` keyed, with a manifest and resume, creating `RiskCommunity` nodes and their links. Dispositions written back. The `LabRun` marker written last. Bolt as the fallback | Data plane | Done (1e): `lab/roundtrip/stage.py`, `push.py`, `delta.py`, `ledger.py`, `retract.py`; a push never creates a customer node (decision 35). Tested live, and on the seed by the loop. The plan's created and updated counts come from the master graph (5c) |
 | 11 | API and agent | FastAPI routes, the eight tools, Relate's skill and MCP wired for the agent | API | Done (2d): `lab/api/`. Nine MCP tools (decision 38); a push needs a fresh review (decision 37). An agent ran the loop through both MCP servers |
-| 12 | The app | The seven MVP screens, with accounts and communities on Results and the decision buttons. The 15-minute test, measured | App | Built: all seven screens (1d, 2e, 3d, 3e), walked against the real lab in wave 4. The 15-minute test (A1) is wave 6 |
+| 12 | The app | The seven MVP screens, with accounts and communities on Results and the decision buttons. The 15-minute test, measured | App | Built: all seven screens (1d, 2e, 3d, 3e), walked against the real lab in wave 4 and brought up to wave 5's lab (5d). The 15-minute test (A1) is wave 6 |
 | 13 | Compose, README, numbers, video | An `.env` for Aura and one command for the bundled Neo4j. AI use disclosed. A measured-numbers page. A video of two minutes or less | Docs | Not started |
 
 ## Four weeks
