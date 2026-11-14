@@ -15,6 +15,17 @@ export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
+/** A page of a results list (the lab's `limit` 1 to 1000, default 100, and `offset` from 0). Neither given means the lab's first page. */
+export interface Paging { limit?: number; offset?: number }
+
+function pagingQuery(page?: Paging): string {
+  const q = new URLSearchParams();
+  if (page?.limit !== undefined) q.set("limit", String(page.limit));
+  if (page?.offset !== undefined) q.set("offset", String(page.offset));
+  const text = q.toString();
+  return text ? `?${text}` : "";
+}
+
 async function call<R>(method: "GET" | "POST", path: string, body?: unknown): Promise<R> {
   if (isMock()) return mockHandler(method, path, body) as Promise<R>;
   const res = await fetch(path, {
@@ -43,8 +54,9 @@ export const api = {
   runs: () => call<T.RunsList>("GET", "/api/runs"),
   run: (id: string) => call<T.RunManifest>("GET", `/api/runs/${id}`),
   resume: (id: string) => call<T.RunStarted>("POST", `/api/runs/${id}/resume`),
-  accounts: (id: string) => call<T.AccountsPage>("GET", `/api/runs/${id}/results/accounts`),
-  communities: (id: string) => call<T.CommunitiesPage>("GET", `/api/runs/${id}/results/communities`),
+  accounts: (id: string, page?: Paging) => call<T.AccountsPage>("GET", `/api/runs/${id}/results/accounts${pagingQuery(page)}`),
+  communities: (id: string, page?: Paging) =>
+    call<T.CommunitiesPage>("GET", `/api/runs/${id}/results/communities${pagingQuery(page)}`),
   community: (id: string, key: string) => call<T.CommunityDetail>("GET", `/api/runs/${id}/results/community/${key}`),
   review: (id: string) => call<T.Review>("GET", `/api/runs/${id}/review`),
   push: (id: string, confirm: boolean) => call<T.PushResult>("POST", `/api/runs/${id}/push`, { confirm }),

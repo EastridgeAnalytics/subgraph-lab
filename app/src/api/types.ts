@@ -25,6 +25,8 @@ export interface GraphMapping {
 }
 export interface Recipe {
   name: string; graph?: GraphMapping; pull: PullSpec; search?: SearchSpec | null; models: string[];
+  /** Decision 40: the factor ids this run scores with. Absent or null means every factor in the factor file. */
+  factors?: string[] | null;
   summaries: boolean; write_back?: Record<string, boolean>;
 }
 export interface SliceRequest { run_id?: string | null; recipe?: Recipe; pull?: PullSpec | null; search?: SearchSpec | null }

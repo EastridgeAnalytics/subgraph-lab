@@ -101,6 +101,16 @@ describe("DataTable", () => {
     rerender(<DataTable columns={COLUMNS} rows={many.slice(0, 12)} rowKey={(r) => r.name} caption="Things" />);
     expect(screen.getByText("Showing 11 to 12 of 12 rows")).toBeInTheDocument();
   });
+
+  test("footer false leaves out the range and the pager, for a screen that pages through the server", () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ name: `row${String(i).padStart(2, "0")}`, n: i }));
+    render(<DataTable columns={COLUMNS} rows={many} rowKey={(r) => r.name} caption="Things" pageSize={100} footer={false} />);
+    expect(within(screen.getByRole("table", { name: "Things" })).getAllByRole("row")).toHaveLength(26); // every row, no pages
+    expect(screen.queryByRole("status")).not.toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Count" })); // it still sorts
+    expect(within(screen.getByRole("table", { name: "Things" })).getAllByRole("row")[1]).toHaveTextContent("row24");
+  });
 });
 
 // ---- DispositionButtons ------------------------------------------------------------------------------------------------
@@ -173,6 +183,89 @@ describe("ScoreParts", () => {
     expect(screen.getByText(/no weight for every part/)).toBeInTheDocument();
     rerender(<ScoreParts parts={{}} />);
     expect(screen.getByText("The lab gave no parts for this score.")).toBeInTheDocument();
+  });
+});
+
+describe("ScoreParts: how the community formed, and noisy-or (decisions 42 and 45)", () => {
+  const five = { member_risk: 0.8, shared_identifiers: 0.5, cycles: 0.4, new_accounts: 0.5, speed: 0.4 };
+  const noisyWeights = { member_risk: 0.65, shared_identifiers: 0.2, cycles: 0.2, new_accounts: 0.2, speed: 0.2 };
+  const noisyScore = 1 - (1 - 0.65 * 0.8) * (1 - 0.2 * 0.5) * (1 - 0.2 * 0.4) * (1 - 0.2 * 0.5) * (1 - 0.2 * 0.4); // 0.6709...
+  const meanWeights = { member_risk: 0.35, shared_identifiers: 0.2, cycles: 0.15, new_accounts: 0.15, speed: 0.15 };
+
+  test("formed_by_identifier is a tag, never a bar, and the five parts still add up to the stored score", () => {
+    const stored = 0.8 * 0.35 + 0.5 * 0.2 + 0.4 * 0.15 + 0.5 * 0.15 + 0.4 * 0.15; // 0.575
+    render(<ScoreParts parts={{ ...five, formed_by_identifier: 1 }} weights={meanWeights} score={stored} />);
+    expect(screen.getByText("Formed by a shared identifier")).toBeInTheDocument();
+    expect(screen.queryByText("Formed by payments")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("meter").map((m) => m.getAttribute("aria-label"))).toEqual(
+      ["Member risk", "Shared identifiers", "Cycles", "New accounts", "Speed"]);
+    expect(screen.queryByRole("meter", { name: /formed/i })).not.toBeInTheDocument();
+    expect(screen.queryByText(/Formed by identifier/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/×/)).toHaveLength(5); // five rows with a weight, none for the tag
+    expect(screen.getByText(/The parts add up to 0.58, the score the lab stored \(0.58\)\./)).toBeInTheDocument();
+    expect(screen.queryByText(/no weight for every part/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+  });
+
+  test("a community that formed by payments says so, and 0 is not a missing tag", () => {
+    render(<ScoreParts parts={{ ...five, formed_by_identifier: 0 }} weights={meanWeights} />);
+    expect(screen.getByText("Formed by payments")).toBeInTheDocument();
+    expect(screen.queryByText("Formed by a shared identifier")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("meter")).toHaveLength(5);
+  });
+
+  test("with no tag in the parts there is no line about how it formed", () => {
+    render(<ScoreParts parts={five} weights={meanWeights} />);
+    expect(screen.queryByText(/^Formed by/)).not.toBeInTheDocument();
+  });
+
+  test("with noisy_or each row is value x weight with the weight as it is, and the foot is 1 - the product of (1 - w v)", () => {
+    render(<ScoreParts parts={{ ...five, formed_by_identifier: 1 }} weights={noisyWeights} combine="noisy_or" score={noisyScore} />);
+    expect(screen.getByText("× 0.65 = 0.52")).toBeInTheDocument(); // 0.8 x 0.65, not a share of the total weight
+    expect(screen.getAllByText("× 0.20 = 0.10")).toHaveLength(2); // 0.5 x 0.2, twice
+    expect(screen.getAllByText("× 0.20 = 0.08")).toHaveLength(2); // 0.4 x 0.2, twice
+    expect(screen.getByText(/The parts combine as 1 − Π\(1 − w·v\) = 0\.67, the score the lab stored \(0\.67\)\./)).toBeInTheDocument();
+    expect(screen.queryByText(/add up to/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("note")).not.toBeInTheDocument();
+    expect(screen.getAllByRole("meter")).toHaveLength(5);
+    expect(screen.getByText("Formed by a shared identifier")).toBeInTheDocument();
+  });
+
+  test("noisy_or: a part that is 0 changes nothing, and when the stored score differs the foot says so and does not pretend", () => {
+    const { rerender } = render(<ScoreParts parts={{ ...five, speed: 0 }} weights={noisyWeights} combine="noisy_or"
+      score={1 - (1 - 0.65 * 0.8) * (1 - 0.2 * 0.5) * (1 - 0.2 * 0.4) * (1 - 0.2 * 0.5)} />);
+    expect(screen.getByText(/combine as 1 − Π\(1 − w·v\) = 0\.64, the score the lab stored/)).toBeInTheDocument();
+    rerender(<ScoreParts parts={five} weights={noisyWeights} combine="noisy_or" score={0.9} />);
+    expect(screen.getByRole("note")).toHaveTextContent("the parts combine as 1 − Π(1 − w·v) = 0.67, not the 0.90 the lab stored");
+    expect(screen.getByRole("note")).toHaveTextContent("read the parts, not the result");
+  });
+
+  test("weighted_mean, or no combine given, keeps the share and the sum", () => {
+    const { rerender } = render(<ScoreParts parts={five} weights={meanWeights} combine="weighted_mean" score={0.58} />);
+    expect(screen.getByText(/The parts add up to 0.58/)).toBeInTheDocument();
+    expect(screen.queryByText(/Π/)).not.toBeInTheDocument();
+    rerender(<ScoreParts parts={five} weights={meanWeights} combine={null} score={0.58} />);
+    expect(screen.getByText(/The parts add up to 0.58/)).toBeInTheDocument();
+    expect(screen.getByText("× 0.35 = 0.28")).toBeInTheDocument();
+  });
+
+  test("noisy_or with a weight missing leaves the result out and says so", () => {
+    render(<ScoreParts parts={five} weights={{ member_risk: 0.65 }} combine="noisy_or" score={0.7} />);
+    expect(screen.getByText(/no weight for every part, so the result is not shown/)).toBeInTheDocument();
+    expect(screen.queryByText(/combine as/)).not.toBeInTheDocument();
+  });
+
+  test("only the tag and no parts says so, and still shows the tag", () => {
+    render(<ScoreParts parts={{ formed_by_identifier: 1 }} />);
+    expect(screen.getByText("Formed by a shared identifier")).toBeInTheDocument();
+    expect(screen.getByText("The lab gave no parts for this score.")).toBeInTheDocument();
+  });
+
+  test("speed and cycles are described the way the lab defines them", () => {
+    render(<ScoreParts parts={five} />);
+    expect(screen.getByText("Money in and out of similar size within a day: the in_and_out_within_a_day factor's rows.")).toBeInTheDocument();
+    expect(screen.getByText("Money that comes back to where it started, each payment after the one before it.")).toBeInTheDocument();
+    expect(screen.queryByText(/within hours/)).not.toBeInTheDocument();
   });
 });
 
@@ -380,6 +473,18 @@ describe("CodeDrawer", () => {
     expect(screen.getByRole("tab", { name: "One" })).toHaveAttribute("aria-selected", "true");
     fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  test("a tab that names its language says it above the text and sets it on the code element, and a tab without one does not", () => {
+    render(
+      <CodeDrawer open onClose={() => undefined} title="The code"
+        tabs={[{ id: "q", label: "factors/x.cypher", text: "MATCH (n) RETURN n", language: "cypher" }, { id: "plain", label: "Plain", text: "words" }]} />);
+    const dialog = screen.getByRole("dialog", { name: "The code" });
+    expect(within(dialog).getByText("Cypher")).toBeInTheDocument();
+    expect(dialog.querySelector("pre code")).toHaveClass("language-cypher");
+    fireEvent.click(within(dialog).getByRole("tab", { name: "Plain" }));
+    expect(within(dialog).queryByText("Cypher")).not.toBeInTheDocument();
+    expect(dialog.querySelector("pre code")!.className).toBe("");
   });
 
   test("Tab stays inside, and Copy puts the shown text on the clipboard", async () => {
