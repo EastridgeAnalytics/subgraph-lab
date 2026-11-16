@@ -6,13 +6,16 @@ RUN npm ci --no-audit --no-fund
 COPY app/ ./
 RUN npm run build
 
-FROM python:3.12-slim-bookworm AS lab
+# Debian 13: the relate-linux-amd64 1.0.1 binary needs glibc 2.39 or newer, and bookworm has 2.36.
+FROM python:3.12-slim-trixie AS lab
 ENV DO_NOT_TRACK=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 COPY --from=ghcr.io/astral-sh/uv:0.11.2 /uv /usr/local/bin/uv
 ARG RELATE_VERSION=1.0.1
 ARG RELATE_SHA256=2ca69bd6440d25b78c1677d11c0e3f2f5722601a4984475b331abc0a4f9fed2a
 ADD https://github.com/relatedb/relate/releases/download/v${RELATE_VERSION}/relate-linux-amd64 /usr/local/bin/relate
-RUN echo "${RELATE_SHA256}  /usr/local/bin/relate" | sha256sum -c - && chmod 0755 /usr/local/bin/relate
+RUN echo "${RELATE_SHA256}  /usr/local/bin/relate" | sha256sum -c - && chmod 0755 /usr/local/bin/relate \
+    && relate --version
+# relate --version above fails the build, not the first pull, when the binary cannot run on this base
 WORKDIR /srv
 COPY pyproject.toml uv.lock README.md ./
 RUN uv sync --frozen --no-dev --no-install-project

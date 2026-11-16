@@ -209,6 +209,8 @@ def measure_run(run_id: str, truth: str | None, label: str | None) -> Path:
     shown = {f"{k} time": seconds(v["seconds"]) for k, v in steps.items()}
     if whole is not None:
         shown["whole run time"] = seconds(whole)
+    if "push" in steps and steps["push"]["counts"].get("rows") is not None:
+        shown["push rows"] = count(int(steps["push"]["counts"]["rows"]))
     shown |= {
         "accounts in slice": count(len(in_slice)), "planted accounts in slice": count(len(planted)),
         "alerts": count(len(alerted)), "precision": ratio(precision), "recall": ratio(recall),
@@ -316,11 +318,18 @@ def measure_image(tag: str, build_dir: str | None = None) -> Path:
     out = subprocess.run(["docker", "image", "inspect", tag, "--format", "{{.Size}} {{.Id}}"],
                          capture_output=True, text=True, check=True).stdout.split()
     size, image_id = int(out[0]), out[1]
-    values = {"tag": tag, "bytes": size, "image_id": image_id, "build_seconds": built, "build_dir": build_dir}
-    shown = {"image size": f"{size / 10**9:.2f} GB"}
+    # With Docker's containerd image store, inspect's Size is the compressed content (what a registry sends) and the
+    # image list's size is the unpacked layers on disk. Both are recorded, each named for what it is.
+    unpacked = subprocess.run(["docker", "image", "ls", tag, "--format", "{{.Size}}"], capture_output=True, text=True,
+                              check=True).stdout.strip()
+    values = {"tag": tag, "compressed_bytes": size, "unpacked": unpacked, "image_id": image_id,
+              "build_seconds": built, "build_dir": build_dir}
+    shown = {"image size compressed": f"{size / 10**9:.2f} GB",
+             "image size unpacked on disk": unpacked.replace("GB", " GB").replace("MB", " MB")}
     if built is not None:
         shown["build time with no cache"] = seconds(built)
-    return write("image", tag.replace(":", "-").replace("/", "-"), f"the lab image {tag}", values, shown, [image_id])
+    label = tag.replace(":", "-").replace("/", "-") + ("-build" if build_dir else "")
+    return write("image", label, f"the lab image {tag}", values, shown, [image_id])
 
 
 def main() -> None:
