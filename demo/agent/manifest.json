@@ -1,0 +1,247 @@
+{
+  "run_id": "run-20261116T152139Z-1923a8",
+  "recipe_hash": "48044ee5511e0a38",
+  "created_at": "2026-11-16T15:21:39.152298Z",
+  "finished_at": "2026-11-16T15:25:11.236006Z",
+  "status": "done",
+  "routes": {
+    "pull": "relate",
+    "push": "relate"
+  },
+  "fallbacks": [],
+  "steps": [
+    {
+      "name": "pull",
+      "status": "done",
+      "started_at": "2026-11-16T15:21:39.201668Z",
+      "finished_at": "2026-11-16T15:22:07.336382Z",
+      "counts": {
+        "nodes": 28677,
+        "relationships": 30882,
+        "constraints": 7
+      },
+      "note": "route relate, 25.8s"
+    },
+    {
+      "name": "indexes",
+      "status": "done",
+      "started_at": "2026-11-16T15:22:07.340703Z",
+      "finished_at": "2026-11-16T15:22:07.802097Z",
+      "counts": {
+        "indexes": 4,
+        "created": 4
+      },
+      "note": null
+    },
+    {
+      "name": "first_pass",
+      "status": "done",
+      "started_at": "2026-11-16T15:22:28.091093Z",
+      "finished_at": "2026-11-16T15:24:12.539444Z",
+      "counts": {
+        "accounts": 7254,
+        "embeddings": 7254,
+        "summaries": 7254,
+        "graph_nodes": 28677,
+        "graph_edges": 30786,
+        "embedding_dim": 64,
+        "write_batches": 1
+      },
+      "note": "104.4s"
+    },
+    {
+      "name": "slice",
+      "status": "done",
+      "started_at": "2026-11-16T15:24:15.360214Z",
+      "finished_at": "2026-11-16T15:24:16.564328Z",
+      "counts": {
+        "hits": 20,
+        "hops": 1,
+        "accounts": 103,
+        "nodes": 372,
+        "relationships": 434,
+        "memory_bytes": 557603
+      },
+      "note": null
+    },
+    {
+      "name": "models",
+      "status": "skipped",
+      "started_at": null,
+      "finished_at": null,
+      "counts": {},
+      "note": "the recipe does not ask for it"
+    },
+    {
+      "name": "score",
+      "status": "done",
+      "started_at": "2026-11-16T15:24:18.119604Z",
+      "finished_at": "2026-11-16T15:24:53.112829Z",
+      "counts": {
+        "accounts": 103,
+        "alerts": 21,
+        "factors": 7,
+        "factors_ran": 6,
+        "factors_skipped": 1,
+        "factors_failed": 0,
+        "factors_not_chosen": 0,
+        "factor_rows": 44,
+        "communities": 11,
+        "community_members": 45,
+        "largest": 7,
+        "by_identifier": 5,
+        "by_flow": 0,
+        "by_payment": 6,
+        "summaries": 32,
+        "from_api": 0,
+        "from_template": 32,
+        "failed_checks": 0,
+        "cached": 0
+      },
+      "note": "factor version 5ee2c02f7b2b; skipped tgn: no model output at artifacts/models/tgn.parquet; run examples/tgn first"
+    },
+    {
+      "name": "communities",
+      "status": "done",
+      "started_at": "2026-11-16T15:24:42.535832Z",
+      "finished_at": "2026-11-16T15:24:42.795832Z",
+      "counts": {
+        "communities": 11,
+        "community_members": 45,
+        "largest": 7,
+        "by_identifier": 5,
+        "by_flow": 0,
+        "by_payment": 6
+      },
+      "note": "1 under min_size 3"
+    },
+    {
+      "name": "summaries",
+      "status": "done",
+      "started_at": "2026-11-16T15:24:52.237286Z",
+      "finished_at": "2026-11-16T15:24:52.616590Z",
+      "counts": {
+        "summaries": 32,
+        "from_api": 0,
+        "from_template": 32,
+        "failed_checks": 0,
+        "cached": 0
+      },
+      "note": "template only: no ANTHROPIC_API_KEY set"
+    },
+    {
+      "name": "stage",
+      "status": "done",
+      "started_at": "2026-11-16T15:24:53.013738Z",
+      "finished_at": "2026-11-16T15:25:02.369488Z",
+      "counts": {
+        "accounts": 103,
+        "communities": 12,
+        "members": 50,
+        "alerts": 21
+      },
+      "note": null
+    },
+    {
+      "name": "review",
+      "status": "done",
+      "started_at": "2026-11-16T15:25:05.355352Z",
+      "finished_at": "2026-11-16T15:25:06.341762Z",
+      "counts": {
+        "entities": 5,
+        "rows": 201,
+        "new_alerts": 21,
+        "new_communities": 11,
+        "missing_remote_keys": 0,
+        "sampled": 103
+      },
+      "note": null
+    },
+    {
+      "name": "push",
+      "status": "done",
+      "started_at": "2026-11-16T15:25:09.968828Z",
+      "finished_at": "2026-11-16T15:25:11.234488Z",
+      "counts": {
+        "entities": 6,
+        "rows": 202,
+        "created": 99,
+        "updated": 103,
+        "resumed": 0,
+        "reviewed": 1
+      },
+      "note": "route relate; review on record"
+    }
+  ],
+  "push": [
+    {
+      "entity": "Account",
+      "kind": "node",
+      "total": 103,
+      "created": 0,
+      "updated": 103,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "Alert",
+      "kind": "node",
+      "total": 21,
+      "created": 21,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "RiskCommunity",
+      "kind": "node",
+      "total": 11,
+      "created": 11,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "(Alert)-[:ALERT_ON]->(Account)",
+      "kind": "relationship",
+      "total": 21,
+      "created": 21,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)",
+      "kind": "relationship",
+      "total": 45,
+      "created": 45,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "LabRun",
+      "kind": "node",
+      "total": 1,
+      "created": 1,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    }
+  ],
+  "counts": {},
+  "model_hash": null,
+  "factor_version": "5ee2c02f7b2b"
+}

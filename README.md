@@ -7,8 +7,9 @@ results back. Built with Relate by Neo4j.
 
 **[The walkthrough](https://github.com/EastridgeAnalytics/subgraph-lab/blob/main/demo/README.md)**, one planted
 fraud ring followed from the graph to a score, a written reason, a reviewer's decision and back into Neo4j, with
-the screenshots from one real run · **[Inspect the store](demo/README.md#inspect-it-yourself)**, five minutes with
-the `relate` CLI and nothing else to install · **[Run it](#run)**, one compose command.
+the screenshots from one real run · **[The agent](demo/agent.md)**, Claude Code doing the same job through the two
+MCP servers, from its own log · **[Inspect the store](demo/README.md#inspect-it-yourself)**, five minutes with the
+`relate` CLI and nothing else to install · **[Run it](#run)**, one compose command.
 
 ## What you will see
 
@@ -49,6 +50,22 @@ connects can show the connections it used. Every summary and every push here has
 - **For whoever answers for the data.** The dry run and the delta come first, then one confirm. Every write
   carries a run id, a re-run replaces only its own results, nothing is ever deleted, and a run can be retracted.
 - **For an agent.** It can read everything and change nothing without the gate.
+
+## Fraud today, other verticals next
+
+We build graph fraud detection on Neo4j for a living. Tim Eastridge, who leads Eastridge Analytics, is a Neo4j
+certified expert, a Neo4j Ninja, and the author of *Graph Data Science with Python and Neo4j*. The team has five
+certified Neo4j experts. The largest graph we run is fraud detection and entity resolution for federal
+pandemic-spending oversight (PRAC), at over 200 million nodes.
+
+The factors, the community score and the evidence-first summaries here come from that work. No client's code,
+schema or name is in this repo. Every one of those engagements wanted the same loop: try a model on part of the
+graph, see the ring, and write the result back with a record of what changed. This is that loop, in the open.
+
+Nothing in the loop is specific to fraud except `factors.yaml` and the generator. The next step is a pack per use
+case, each a recipe, a factor file, an example and a review checklist: financial crime, churn, supply chain and
+identity, on the 2.0 row of [99](architecture-docs/99-build-status.md). Same pull, same review, same push to Aura,
+and [the agent](demo/agent.md) runs them unchanged. That is the plan. Today the lab ships the fraud pack.
 
 ## How it uses Relate
 
@@ -101,6 +118,7 @@ without `confirm=true`, and without a review newer than the last thing staged. T
 through the Anthropic API when a key is set, by the agent through `describe_alert`, or by a template. All three
 write from the same evidence object and pass the same checks: every number in the text is in the evidence, every
 member named is a member, no verdict words. A summary that fails the checks falls back to the template and says so.
+[`demo/agent.md`](demo/agent.md) is one recorded session of Claude Code finding and pushing a ring this way.
 
 **In the build.** One Claude Opus session directed it from [the development plan](architecture-docs/97-development-plan.md).
 Claude Sonnet builders took one written brief each, in their own git worktrees, up to three at a time. Nothing
@@ -110,8 +128,8 @@ against the pages, and briefed the fixes. Each wave's report is in
 
 ## Three ways in
 
-1. **Look, two minutes.** [The walkthrough](demo/README.md). The video follows the shot list on
-   [video.md](architecture-docs/video.md).
+1. **Look, two minutes.** [The walkthrough](demo/README.md), and [the agent](demo/agent.md) doing the same job.
+   The video follows the shot list on [video.md](architecture-docs/video.md).
 2. **Inspect, five minutes.** [`demo/store.rl`](demo/README.md#inspect-it-yourself) is the store from that run.
    `relate info`, four queries, and `relate serve --mcp` so Claude can read it.
 3. **Run, fifteen minutes.** Below.

@@ -320,16 +320,24 @@ def test_describe_alert_stores_nothing_without_evidence_and_hands_text_to_the_ch
     result = call(served, "describe_alert", run_id=run.id, key="alert-A0001", text="Fraud ring of 1,000,000 accounts.")
     assert result.is_error and "no evidence" in text(result)  # track 3b: nothing to check the text against
     assert (run.paths.manifest.read_bytes(), sorted(p.name for p in run.paths.staged.iterdir())) == before
-    # the tool hands an agent's text to `lab.summaries.describe(run, key, text)`
+    # the tool hands an agent's text to `lab.summaries.describe(run, key, text)`, which returns a Summary as the real
+    # one does: the agent's text when the checks pass, else the template with the reason. The tool says which.
     from lab.contracts.evidence import Summary
 
     def describe(run, key, text):
-        return tool_contract.DescribeOut(stored=True, summary=Summary(key=key, text=text, source="agent", evidence_hash="h"))
+        if "1,000,000" in text:
+            return Summary(key=key, text="The template.", source="template", evidence_hash="h",
+                           failed_reason="the number 1,000,000 is not in the evidence")
+        return Summary(key=key, text=text, source="agent", evidence_hash="h")
 
     monkeypatch.setattr(lab.summaries, "describe", describe, raising=False)
     out = tool_contract.DescribeOut.model_validate(
         call(served, "describe_alert", run_id=run.id, key="alert-A0001", text="Could indicate shared hardware.").structured_content)
     assert out.stored and out.summary.key == "alert-A0001" and out.summary.source == "agent"
+    failed = call(served, "describe_alert", run_id=run.id, key="alert-A0001", text="Fraud ring of 1,000,000 accounts.")
+    assert not failed.is_error  # a failed check is an answer, not an error
+    out = tool_contract.DescribeOut.model_validate(failed.structured_content)
+    assert not out.stored and out.summary.source == "template" and "not in the evidence" in out.summary.failed_reason
 
 
 def test_graph_diff_says_what_changed_between_two_runs(served, data_dir):

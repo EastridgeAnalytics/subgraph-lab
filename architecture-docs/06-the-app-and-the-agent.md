@@ -46,7 +46,8 @@ is not measured yet.
 
 Install Relate's skill with `relate skill install`. Connect the agent to two MCP servers: Relate's, serving the
 lab's store read-only and following the lab's writes, and the lab's. The two long tools queue their work and
-answer at once; the agent polls `run_status` (decision 38).
+answer at once; the agent polls `run_status` (decision 38). A recorded session is
+[`demo/agent.md`](../demo/agent.md).
 
 | The lab's tool | Does |
 |---|---|

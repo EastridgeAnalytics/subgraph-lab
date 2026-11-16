@@ -10,6 +10,8 @@ The demo bank is synthetic. Its generator plants three kinds of fraud ring (mule
 
 The same page with the images embedded, for sending or reading offline: [walkthrough.html](walkthrough.html). The screenshots came from [walk.py](walk.py) driving the app, and this page from [build_walkthrough.py](build_walkthrough.py).
 
+The same job done by an agent through the two MCP servers, from its own log: [agent.md](agent.md).
+
 ## Inspect it yourself
 
 The store this run pulled and enriched is in this folder as one file, `store.rl` (9.8 MB): the slice, every account's embedding and summary, the 172 communities with their scores and summaries, and the 11 indexes. Relate wrote it with `relate clone`. With the `relate` CLI installed ([relatedb.ai/docs](https://relatedb.ai/docs/), or `uv run python tools/install_relate.py` from the repo root), run these from this folder. The output under each is what the committed file returns.

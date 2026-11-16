@@ -116,6 +116,9 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
     committed as `demo/store.rl` by `relate clone`, its recipe and manifest, and the scripts that remake the pages.
     Each code folder has a README. The "read the docs first" rule for builders moved to the README's last section
     and stays in `CLAUDE.md`.
+47. **The agent's session is committed as its log, and its page is rendered from it.** `demo/agent/session.jsonl`
+    is Claude Code's own output with only the two MCP servers allowed; `demo/build_agent.py` writes
+    `demo/agent.md`. Nobody edits the page. The README states where the lab goes next and points at 99's 2.0 row.
 
 ## Open
 

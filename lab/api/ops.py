@@ -298,9 +298,12 @@ def describe(state: LabState, request: DescribeIn) -> DescribeOut:
     with state.worker.exclusive(request.run_id):
         run = load_run(request.run_id)
         try:
-            return hook(run, request.key, request.text)
+            summary = hook(run, request.key, request.text)
         finally:
             run.close()
+    # The hook stores and returns a Summary: the agent's text when every check passed (source "agent"), else the
+    # template with `failed_reason`. The tool's contract says which happened.
+    return DescribeOut(stored=summary.source == "agent", summary=summary)
 
 
 def graph_diff(request: GraphDiffIn) -> GraphDiffOut:

@@ -3,6 +3,7 @@
     uv run python demo/walk.py run            Connect, Models, Slice and estimate, Run until done; prints the run id
     uv run python demo/walk.py ring RUN KEY   Results, the community KEY, a reviewer decision, search, Review and push
     uv run python demo/walk.py neo4j RUN KEY PASSWORD   Neo4j Browser on the bundled Neo4j: the ring on the master graph
+    uv run python demo/walk.py agent RUN KEY  The agent's run (demo/agent.md): the Run screen and its community's summary
 
 Screenshots go to demo/shots/, which is not committed. `build_walkthrough.py` crops them into img/ and writes the
 pages. Needs the lab running (`docker compose --profile local up`, or `uv run python -m lab serve` against it) and
@@ -139,6 +140,24 @@ def stage_ring(run_id: str, key: str) -> None:
         b.close()
 
 
+def stage_agent(run_id: str, key: str) -> None:
+    """The agent's run as the app shows it: every step done, and the community it found."""
+    with sync_playwright() as p:
+        b, page = browser(p)
+        page.goto(f"{BASE}/run?run={run_id}")
+        expect(page.get_by_text(run_id).first).to_be_visible()
+        time.sleep(3)
+        shot(page, "30-agent-run", full=True)
+        page.goto(f"{BASE}/results?run={run_id}&community={key}")
+        expect(page.get_by_text("Score and its parts")).to_be_visible()
+        time.sleep(3)
+        card = page.locator("section, div").filter(has=page.get_by_role("heading", name="Summary", exact=True)).last
+        card.scroll_into_view_if_needed()
+        time.sleep(0.5)
+        shot(page, "31-agent-summary", clip=card)
+        b.close()
+
+
 def stage_neo4j(run_id: str, key: str, password: str) -> None:
     queries = [
         ("20-neo4j-ring",
@@ -190,5 +209,7 @@ if __name__ == "__main__":
         stage_ring(sys.argv[2], sys.argv[3])
     elif stage == "neo4j":
         stage_neo4j(sys.argv[2], sys.argv[3], sys.argv[4])
+    elif stage == "agent":
+        stage_agent(sys.argv[2], sys.argv[3])
     else:
         sys.exit(__doc__)

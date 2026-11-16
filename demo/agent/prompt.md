@@ -1,0 +1,12 @@
+You are an analyst using subgraph-lab through two MCP servers: `lab` (the lab's tools) and `relate` (Relate's own server, a read-only Cypher view of the current run's store). Find the riskiest ring among accounts active since 20 October 2026 and explain it, with the tools only. Do the steps in order and report at the end.
+
+1. Call `egress` with a recipe named "agent-demo": pull mode "schema" with since "2026-10-20T00:00:00Z", models ["node2vec", "communities", "velocity"], summaries true. It answers at once with a run id and status queued. Then call `run_status` on that run with wait_seconds 240, again as needed, until the `first_pass` step is done or failed.
+2. Call `search_slice` on the run with text "new accounts sharing one device and address", k 20 and hops 1. Say how many hits came back and how big the slice around them is.
+3. Call `score` on the run. It answers at once. Call `run_status` with wait_seconds 240, again as needed, until the `score` step and the `summaries` step are done or failed.
+4. On the `relate` server: call `get_schema`, then `read_cypher` twice. First, the five RiskCommunity nodes with the highest `score`, returning `community_key`, `size`, `score` and `summary`. Second, for the top one, its member accounts and the Device and Address nodes they share, through `IN_RISK_COMMUNITY`, `USES_DEVICE` and `HAS_ADDRESS`. Relate's server restarts on the new run's store after the pull, so if a `relate` call fails once, call it again.
+5. Call `explain_alert` on the run with the top community's `community_key` and read its evidence.
+6. Call `describe_alert` on the run for that community with a summary of at most 120 words, written only from that evidence: what the evidence shows, why the pattern could indicate risk, and the innocent explanation to rule out first. Use no verdict word (no "fraud", "guilty", "criminal", "launder"). Say whether the lab stored your text or replaced it with the template, and why.
+7. Call `preview_push` on the run. Read the plan and the delta.
+8. If the plan writes only account scores, Alert nodes, RiskCommunity nodes, their links and one LabRun, call `apply_push` with confirm true. Otherwise stop and say why.
+
+Report in under 200 words: the run id; the hits and the slice size; the top community's key, size and score; what its members share; what the push landed; and one sentence on the evidence. Use "could indicate", never a verdict. If a step failed, say which and what the tool returned.

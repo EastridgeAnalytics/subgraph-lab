@@ -356,6 +356,7 @@ def build_markdown() -> str:
         INTRO, "", ABOUT_DATA, "",
         "The same page with the images embedded, for sending or reading offline: [walkthrough.html](walkthrough.html). "
         "The screenshots came from [walk.py](walk.py) driving the app, and this page from [build_walkthrough.py](build_walkthrough.py).", "",
+        "The same job done by an agent through the two MCP servers, from its own log: [agent.md](agent.md).", "",
         "## Inspect it yourself", "", INSPECT_INTRO, "",
     ]
     for what, cmd, res in INSPECT:
