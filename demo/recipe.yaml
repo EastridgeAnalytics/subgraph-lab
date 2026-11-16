@@ -1,0 +1,39 @@
+name: default
+graph:
+  account_label: Account
+  account_key: account_id
+  account_opened: opened
+  payment_type: TX
+  payment_key: tx_id
+  payment_amount: amount
+  payment_time: ts
+  identifiers:
+  - rel_type: USES_DEVICE
+    label: Device
+    key: device_id
+    kind: device
+  - rel_type: HAS_EMAIL
+    label: Email
+    key: email_id
+    kind: email
+  - rel_type: HAS_ADDRESS
+    label: Address
+    key: address_id
+    kind: address
+pull:
+  mode: schema
+  labels: []
+  types: []
+  since: '2026-10-20'
+  params: {}
+models:
+- node2vec
+- communities
+- velocity
+summaries: true
+write_back:
+  accounts: true
+  alerts: true
+  communities: true
+  vectors: true
+  dispositions: true

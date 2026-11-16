@@ -1,18 +1,72 @@
 # subgraph-lab
 
-Pull a subgraph from Neo4j Aura into Relate, let open-source models learn from it, and push the results back.
+Pull a subgraph from Neo4j into Relate, let open-source graph models learn from it, review the dry run, push the
+results back. Built with Relate by Neo4j.
 
-## Why this exists
+![Planted mule ring R0006 as the lab found it: five accounts on one device and one address, paying each other in loops](demo/img/graph.png)
 
-A graph holds a whole population. Most of its value gets added on top, run after run: a risk score on every
-account, an embedding on every node, an alert with a reason when something changes. Today, finding the part of
-the graph worth working on is a one-off query, and getting that part into PyTorch Geometric or NetworkX and the
-results back into Neo4j is a one-off script, with no record of what changed.
+**[The walkthrough](https://github.com/EastridgeAnalytics/subgraph-lab/blob/main/demo/README.md)**, one planted
+fraud ring followed from the graph to a score, a written reason, a reviewer's decision and back into Neo4j, with
+the screenshots from one real run · **[Inspect the store](demo/README.md#inspect-it-yourself)**, five minutes with
+the `relate` CLI and nothing else to install · **[Run it](#run)**, one compose command.
 
-Relate's docs describe the round trip: pull a subgraph from Aura into Relate for a task, push the results back.
-subgraph-lab is that round trip with learning in the middle. Pull a slice, find the part that matters with hybrid
-search, hand it to the models the open-source community already maintains, review a dry run, push. Then the next
-slice.
+## What you will see
+
+The demo bank is synthetic: 10,000 accounts with their devices, emails and addresses, 120,000 payments, 60 planted
+fraud rings and 60 honest look-alike groups, with the answer key written down. The lab pulls a slice of it, scores
+every account, groups the accounts into communities, writes down why each community could be risky, and pushes the
+results back after one confirm.
+
+Ring R0006 comes out as the top community of 172, at 0.84, and it is exactly the ring's five members. Its summary
+names the innocent explanation to rule out first: a household, or a shared computer. A reviewer marks it confirmed,
+and the push lands it in Neo4j under its run id. Across the slice,
+[against the answer key](demo/README.md#how-the-whole-slice-did):
+
+- all 39 communities scoring 0.6 or more hold planted ring accounts;
+- none of the 60 look-alike groups scores that high;
+- 210 of the 211 alerts are on planted ring accounts.
+
+The data is built to be found, so these numbers say the lab finds what it was built to find. What they show is the
+whole loop working.
+
+## Connected context
+
+The models never see a table of accounts. They see the accounts with the devices, emails and addresses they share
+and the money between them, pulled from Neo4j as one subgraph into a Relate store. Communities form from those
+links: shared identifier first, then money forwarded within a day, then payments. The score's parts are those
+links, with the arithmetic shown. The summary is written only from a checked evidence object of them, so every
+number in it is in the graph.
+
+An agent gets the same subgraph. It reads through Relate's MCP server, read-only, and acts through the lab's nine
+tools, where the one write to the master graph sits behind a confirm. An agent that understands how the data
+connects can show the connections it used. Every summary and every push here has to pass that test.
+
+## Why it matters
+
+- **For a Neo4j team.** The graph holds the whole population, and the value gets added on top, run after run.
+  This adds it a slice at a time, with the models the open-source world already maintains, and pushes it back to
+  Aura with a record of what changed.
+- **For whoever answers for the data.** The dry run and the delta come first, then one confirm. Every write
+  carries a run id, a re-run replaces only its own results, nothing is ever deleted, and a run can be retracted.
+- **For an agent.** It can read everything and change nothing without the gate.
+
+## How it uses Relate
+
+| Relate feature | What the lab does with it | Where |
+|---|---|---|
+| `relate pull` | A slice from the master graph into a fresh store per run, over the Query API. Parallel Bolt is the fallback, and the route taken is on the manifest | `lab/roundtrip/pull.py` |
+| `relate-db` in Python | Opens the store; loads results with `UNWIND` batches that size themselves | `lab/common/store.py`, `lab/roundtrip/loader.py` |
+| Vector and full-text indexes | Recreated after every pull, on Node2Vec embeddings and short summaries of every account and community | `lab/roundtrip/indexes.py`, `lab/slice/first_pass.py` |
+| Hybrid search in one statement | A vector branch and a full-text branch, fused by rank, then hops. That subgraph is the slice | `lab/slice/search.py` |
+| `relate serve --read-only=live` | The app and the agent read the store while the lab writes it, over HTTP, Bolt and MCP | `lab/api/relate_server.py` |
+| `relate push --dry-run`, then `relate push` | The plan before the write. Keyed merges in batches, a manifest that resumes, `LabRun` written last | `lab/roundtrip/push.py` |
+| The skill and the MCP server | `relate skill install`; the agent reads the evidence through `read_cypher` | `lab/api/mcp_tools.py` |
+| `relate clone` | The demo run's store, committed as one `.rl` file | `demo/store.rl` |
+
+Every row was run against Relate 1.0.1 before the code was written:
+[the wave 0 check](architecture-docs/reviews/wave-0-relate-1.0.1.md).
+
+## How the pieces fit
 
 ```mermaid
 flowchart LR
@@ -21,50 +75,52 @@ flowchart LR
   review -->|relate push| aura
 ```
 
-> **Read [`architecture-docs/`](architecture-docs/README.md) first.** Everyone, people and AI agents alike,
-> starts there before reading or changing any code. [`99-build-status.md`](architecture-docs/99-build-status.md)
-> says what is built.
+| Step | Code | Page | Tests |
+|---|---|---|---|
+| The demo bank, with planted rings | `generator/` | [07](architecture-docs/07-what-runs-where.md) | `test_generator.py` |
+| Pull into a fresh store | `lab/roundtrip/pull.py`, `loader.py` | [01](architecture-docs/01-the-round-trip.md) | `test_pull.py`, `test_loader.py` |
+| First pass: embeddings, summaries, indexes | `lab/slice/first_pass.py`, `lab/roundtrip/indexes.py` | [02](architecture-docs/02-the-slice.md) | `test_first_pass.py`, `test_indexes.py` |
+| The slice: by schema, by Cypher, by search | `lab/slice/search.py`, `estimate.py` | [02](architecture-docs/02-the-slice.md) | `test_search.py`, `test_estimate.py` |
+| Adapters: table, PyG, TGB events, NetworkX, series | `lab/adapters/` | [03](architecture-docs/03-models-and-adapters.md) | `test_adapters.py` |
+| The examples: Node2Vec, TGN, NetworkX, velocity | `examples/` | [03](architecture-docs/03-models-and-adapters.md) | `test_tgn.py`, `test_networkx_example.py`, `test_velocity.py` |
+| Factors, policy, account scores, alerts | `factors/`, `lab/scoring/` | [04](architecture-docs/04-risk-scores.md) | `test_factors.py`, `test_policy.py` |
+| Communities and their score | `lab/scoring/communities.py`, `community_score.py` | [04](architecture-docs/04-risk-scores.md) | `test_communities.py`, `test_community_score.py` |
+| Evidence and summaries | `lab/summaries/` | [05](architecture-docs/05-summaries.md) | `test_evidence.py`, `test_summaries.py` |
+| Stage, dry run, delta, push, retract | `lab/roundtrip/stage.py`, `push.py`, `delta.py`, `retract.py` | [01](architecture-docs/01-the-round-trip.md) | `test_stage.py`, `test_push.py`, `test_delta.py` |
+| The API and the nine tools | `lab/api/` | [06](architecture-docs/06-the-app-and-the-agent.md) | `test_mcp.py` |
+| The seven screens | `app/src/screens/` | [06](architecture-docs/06-the-app-and-the-agent.md) | `npm test` |
+| One run, pull to push | `lab/pipeline.py` | [00](architecture-docs/00-overview.md) | `test_pipeline.py`, `tests/acceptance/loop.py` |
 
-## What it does
+Tests are in `tests/`. Each code folder has a README that says what is in it.
 
-A) **Pull and push.** `relate pull` into a fresh store. `relate push` back on keys, after a dry run. Never deletes.
+## AI in the product, and AI that built it
 
-B) **Find.** Vector and full-text search in one statement, fused by rank, then a few hops. That subgraph is the slice.
+**In the product.** An agent connects to two MCP servers: Relate's, serving the run's store read-only and
+following the lab's writes, and the lab's, with nine tools from `egress` to `apply_push`. `apply_push` fails
+without `confirm=true`, and without a review newer than the last thing staged. The summaries are written by Claude
+through the Anthropic API when a key is set, by the agent through `describe_alert`, or by a template. All three
+write from the same evidence object and pass the same checks: every number in the text is in the evidence, every
+member named is a member, no verdict words. A summary that fails the checks falls back to the template and says so.
 
-C) **Hand off.** Adapters to PyTorch Geometric, the Temporal Graph Benchmark layout, NetworkX and Arrow. No model code of our own.
+**In the build.** One Claude Opus session directed it from [the development plan](architecture-docs/97-development-plan.md).
+Claude Sonnet builders took one written brief each, in their own git worktrees, up to three at a time. Nothing
+merged without its test on the seed. The director ran the whole loop after every merge, reviewed the codebase
+against the pages, and briefed the fixes. Each wave's report is in
+[`architecture-docs/reviews/`](architecture-docs/reviews/). One person owns the project and reviews it.
 
-D) **Score.** Risk factors in a YAML file anyone can extend. A policy file makes account scores. Communities get their own.
+## Three ways in
 
-E) **Explain.** The riskiest communities get a summary of why, written only from checked evidence, with the innocent explanation to rule out.
-
-F) **Review and push.** The dry-run plan plus the delta, one confirm, a manifest that resumes. Reviewer decisions go back with it.
-
-G) **The app and the agent.** Seven screens. An agent reads through Relate's MCP server and acts through the lab's tools.
-
-H) **Demo data.** A generator with planted rings and legitimate look-alikes, so scores cannot be perfect.
-
-## Status
-
-Waves 0 to 6 of the [development plan](architecture-docs/97-development-plan.md) are done, and
-[99](architecture-docs/99-build-status.md) says what is built. Every number in the docs is measured on
-[98](architecture-docs/98-measured.md), with the run it came from, or is marked "waiting" for what it needs: Aura
-credentials or an Anthropic key. Code lives in `lab/`, `app/`, `examples/`, `factors/` and `generator/`.
-
-Built with Relate by Neo4j, for the Relate by Neo4j hackathon, due 11 December 2026. MIT, see [`LICENSE`](LICENSE).
-
-## How AI built it
-
-One Claude Opus session directed the build from [97](architecture-docs/97-development-plan.md). Claude Sonnet
-builders took one written brief each, worked in their own git worktrees, up to three at a time, and reported back.
-The director merged each track after its tests passed on the seed, reviewed the whole codebase against the docs,
-and briefed the fixes. Every wave's report is in [`architecture-docs/reviews/`](architecture-docs/reviews/). One
-person owns the project and reviews it.
+1. **Look, two minutes.** [The walkthrough](demo/README.md). The video follows the shot list on
+   [video.md](architecture-docs/video.md).
+2. **Inspect, five minutes.** [`demo/store.rl`](demo/README.md#inspect-it-yourself) is the store from that run.
+   `relate info`, four queries, and `relate serve --mcp` so Claude can read it.
+3. **Run, fifteen minutes.** Below.
 
 ## Run
 
 ```
-git clone https://github.com/EastridgeAnalytics/subgraph_engine
-cd subgraph_engine
+git clone https://github.com/EastridgeAnalytics/subgraph-lab
+cd subgraph-lab
 cp .env.example .env                 # change the ports in it if another Neo4j already uses them
 docker compose --profile local up    # builds the image, makes the seed, starts Neo4j and the lab
 ```
@@ -75,5 +131,20 @@ CPU; its time and the image's size are on [98](architecture-docs/98-measured.md)
 With Aura instead of the bundled Neo4j, set `NEO4J_URI`, `NEO4J_USERNAME` and `NEO4J_PASSWORD` in `.env` and run
 `docker compose up`. Ports and every setting are on [07](architecture-docs/07-what-runs-where.md).
 
-To work on the code: `uv sync`, `uv run python tools/install_relate.py` for the Relate CLI, `uv run pytest -q`, and
-`npm test` in `app/`. `tests/acceptance/` holds A1 to A11.
+## What is measured, and what waits
+
+702 unit tests on a fixture graph, 35 live tests against Neo4j, 254 app tests, and A1 to A11 from
+[the requirements](architecture-docs/88-product-requirements.md) in [`tests/acceptance/`](tests/acceptance/).
+Every number in the docs is on [98](architecture-docs/98-measured.md) with the run that produced it, on one
+named machine: a pull of one million relationships takes 124 seconds by `relate pull`, and the loop from a clean
+clone to a reviewed push takes 160 seconds after the first image build. Waiting: the Aura rows on 98 and test A7,
+which need credentials; summaries by API, which need a key; the video.
+
+## Working on the code
+
+Read [`architecture-docs/`](architecture-docs/README.md) first, people and agents alike.
+[99](architecture-docs/99-build-status.md) says what is built and [08](architecture-docs/08-decisions.md) what was
+decided. `uv sync`, then `uv run python tools/install_relate.py` for the Relate CLI, `uv run pytest -q`, and
+`npm test` in `app/`. A change that makes a page wrong changes the page in the same commit.
+
+MIT, see [`LICENSE`](LICENSE). Built with Relate by Neo4j, for the Relate by Neo4j hackathon.

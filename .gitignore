@@ -7,3 +7,4 @@ dist/
 .tmp/
 data/
 app/*.tsbuildinfo
+demo/shots/

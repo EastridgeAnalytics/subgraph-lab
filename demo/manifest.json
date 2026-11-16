@@ -1,0 +1,248 @@
+{
+  "run_id": "run-20261116T045118Z-4953ae",
+  "recipe_hash": "f26c89890da85d08",
+  "created_at": "2026-11-16T04:51:18.950248Z",
+  "finished_at": "2026-11-16T04:53:52.255360Z",
+  "status": "done",
+  "routes": {
+    "pull": "relate",
+    "push": "relate"
+  },
+  "fallbacks": [],
+  "steps": [
+    {
+      "name": "pull",
+      "status": "done",
+      "started_at": "2026-11-16T04:51:18.992588Z",
+      "finished_at": "2026-11-16T04:51:22.848080Z",
+      "counts": {
+        "nodes": 28677,
+        "relationships": 30882,
+        "constraints": 7
+      },
+      "note": "route relate, 3.6s"
+    },
+    {
+      "name": "indexes",
+      "status": "done",
+      "started_at": "2026-11-16T04:51:22.850477Z",
+      "finished_at": "2026-11-16T04:51:22.922206Z",
+      "counts": {
+        "indexes": 4,
+        "created": 4
+      },
+      "note": null
+    },
+    {
+      "name": "first_pass",
+      "status": "done",
+      "started_at": "2026-11-16T04:51:27.966572Z",
+      "finished_at": "2026-11-16T04:52:24.998481Z",
+      "counts": {
+        "accounts": 7254,
+        "embeddings": 7254,
+        "summaries": 7254,
+        "graph_nodes": 28677,
+        "graph_edges": 30786,
+        "embedding_dim": 64,
+        "write_batches": 1
+      },
+      "note": "57.0s"
+    },
+    {
+      "name": "slice",
+      "status": "done",
+      "started_at": "2026-11-16T04:53:35.100997Z",
+      "finished_at": "2026-11-16T04:53:35.627067Z",
+      "counts": {
+        "hits": 50,
+        "hops": 1,
+        "accounts": 194,
+        "nodes": 696,
+        "relationships": 782,
+        "memory_bytes": 1024592
+      },
+      "note": null
+    },
+    {
+      "name": "models",
+      "status": "skipped",
+      "started_at": null,
+      "finished_at": null,
+      "counts": {},
+      "note": "the recipe does not ask for it"
+    },
+    {
+      "name": "score",
+      "status": "done",
+      "started_at": "2026-11-16T04:52:25.025661Z",
+      "finished_at": "2026-11-16T04:52:36.957870Z",
+      "counts": {
+        "accounts": 7254,
+        "alerts": 211,
+        "factors": 7,
+        "factors_ran": 6,
+        "factors_skipped": 1,
+        "factors_failed": 0,
+        "factors_not_chosen": 0,
+        "factor_rows": 307,
+        "communities": 172,
+        "community_members": 6730,
+        "largest": 186,
+        "by_identifier": 53,
+        "by_flow": 0,
+        "by_payment": 119,
+        "summaries": 70,
+        "from_api": 0,
+        "from_template": 70,
+        "failed_checks": 0,
+        "cached": 0
+      },
+      "note": "factor version 5ee2c02f7b2b; skipped tgn: no model output at artifacts/models/tgn.parquet; run examples/tgn first"
+    },
+    {
+      "name": "communities",
+      "status": "done",
+      "started_at": "2026-11-16T04:52:27.552358Z",
+      "finished_at": "2026-11-16T04:52:30.428758Z",
+      "counts": {
+        "communities": 172,
+        "community_members": 6730,
+        "largest": 186,
+        "by_identifier": 53,
+        "by_flow": 0,
+        "by_payment": 119
+      },
+      "note": "212 under min_size 3"
+    },
+    {
+      "name": "summaries",
+      "status": "done",
+      "started_at": "2026-11-16T04:52:33.403446Z",
+      "finished_at": "2026-11-16T04:52:35.446486Z",
+      "counts": {
+        "summaries": 70,
+        "from_api": 0,
+        "from_template": 70,
+        "failed_checks": 0,
+        "cached": 0
+      },
+      "note": "template only: no ANTHROPIC_API_KEY set"
+    },
+    {
+      "name": "stage",
+      "status": "done",
+      "started_at": "2026-11-16T04:52:36.531350Z",
+      "finished_at": "2026-11-16T04:53:29.585365Z",
+      "counts": {
+        "accounts": 7254,
+        "communities": 172,
+        "members": 6730,
+        "alerts": 211,
+        "dispositions": 1
+      },
+      "note": null
+    },
+    {
+      "name": "review",
+      "status": "done",
+      "started_at": "2026-11-16T04:53:37.407395Z",
+      "finished_at": "2026-11-16T04:53:39.633735Z",
+      "counts": {
+        "entities": 5,
+        "rows": 14578,
+        "new_alerts": 211,
+        "new_communities": 172,
+        "missing_remote_keys": 0,
+        "sampled": 1000
+      },
+      "note": null
+    },
+    {
+      "name": "push",
+      "status": "done",
+      "started_at": "2026-11-16T04:53:42.443825Z",
+      "finished_at": "2026-11-16T04:53:52.255360Z",
+      "counts": {
+        "entities": 6,
+        "rows": 14579,
+        "created": 7325,
+        "updated": 7254,
+        "resumed": 0,
+        "reviewed": 1
+      },
+      "note": "route relate; review on record"
+    }
+  ],
+  "push": [
+    {
+      "entity": "Account",
+      "kind": "node",
+      "total": 7254,
+      "created": 0,
+      "updated": 7254,
+      "skipped": 0,
+      "batches": 2,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "Alert",
+      "kind": "node",
+      "total": 211,
+      "created": 211,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "RiskCommunity",
+      "kind": "node",
+      "total": 172,
+      "created": 172,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "(Alert)-[:ALERT_ON]->(Account)",
+      "kind": "relationship",
+      "total": 211,
+      "created": 211,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)",
+      "kind": "relationship",
+      "total": 6730,
+      "created": 6730,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 2,
+      "landed": true,
+      "error": null
+    },
+    {
+      "entity": "LabRun",
+      "kind": "node",
+      "total": 1,
+      "created": 1,
+      "updated": 0,
+      "skipped": 0,
+      "batches": 1,
+      "landed": true,
+      "error": null
+    }
+  ],
+  "counts": {},
+  "model_hash": null,
+  "factor_version": "5ee2c02f7b2b"
+}

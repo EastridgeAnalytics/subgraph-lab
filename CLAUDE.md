@@ -7,6 +7,9 @@ same commit.
 Building it? `architecture-docs/97-development-plan.md` is the plan. The director runs it; builders read their
 brief and the pages it names.
 
+`demo/` is the judge-facing walkthrough and the committed store. `demo/build_walkthrough.py` remakes the pages and
+figures from the screenshots that `demo/walk.py` takes; change the text there, not in the generated files.
+
 Never write a number that has not been measured as if it had been. Tag it "to measure". When it is measured, say
 which run produced it.
 

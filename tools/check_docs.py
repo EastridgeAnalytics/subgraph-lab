@@ -10,7 +10,9 @@ import re
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-FILES = [ROOT / "README.md", ROOT / "CLAUDE.md"] + sorted((ROOT / "architecture-docs").glob("*.md"))
+FILES = ([ROOT / "README.md", ROOT / "CLAUDE.md"] + sorted((ROOT / "architecture-docs").glob("*.md"))
+         + sorted(p for p in ROOT.glob("*/README.md")
+                  if p.parent.name not in {"architecture-docs", "node_modules"} and not p.parent.name.startswith(".")))
 
 BANNED = re.compile(r"Neo4j-powered|built to sell", re.I)
 GPL = re.compile(r"igraph|leidenalg")
@@ -64,7 +66,7 @@ def check(path: pathlib.Path, mermaid_blocks: list) -> list:
             bad.append(target)
     if bad:
         flags.append(f"BAD-LINKS {bad}")
-    print(f"{path.name:32} words={words:5} dashes={dashes} amps={amps} {' | '.join(flags)}")
+    print(f"{path.relative_to(ROOT).as_posix():36} words={words:5} dashes={dashes} amps={amps} {' | '.join(flags)}")
     return flags
 
 

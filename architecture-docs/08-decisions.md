@@ -4,7 +4,8 @@ Settled, then open. A later decision can replace an earlier one. The number stay
 
 ## Settled
 
-1. **The name is subgraph-lab and the licence is MIT.** The repo is `subgraph_engine`.
+1. **The name is subgraph-lab and the licence is MIT.** The repo is `subgraph-lab`, renamed from `subgraph_engine`
+   on 16 November 2026 (decision 46).
 2. **The demo data is our own generator**, with planted mule rings, structuring and rapid pass-through, their
    ring ids recorded, and legitimate look-alikes beside them. Public fraud datasets with non-commercial licences
    stay out.
@@ -110,6 +111,11 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
 45. **The community score is a noisy-or of its parts**, like the account score: `community.combine: noisy_or`, each
     weight in [0, 1]. The shipped weights are 0.65 for the members' risk and 0.20 for each shape. The weighted
     mean stays available.
+46. **The repo reads for the judge first.** Renamed to `subgraph-lab`. The root README opens on what a judge sees
+    and links to `demo/`: the walkthrough of one planted ring as Markdown and as one HTML file, the run's store
+    committed as `demo/store.rl` by `relate clone`, its recipe and manifest, and the scripts that remake the pages.
+    Each code folder has a README. The "read the docs first" rule for builders moved to the README's last section
+    and stays in `CLAUDE.md`.
 
 ## Open
 
