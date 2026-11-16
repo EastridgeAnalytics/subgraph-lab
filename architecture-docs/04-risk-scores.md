@@ -103,7 +103,7 @@ score is `1 - Π(1 - wᵢ·sᵢ)` over the factors.** `risk_score_rules` is that
   is an error that names it.
 - `combine: weighted_mean` is still available. There a factor that did not fire counts 0 and keeps its weight in the
   divisor, so adding a factor lowers every score by its share, and the threshold must be set again.
-- Precision and recall of the alerts on the seed are on the measured page. To measure.
+- Precision and recall of the alerts on the seed are on [98](98-measured.md).
 
 ## Communities
 
@@ -122,13 +122,13 @@ Inside each slice the lab groups accounts in three steps (decisions 42 and 44), 
   re-run gives the same groups.** Louvain never sees an identifier community, because maximising modularity merges small
   clusters inside big graphs (the resolution limit), and fraud rings are small clusters.
 - Each community is tagged by how it formed, `identifier`, `flow` or `payment`: the `formed` column of
-  `communities.parquet`, and `formed_by_identifier` (1 or 0) among the `score_parts`. It is not a staged column and not a part of the score. The
-  measured page reports ring recall for each kind. To measure.
+  `communities.parquet`, and `formed_by_identifier` (1 or 0) among the `score_parts`. It is not a staged column
+  and not a part of the score.
 - On the seed slice (run `run-20261113T082716Z-52f819`, 6,546 accounts), the first communities came out as 29 with the
   largest at 758 accounts and a median of 112. Grouped by identifier first they come out as 65 (45 by identifier, 20 by
   payment) with the largest at 651 and a median of 6. With the fast-money step, 7 more come out by flow. The rest of
-  the pass-through rings had members outside the search slice, so their chains were cut before grouping. The
-  measured page says how many rings of each kind come out whole.
+  the pass-through rings had members outside the search slice, so their chains were cut before grouping.
+  [98](98-measured.md) says how many rings of each kind come out whole on a search slice and on a whole pull.
 - Community keys are `sha1(run_id | lowest member key)`. A later run makes new communities and leaves the old
   ones as history.
 - Whole-graph communities with GDS Leiden on Aura Graph Analytics are release 1.1.

@@ -59,7 +59,8 @@ explanation to rule out, such as a family sharing a laptop or a payroll account 
 - Each summary is stored with its evidence hash, the model and the source: API, agent or template.
 - The cache key is the evidence hash plus the model, where the hash leaves out the run id and the object's key. The same
   evidence in a new run makes no new call.
-- About a thousand tokens of evidence in and 200 at most out, per summary. Cost per community is to measure.
+- About a thousand tokens of evidence in and 200 at most out, per summary. Cost per community waits for an
+  Anthropic key; [98](98-measured.md) says so.
 
 `score` stages the alert and community rows once, after their summaries are written; `summarise` stages nothing.
 The template reads a group of `LAB_SUMMARY_SMALL_GROUP` members or fewer as a household, and a bigger one as a club or a

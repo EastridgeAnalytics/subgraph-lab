@@ -37,7 +37,8 @@ Relate store over Neo4j's HTTP Query API v2. The uniqueness constraints on the p
 - A schema pull takes the payments in the window (`since` inclusive, `until` exclusive) and the identifier links of
   the accounts that paid in it.
 - A failed pull removes the run store, so the run can pull again.
-- No batching or timings are documented. A pull at 100k and at 1M relationships is measured in wave 6. To measure.
+- Relate documents no batching or timings. The lab measured pulls at the seed's size and at 1M relationships, by
+  both routes: [98](98-measured.md).
 - The fallback is parallel Bolt reads over disjoint account-key ranges. It runs when the Query API cannot be
   reached (refused, DNS, timeout, TLS, a 5xx, or a 404 that is not a Neo4j error), never on a 401, a Cypher error
   or a missing database. The route taken and the reason are recorded on the run. A Cypher-mode fallback uses one

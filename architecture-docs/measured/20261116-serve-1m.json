@@ -1,0 +1,33 @@
+{
+ "id": "20261116-serve-1m",
+ "kind": "serve",
+ "what": "relate serve --read-only=live on run-20261116T024303Z-606b87's store",
+ "measured_at": "2026-11-16T02:52:18Z",
+ "runs": [
+  "run-20261116T024303Z-606b87"
+ ],
+ "command": "tools/measure.py serve run-20261116T024303Z-606b87 --label 1m",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "nodes served": "276,111",
+  "memory answering": "674 MB",
+  "memory after a two-hop count": "678 MB",
+  "two-hop count time": "7.3 s"
+ },
+ "values": {
+  "nodes": 276111,
+  "rss_idle_bytes": 707264512,
+  "rss_after_query_bytes": 710443008,
+  "two_hop_seconds": 7.2894091999623924,
+  "two_hop_rows": 67154,
+  "store_bytes": 146485247
+ }
+}

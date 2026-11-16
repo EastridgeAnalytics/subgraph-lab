@@ -1,0 +1,41 @@
+{
+ "id": "20261116-walk-subgraph-a1",
+ "kind": "walk",
+ "what": "A1: compose up to a reviewed push, payments since 2026-10-20, without TGN, by script",
+ "measured_at": "2026-11-16T03:31:52Z",
+ "runs": [
+  "run-20261116T033006Z-6e0705"
+ ],
+ "command": "tests/acceptance/a1_walk.py --dir ~/AppData/Local/Temp/subgraph-a1-clone --project subgraph-a1 --since 2026-10-20 --record --shots .tmp/a1-shots",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "compose up time": "49 s",
+  "until healthy time": "0.0 s",
+  "connect time": "1.5 s",
+  "models time": "0.3 s",
+  "slice time": "4.3 s",
+  "run time": "84 s",
+  "review and push time": "22 s",
+  "walk time": "112 s",
+  "total time": "160 s"
+ },
+ "values": {
+  "compose_up": 48.578440500074066,
+  "until_healthy": 0.04428509995341301,
+  "connect": 1.5484523000195622,
+  "models": 0.2626023000339046,
+  "slice": 4.254871799959801,
+  "run": 83.90367170004174,
+  "review_and_push": 21.75867589993868,
+  "walk": 111.72827399999369,
+  "total": 160.35099960002117
+ }
+}

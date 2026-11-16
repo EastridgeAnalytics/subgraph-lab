@@ -57,12 +57,27 @@ def machine() -> dict:
     }
 
 
+def script() -> str:
+    """The script that is running, as a path inside the repo (tools/measure.py, tests/acceptance/a1_walk.py)."""
+    path = Path(sys.argv[0]).resolve()
+    return path.relative_to(REPO).as_posix() if path.is_relative_to(REPO) else path.name
+
+
+def scrub(text: str) -> str:
+    """A record goes into the repo: the home folder in a path becomes ~."""
+    home = Path.home()
+    for form in (home.as_posix(), str(home)):
+        text = text.replace(form, "~")
+    return text
+
+
 def write(kind: str, label: str, what: str, values: dict, shown: dict, runs: list[str]) -> Path:
     now = datetime.now(UTC)
     rid = f"{now:%Y%m%d}-{kind}-{label}"
+    values = json.loads(scrub(json.dumps(values, default=str)))
     record = {
         "id": rid, "kind": kind, "what": what, "measured_at": now.isoformat(timespec="seconds").replace("+00:00", "Z"),
-        "runs": runs, "command": " ".join(["tools/measure.py", *sys.argv[1:]]), "machine": machine(),
+        "runs": runs, "command": scrub(" ".join([script(), *sys.argv[1:]])), "machine": machine(),
         "shown": shown, "values": values,
     }
     OUT.mkdir(parents=True, exist_ok=True)

@@ -45,19 +45,35 @@ H) **Demo data.** A generator with planted rings and legitimate look-alikes, so 
 
 ## Status
 
-The build is under way, wave by wave. [99](architecture-docs/99-build-status.md) says what is built. Code lives in
-`lab/`, `app/`, `examples/`, `factors/` and `generator/`. Every number in the docs comes from a vendor's documentation or is
-marked "to measure".
+Waves 0 to 6 of the [development plan](architecture-docs/97-development-plan.md) are done, and
+[99](architecture-docs/99-build-status.md) says what is built. Every number in the docs is measured on
+[98](architecture-docs/98-measured.md), with the run it came from, or is marked "waiting" for what it needs: Aura
+credentials or an Anthropic key. Code lives in `lab/`, `app/`, `examples/`, `factors/` and `generator/`.
 
-Built with Relate by Neo4j, for the Relate by Neo4j hackathon, due 11 December 2026. AI agents build the tracks
-in parallel and one person integrates; the submission says how. MIT, see [`LICENSE`](LICENSE).
+Built with Relate by Neo4j, for the Relate by Neo4j hackathon, due 11 December 2026. MIT, see [`LICENSE`](LICENSE).
 
-## Run, once it exists
+## How AI built it
+
+One Claude Opus session directed the build from [97](architecture-docs/97-development-plan.md). Claude Sonnet
+builders took one written brief each, worked in their own git worktrees, up to three at a time, and reported back.
+The director merged each track after its tests passed on the seed, reviewed the whole codebase against the docs,
+and briefed the fixes. Every wave's report is in [`architecture-docs/reviews/`](architecture-docs/reviews/). One
+person owns the project and reviews it.
+
+## Run
 
 ```
-cp .env.example .env     # NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD, NEO4J_DATABASE
-docker compose up        # the lab on http://localhost:8000
+git clone https://github.com/EastridgeAnalytics/subgraph_engine
+cd subgraph_engine
+cp .env.example .env                 # change the ports in it if another Neo4j already uses them
+docker compose --profile local up    # builds the image, makes the seed, starts Neo4j and the lab
 ```
 
-`docker compose --profile local up` adds a bundled Neo4j with the seed data, for anyone without an Aura
-account. Ports and settings are on [07](architecture-docs/07-what-runs-where.md).
+Open `http://localhost:8000`, then Connect, Slice, Run, and Review and push. The first build downloads PyTorch for
+CPU; its time and the image's size are on [98](architecture-docs/98-measured.md).
+
+With Aura instead of the bundled Neo4j, set `NEO4J_URI`, `NEO4J_USERNAME` and `NEO4J_PASSWORD` in `.env` and run
+`docker compose up`. Ports and every setting are on [07](architecture-docs/07-what-runs-where.md).
+
+To work on the code: `uv sync`, `uv run python tools/install_relate.py` for the Relate CLI, `uv run pytest -q`, and
+`npm test` in `app/`. `tests/acceptance/` holds A1 to A11.

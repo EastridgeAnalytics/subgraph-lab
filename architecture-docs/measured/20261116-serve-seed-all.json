@@ -1,0 +1,33 @@
+{
+ "id": "20261116-serve-seed-all",
+ "kind": "serve",
+ "what": "relate serve --read-only=live on run-20261116T020925Z-00c610's store",
+ "measured_at": "2026-11-16T02:11:57Z",
+ "runs": [
+  "run-20261116T020925Z-00c610"
+ ],
+ "command": "tools/measure.py serve run-20261116T020925Z-00c610 --label seed-all",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "nodes served": "39,481",
+  "memory answering": "113 MB",
+  "memory after a two-hop count": "115 MB",
+  "two-hop count time": "0.5 s"
+ },
+ "values": {
+  "nodes": 39481,
+  "rss_idle_bytes": 118628352,
+  "rss_after_query_bytes": 121085952,
+  "two_hop_seconds": 0.493178499978967,
+  "two_hop_rows": 9634,
+  "store_bytes": 10325001
+ }
+}

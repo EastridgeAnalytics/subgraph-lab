@@ -20,7 +20,10 @@ is open. 88 is the product requirements. 99 is the state of the build. Building?
 | [08 Decisions](08-decisions.md) | Settled and open |
 | [88 Product requirements](88-product-requirements.md) | MVP 1.0: requirements, acceptance tests, scope |
 | [97 Development plan](97-development-plan.md) | The waves, the director and the builders, how the work runs |
+| [98 Measured](98-measured.md) | Every number, measured on one machine, each tied to its record in `measured/` |
 | [99 Build status](99-build-status.md) | What is built, partly built and not; the roadmap |
+| [Video](video.md) | The two-minute shot list: six beats, the clicks and the Cypher |
+| [Reviews](reviews/) | Each wave's report, and the director's review of the whole codebase |
 
 Relate's own documentation is the source for every `relate` command and Cypher feature on these pages:
 [relatedb.ai/docs](https://relatedb.ai/docs/). Where a page says "from the docs", it means that. Where it says

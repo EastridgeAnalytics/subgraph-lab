@@ -1,0 +1,205 @@
+{
+ "id": "20261116-run-seed-loop",
+ "kind": "run",
+ "what": "run run-20261116T014349Z-fc6845 against the ground truth",
+ "measured_at": "2026-11-16T02:13:46Z",
+ "runs": [
+  "run-20261116T014349Z-fc6845"
+ ],
+ "command": "tools/measure.py run run-20261116T014349Z-fc6845 --label seed-loop",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "pull time": "11 s",
+  "first_pass time": "111 s",
+  "slice time": "0.8 s",
+  "models time": "2.5 s",
+  "score time": "31 s",
+  "communities time": "1.6 s",
+  "summaries time": "1.9 s",
+  "stage time": "0.2 s",
+  "review time": "3.5 s",
+  "push time": "2.7 s",
+  "whole run time": "174 s",
+  "push rows": "1,626",
+  "accounts in slice": "763",
+  "planted accounts in slice": "78",
+  "alerts": "79",
+  "precision": "0.99",
+  "recall": "1.00",
+  "look-alike accounts alerted": "0 of 71",
+  "rings held": "12 of 31",
+  "rings whole": "11 of 12",
+  "look-alike groups high": "0 of 32",
+  "communities high": "11 of 28",
+  "communities high holding planted accounts": "11 of 11",
+  "mule_ring whole": "4 of 4",
+  "mule_ring high": "4 of 4",
+  "pass_through whole": "6 of 7",
+  "pass_through high": "6 of 7",
+  "structuring whole": "1 of 1",
+  "structuring high": "1 of 1"
+ },
+ "values": {
+  "steps": {
+   "pull": {
+    "seconds": 11.109682,
+    "counts": {
+     "nodes": 39293,
+     "relationships": 90605,
+     "constraints": 7
+    }
+   },
+   "first_pass": {
+    "seconds": 110.68217,
+    "counts": {
+     "accounts": 9932,
+     "embeddings": 9932,
+     "summaries": 9932,
+     "graph_nodes": 39293,
+     "graph_edges": 87429,
+     "embedding_dim": 64,
+     "write_batches": 1
+    }
+   },
+   "slice": {
+    "seconds": 0.822393,
+    "counts": {
+     "hits": 50,
+     "hops": 1,
+     "accounts": 763,
+     "nodes": 3008,
+     "relationships": 4018,
+     "memory_bytes": 4825263
+    }
+   },
+   "models": {
+    "seconds": 2.541736,
+    "counts": {
+     "tgn_accounts": 315
+    }
+   },
+   "score": {
+    "seconds": 30.538268,
+    "counts": {
+     "accounts": 763,
+     "alerts": 79,
+     "factors": 7,
+     "factors_ran": 7,
+     "factors_skipped": 0,
+     "factors_failed": 0,
+     "factors_not_chosen": 0,
+     "factor_rows": 1028,
+     "communities": 28,
+     "community_members": 676,
+     "largest": 55,
+     "by_identifier": 5,
+     "by_flow": 6,
+     "by_payment": 17,
+     "summaries": 70,
+     "from_api": 0,
+     "from_template": 70,
+     "failed_checks": 0,
+     "cached": 0
+    }
+   },
+   "communities": {
+    "seconds": 1.614435,
+    "counts": {
+     "communities": 28,
+     "community_members": 676,
+     "largest": 55,
+     "by_identifier": 5,
+     "by_flow": 6,
+     "by_payment": 17
+    }
+   },
+   "summaries": {
+    "seconds": 1.9006,
+    "counts": {
+     "summaries": 70,
+     "from_api": 0,
+     "from_template": 70,
+     "failed_checks": 0,
+     "cached": 0
+    }
+   },
+   "stage": {
+    "seconds": 0.181836,
+    "counts": {
+     "accounts": 763,
+     "communities": 28,
+     "members": 676,
+     "alerts": 79
+    }
+   },
+   "review": {
+    "seconds": 3.476172,
+    "counts": {
+     "entities": 5,
+     "rows": 1625,
+     "new_alerts": 79,
+     "new_communities": 28,
+     "missing_remote_keys": 0,
+     "sampled": 763
+    }
+   },
+   "push": {
+    "seconds": 2.687942,
+    "counts": {
+     "entities": 6,
+     "rows": 1626,
+     "created": 863,
+     "updated": 763,
+     "resumed": 0,
+     "reviewed": 1
+    }
+   }
+  },
+  "accounts_in_slice": 763,
+  "planted_in_slice": 78,
+  "lookalike_accounts_in_slice": 71,
+  "alerts": 79,
+  "alerts_on_planted": 78,
+  "alerts_on_lookalikes": 0,
+  "precision": 0.9873417721518988,
+  "recall": 1.0,
+  "rings_touched": 31,
+  "rings_held": 12,
+  "rings_whole": 11,
+  "by_pattern": {
+   "mule_ring": {
+    "held": 4,
+    "whole": 4,
+    "high": 4
+   },
+   "structuring": {
+    "held": 1,
+    "whole": 1,
+    "high": 1
+   },
+   "pass_through": {
+    "held": 7,
+    "whole": 6,
+    "high": 6
+   }
+  },
+  "lookalike_groups": 32,
+  "lookalike_groups_high": 0,
+  "communities": 28,
+  "communities_high": 11,
+  "communities_high_with_planted": 11,
+  "alert_threshold": 0.6,
+  "min_size": 3,
+  "policy_combine": "noisy_or",
+  "community_combine": "noisy_or",
+  "whole_run_seconds": 173.502579
+ }
+}

@@ -1,0 +1,180 @@
+{
+ "id": "20261116-run-seed-whole",
+ "kind": "run",
+ "what": "run run-20261116T014724Z-b832fe against the ground truth",
+ "measured_at": "2026-11-16T02:07:48Z",
+ "runs": [
+  "run-20261116T014724Z-b832fe"
+ ],
+ "command": "tools/measure.py run run-20261116T014724Z-b832fe --label seed-whole",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "pull time": "22 s",
+  "first_pass time": "129 s",
+  "models time": "939 s",
+  "score time": "65 s",
+  "communities time": "14 s",
+  "summaries time": "9.3 s",
+  "stage time": "1.4 s",
+  "review time": "9.1 s",
+  "whole run time": "1,178 s",
+  "accounts in slice": "9,932",
+  "planted accounts in slice": "366",
+  "alerts": "373",
+  "precision": "0.98",
+  "recall": "1.00",
+  "look-alike accounts alerted": "4 of 1,168",
+  "rings held": "60 of 60",
+  "rings whole": "60 of 60",
+  "look-alike groups high": "1 of 60",
+  "communities high": "61 of 93",
+  "communities high holding planted accounts": "60 of 61",
+  "mule_ring whole": "20 of 20",
+  "mule_ring high": "20 of 20",
+  "pass_through whole": "20 of 20",
+  "pass_through high": "20 of 20",
+  "structuring whole": "20 of 20",
+  "structuring high": "20 of 20"
+ },
+ "values": {
+  "steps": {
+   "pull": {
+    "seconds": 22.266384,
+    "counts": {
+     "nodes": 39293,
+     "relationships": 90605,
+     "constraints": 7
+    }
+   },
+   "first_pass": {
+    "seconds": 129.259833,
+    "counts": {
+     "accounts": 9932,
+     "embeddings": 9932,
+     "summaries": 9932,
+     "graph_nodes": 39293,
+     "graph_edges": 87429,
+     "embedding_dim": 64,
+     "write_batches": 1
+    }
+   },
+   "models": {
+    "seconds": 939.412811,
+    "counts": {
+     "tgn_accounts": 6164
+    }
+   },
+   "score": {
+    "seconds": 65.138478,
+    "counts": {
+     "accounts": 9932,
+     "alerts": 373,
+     "factors": 7,
+     "factors_ran": 7,
+     "factors_skipped": 0,
+     "factors_failed": 0,
+     "factors_not_chosen": 0,
+     "factor_rows": 12513,
+     "communities": 93,
+     "community_members": 9910,
+     "largest": 962,
+     "by_identifier": 54,
+     "by_flow": 20,
+     "by_payment": 19,
+     "summaries": 70,
+     "from_api": 0,
+     "from_template": 70,
+     "failed_checks": 0,
+     "cached": 0
+    }
+   },
+   "communities": {
+    "seconds": 13.98676,
+    "counts": {
+     "communities": 93,
+     "community_members": 9910,
+     "largest": 962,
+     "by_identifier": 54,
+     "by_flow": 20,
+     "by_payment": 19
+    }
+   },
+   "summaries": {
+    "seconds": 9.337014,
+    "counts": {
+     "summaries": 70,
+     "from_api": 0,
+     "from_template": 70,
+     "failed_checks": 0,
+     "cached": 0
+    }
+   },
+   "stage": {
+    "seconds": 1.350469,
+    "counts": {
+     "accounts": 9932,
+     "communities": 93,
+     "members": 9910,
+     "alerts": 373
+    }
+   },
+   "review": {
+    "seconds": 9.051483,
+    "counts": {
+     "entities": 5,
+     "rows": 20681,
+     "new_alerts": 373,
+     "new_communities": 93,
+     "missing_remote_keys": 0,
+     "sampled": 1000
+    }
+   }
+  },
+  "accounts_in_slice": 9932,
+  "planted_in_slice": 366,
+  "lookalike_accounts_in_slice": 1168,
+  "alerts": 373,
+  "alerts_on_planted": 366,
+  "alerts_on_lookalikes": 4,
+  "precision": 0.9812332439678284,
+  "recall": 1.0,
+  "rings_touched": 60,
+  "rings_held": 60,
+  "rings_whole": 60,
+  "by_pattern": {
+   "mule_ring": {
+    "held": 20,
+    "whole": 20,
+    "high": 20
+   },
+   "structuring": {
+    "held": 20,
+    "whole": 20,
+    "high": 20
+   },
+   "pass_through": {
+    "held": 20,
+    "whole": 20,
+    "high": 20
+   }
+  },
+  "lookalike_groups": 60,
+  "lookalike_groups_high": 1,
+  "communities": 93,
+  "communities_high": 61,
+  "communities_high_with_planted": 60,
+  "alert_threshold": 0.6,
+  "min_size": 3,
+  "policy_combine": "noisy_or",
+  "community_combine": "noisy_or",
+  "whole_run_seconds": 1177.860581
+ }
+}

@@ -39,7 +39,8 @@ flowchart LR
 | History | Every run with its recipe and counts. Pick two to compare | Later |
 
 The test the app is held to: someone who has never seen it gets from `docker compose up` to a reviewed push on
-the seed data in 15 minutes. To measure.
+the seed data in 15 minutes. A script walks it in a browser, and [98](98-measured.md) has its time. A person's time
+is not measured yet.
 
 ## The agent
 

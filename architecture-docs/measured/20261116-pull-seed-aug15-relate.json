@@ -1,0 +1,38 @@
+{
+ "id": "20261116-pull-seed-aug15-relate",
+ "kind": "pull",
+ "what": "a schema pull by relate from bolt://localhost:27687",
+ "measured_at": "2026-11-16T02:08:09Z",
+ "runs": [
+  "run-20261116T020754Z-ae228e"
+ ],
+ "command": "tools/measure.py pull --label seed-aug15 --since 2026-08-15T00:00:00Z --route relate",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "nodes": "39,293",
+  "relationships": "90,605",
+  "time": "15 s",
+  "peak memory": "219 MB",
+  "store on disk": "3 MB",
+  "lab estimate": "83 MB"
+ },
+ "values": {
+  "route": "relate",
+  "since": "2026-08-15T00:00:00Z",
+  "nodes": 39293,
+  "relationships": 90605,
+  "seconds": 14.569595200009644,
+  "peak_rss_bytes": 229445632,
+  "store_bytes": 3237281,
+  "lab_estimate_bytes": 86747439,
+  "neo4j": "bolt://localhost:27687"
+ }
+}

@@ -11,16 +11,16 @@ that lands. Each wave's report goes in `reviews/`.
 | 3 · communities, summaries, the rest of the app | Done, 13 November 2026 | [wave-3](reviews/wave-3.md) |
 | 4 · the director's review | Done, 13 November 2026 | [mvp-review](reviews/mvp-review.md) |
 | 5 · fix and redesign | Done, 13 November 2026 | [wave-5](reviews/wave-5.md) |
-| 6 · measured numbers, packaging | Not started | |
+| 6 · measured numbers, packaging | Done, 15 November 2026 | [wave-6](reviews/wave-6.md) |
 
 ## The MVP, by 11 December 2026
 
 | # | Deliverable | Done means | Track | Status |
 |---|---|---|---|---|
 | 1 | Contracts | The run manifest, the staged-results table, the recipe file, the REST routes, the MCP tool list and the lint config, written and reviewed on day one | Integrator | Done in wave 0: `lab/contracts/`, `lab/common/`, `lab/runs.py` |
-| 2 | Generator and seed | Accounts with devices, emails and addresses. Three planted patterns with ring ids, plus legitimate look-alikes. A small seed that fits Aura Free's smaller published limit, and 1M relationships for the measured page | Data | Done (1a): `generator/`, the `seed` and `seed-schema` services. `small` is 39,565 nodes and 150,000 relationships. Loading it into Aura Free (A7) waits for credentials |
-| 3 | Pull | `relate pull` from Aura into a fresh store per run. Parallel Bolt as the fallback. Both measured at 100k and 1M relationships | Data plane | Built (1b): `lab/roundtrip/pull.py`. Tested live on the local Neo4j and on the seed. Aura and the 100k and 1M measurements wait for wave 6 |
-| 4 | Indexes and first pass | Node2Vec embeddings and account summaries, with vector and full-text indexes created in Relate | Adapters | Done: the indexes after every pull (1b); Node2Vec embeddings and template summaries on every account (2a) |
+| 2 | Generator and seed | Accounts with devices, emails and addresses. Three planted patterns with ring ids, plus legitimate look-alikes. A small seed that fits Aura Free's smaller published limit, and 1M relationships for the measured page | Data | Done (1a): `generator/`, the `seed` and `seed-schema` services. `small` is 39,565 nodes and 150,000 relationships; `1m` is 276,987 nodes and 1,000,000 relationships, by the generator's own count; its pull is on [98](98-measured.md). Loading the seed into Aura Free (A7) waits for credentials |
+| 3 | Pull | `relate pull` from Aura into a fresh store per run. Parallel Bolt as the fallback. Both measured at 100k and 1M relationships | Data plane | Done (1b): `lab/roundtrip/pull.py`. Measured at the seed's size and at 1M relationships by both routes on [98](98-measured.md). From Aura waits for credentials |
+| 4 | Indexes and first pass | Node2Vec embeddings and account summaries, with vector and full-text indexes created in Relate | Adapters | Done: the indexes after every pull (1b); Node2Vec embeddings and template summaries on every account (2a). Measured at 1M on [98](98-measured.md); whole-store reads page through the account keys (wave 6) |
 | 5 | Search-defined slice | Hybrid search plus hops, the size and memory shown before expansion, the cap enforced | Data plane | Done (2a): `lab/slice/search.py`, `estimate.py`. A hop is an account step, `h` 1 by default (5c, decision 41). Run on the seed by the loop |
 | 6 | Adapters | Table, PyG graph, PyG event stream in the TGB layout, NetworkX. Each with a test on the seed | Adapters | Done (1c): `lab/adapters/` |
 | 7 | Examples | TGN scores, Node2Vec similar accounts, NetworkX communities and cycles, the statsforecast velocity factor. Each under 100 lines, each ending in stage and push | Adapters | Done: Node2Vec (2a), TGN (2c), velocity and NetworkX (3c), each under 100 lines and ending in stage and push |
@@ -28,8 +28,8 @@ that lands. Each wave's report goes in `reviews/`.
 | 9 | Summaries | The evidence schema and hash. Community and account summaries through the Anthropic API or the agent, the template otherwise. The number, member and wording checks. The cache | Scoring | Done (3b): `lab/summaries/`. The API writer is tested against a mocked client; the template writes every summary until a key is set. The cache key leaves out the run id (5b) |
 | 10 | Review and push | The dry-run plan plus the delta. `relate push` keyed, with a manifest and resume, creating `RiskCommunity` nodes and their links. Dispositions written back. The `LabRun` marker written last. Bolt as the fallback | Data plane | Done (1e): `lab/roundtrip/stage.py`, `push.py`, `delta.py`, `ledger.py`, `retract.py`; a push never creates a customer node (decision 35). Tested live, and on the seed by the loop. The plan's created and updated counts come from the master graph (5c) |
 | 11 | API and agent | FastAPI routes, the eight tools, Relate's skill and MCP wired for the agent | API | Done (2d): `lab/api/`. Nine MCP tools (decision 38); a push needs a fresh review (decision 37). An agent ran the loop through both MCP servers |
-| 12 | The app | The seven MVP screens, with accounts and communities on Results and the decision buttons. The 15-minute test, measured | App | Built: all seven screens (1d, 2e, 3d, 3e), walked against the real lab in wave 4 and brought up to wave 5's lab (5d). The 15-minute test (A1) is wave 6 |
-| 13 | Compose, README, numbers, video | An `.env` for Aura and one command for the bundled Neo4j. AI use disclosed. A measured-numbers page. A video of two minutes or less | Docs | Not started |
+| 12 | The app | The seven MVP screens, with accounts and communities on Results and the decision buttons. The 15-minute test, measured | App | Done: all seven screens (1d, 2e, 3d, 3e), brought up to wave 5's lab (5d). A1 walked by a script from a clean clone, timed on [98](98-measured.md). A person's time is not measured |
+| 13 | Compose, README, numbers, video | An `.env` for Aura and one command for the bundled Neo4j. AI use disclosed. A measured-numbers page. A video of two minutes or less | Docs | Done except the recording: compose and `.env.example`, the README's Run and AI-use sections, [98](98-measured.md) with every number tied to its record, the shot list on [video](video.md). The image runs `relate` (Debian 13) and CI builds it. The recording is the owner's |
 
 ## Four weeks
 
@@ -66,16 +66,18 @@ The shape, not a commitment.
 | 1.2, February to March 2027 | The full-population sweep: slices by key range or time window with a one-hop ring, a scheduler, resume. Retraining on reviewer decisions, and suppressions suggested by false positives. Re-scoring only the communities new events touch. Relate as a PyG remote backend. GNNExplainer and Captum adapters. Recipes on a schedule. Sign-in and roles |
 | 2.0, second quarter 2027 | Model packs per use case (financial crime, churn, supply chain, identity), each a recipe, a factor file, an example and a review checklist. A run registry across instances. Audit export. GDS write-back parity. 50M relationships measured |
 
-## What we won't claim until measured
+## What we claim, and what we still won't
 
-- Any rows per second, megabytes per second or wall time for pull, push or load.
-- How long a search-defined slice takes, or how big two hops get.
-- "Faster than" anything.
-- Relate's running memory for our data.
+Measured on [98](98-measured.md), each with its run: pull at the seed's size and at 1M by both routes, push, the
+loop step by step, how big a search slice gets, Relate's running memory, the image, and the scripted walk. Still not
+claimed:
+
+- Anything from Aura, until the owner's credentials arrive.
+- "Faster than" any other product. 98 compares Relate's pull only with the lab's own Bolt fallback.
 - Model accuracy on real fraud. The demo is synthetic.
 - How well communities match real rings, or how good the summaries are, outside the demo data.
 - Summary cost per community.
-- How long a new developer takes to get through the app.
+- How long a person takes to get through the app.
 
 ## Hackathon rules we keep
 

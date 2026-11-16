@@ -2,7 +2,9 @@
 
     uv run pytest tests/acceptance                     the ones that run on the fixture
     uv run pytest tests/acceptance -m live             the ones that need the test Neo4j (compose --profile test)
-    uv run pytest tests/acceptance -m "live and slow"  A1, the timed walk through the app (wave 6)
+    uv run python tests/acceptance/a1_walk.py --dir CLONE --record   A1, the timed walk from compose up (a script)
+    uv run python tests/acceptance/check_measured.py                  A8, also run here as a test
+    uv run python tests/acceptance/loop.py                            the whole loop, after every merge
 
 A test here checks the requirement end to end with the real components. Where a narrower test of the same behaviour
 lives beside its module, this one does not replace it.

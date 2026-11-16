@@ -1,0 +1,38 @@
+{
+ "id": "20261116-firstpass-1m",
+ "kind": "firstpass",
+ "what": "the first pass on run-20261116T024303Z-606b87",
+ "measured_at": "2026-11-16T03:28:51Z",
+ "runs": [
+  "run-20261116T024303Z-606b87"
+ ],
+ "command": "tools/measure.py first-pass run-20261116T024303Z-606b87 --label 1m",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "graph nodes": "276,111",
+  "accounts embedded": "69,781",
+  "first pass time": "1,047 s",
+  "first pass peak memory": "2,224 MB"
+ },
+ "values": {
+  "counts": {
+   "accounts": 69781,
+   "embeddings": 69781,
+   "summaries": 69781,
+   "graph_nodes": 276111,
+   "graph_edges": 955180,
+   "embedding_dim": 64,
+   "write_batches": 4
+  },
+  "seconds": 1047.4411548000062,
+  "peak_rss_growth_bytes": 2332168192
+ }
+}

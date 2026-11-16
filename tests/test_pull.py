@@ -31,7 +31,7 @@ from tests.fixtures.graph_loader import GRAPH
 
 SUMMARY_LINE = (
     "pulled 777 new / 470 reused nodes, 2600 new / 0 reused rels (+ 4 constraints, 0 indexes; 0 schema skipped) "
-    "to C:/Users/eastr/AppData/Local/Temp/pe/s1\n"
+    "to C:/tmp/pe/s1\n"
 )
 SINCE, UNTIL = "2026-10-05T00:00:00Z", "2026-10-08T00:00:00Z"
 UNREACHABLE = "http://localhost:1"  # nothing listens here: connection refused

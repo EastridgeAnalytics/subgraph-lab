@@ -93,13 +93,13 @@ inline in code.
 - Aura Free's limits differ between Neo4j's own pages: 200,000 nodes and 400,000 relationships in the docs,
   50,000 and 175,000 on the product page. The small seed fits the smaller one.
 
-## To measure
+## Measured
 
 | What | Expectation | Status |
 |---|---|---|
-| Memory at 1M relationships | Relate about 0.6 to 0.8 GB running, PyG training about 0.5 GB, so an 8 GB laptop | To measure in wave 6 |
-| `relate pull` at 100k and 1M relationships | No documented figure | To measure in wave 6 |
-| Image size with CPU PyTorch | Large | To measure in wave 6, then into the README |
+| Memory at 1M relationships | Relate about 0.6 to 0.8 GB running, PyG training about 0.5 GB, so an 8 GB laptop | Measured in wave 6: [98](98-measured.md) |
+| `relate pull` at 100k and 1M relationships | No documented figure | Measured in wave 6, by Relate and by Bolt: [98](98-measured.md) |
+| Image size with CPU PyTorch | Large | Measured in wave 6: [98](98-measured.md) and the README |
 
 ## Where it lives
 

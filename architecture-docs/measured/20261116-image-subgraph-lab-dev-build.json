@@ -1,0 +1,32 @@
+{
+ "id": "20261116-image-subgraph-lab-dev-build",
+ "kind": "image",
+ "what": "the lab image subgraph-lab:dev",
+ "measured_at": "2026-11-16T02:30:35Z",
+ "runs": [
+  "sha256:9517eaab441302bb2afdce0fe286047a7e0c3972ce2891d03f7ada67e800e870"
+ ],
+ "command": "tools/measure.py image --build ~/AppData/Local/Temp/subgraph-a1-clone",
+ "machine": {
+  "os": "Windows-11-10.0.26200-SP0",
+  "cpu": "Intel64 Family 6 Model 154 Stepping 4, GenuineIntel",
+  "logical_cpus": 12,
+  "physical_cpus": 10,
+  "ram_gb": 63.7,
+  "python": "3.12.13",
+  "relate": "1.0.1"
+ },
+ "shown": {
+  "image size compressed": "1.01 GB",
+  "image size unpacked on disk": "4.66 GB",
+  "build time with no cache": "383 s"
+ },
+ "values": {
+  "tag": "subgraph-lab:dev",
+  "compressed_bytes": 1013827419,
+  "unpacked": "4.66GB",
+  "image_id": "sha256:9517eaab441302bb2afdce0fe286047a7e0c3972ce2891d03f7ada67e800e870",
+  "build_seconds": 382.8425197999459,
+  "build_dir": "~/AppData/Local/Temp/subgraph-a1-clone"
+ }
+}
