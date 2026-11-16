@@ -21,24 +21,29 @@ FULL_LINES = 80  # how much of a folded result to keep
 INTRO = """\
 # An agent finds the ring
 
-This is one session of Claude Code (Sonnet) doing the reviewer's job with the lab's tools and nothing else. It was
-asked, in plain words, to find the riskiest ring among accounts active since 20 October 2026 and explain it. It
-pulled a slice, searched it, scored it, read the communities through Relate's own MCP server, wrote a summary that
-the lab checked, read the dry run, and pushed with a confirm. Everything below is rendered from the session's log,
-[`agent/session.jsonl`](agent/session.jsonl), by [`build_agent.py`](build_agent.py). The person's version of the
-same job is [the walkthrough](README.md).
+Gave Claude Code (Sonnet) two MCP servers, the lab's and Relate's, and nothing else. The task, in plain words: find
+the riskiest ring among accounts active since 20 October 2026 and explain it. It found R0006, the planted ring a
+person finds in [the walkthrough](README.md). On the way it pulled a slice, searched it, scored it, read the
+communities through Relate, wrote a summary the lab checked, read the dry run and pushed the results back with a
+confirm. 13 turns, 3.7 minutes.
+
+This page is rendered from the session's log, [`agent/session.jsonl`](agent/session.jsonl), by
+[`build_agent.py`](build_agent.py). Nobody edits it by hand.
 
 ## The guardrails
 
-- **The agent had two MCP servers and no other tools.** No shell, no files, no web. `run.sh` says so in its flags.
-- **It reads through Relate's MCP server, read-only.** `relate serve --read-only=live` follows the lab's writes and
-  refuses every write of its own.
-- **It acts through the lab's nine tools.** The long ones queue their work and answer at once; `run_status` waits.
-- **The only write to the master graph is `apply_push` with `confirm=true`,** and it fails without a review newer
-  than the last thing staged. The review is `preview_push`: Relate's dry run plus the lab's own delta.
-- **A summary the agent writes passes the same checks as the API's.** Every number must be in the evidence, every
-  member named must be a member, no verdict words. A summary that fails is replaced by the template, and the tool
-  says why.
+None of these rely on the prompt. Each is a flag or a check in the lab's code.
+
+- **Two MCP servers, no other tools.** No shell, no files, no web. The flags in `run.sh` turn the rest off.
+- **Reads go through Relate's MCP server, read-only.** `relate serve --read-only=live` follows the lab's writes and
+  refuses any write sent through it.
+- **Actions go through the lab's nine tools.** The long ones queue their work and answer at once. `run_status`
+  waits for them.
+- **One write reaches the master graph: `apply_push` with `confirm=true`.** It fails without a `preview_push` newer
+  than the last thing staged. That review is Relate's dry run plus the lab's own delta.
+- **The agent's summary gets the same checks as the API's.** Every number has to be in the evidence, every member it
+  names has to be a member, and no verdict words. A summary that fails is replaced by the template, and the tool
+  says why. This one failed on three numbers.
 
 ## Run it yourself
 
