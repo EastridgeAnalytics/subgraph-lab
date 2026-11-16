@@ -4,9 +4,9 @@
 
 The page is architecture-docs/98-measured.md. Its tables end with a "Record" column that names, in backticks, the
 record or records the row comes from: architecture-docs/measured/<id>.json, written by tools/measure.py. A row passes
-when every number in its other cells, the first (the row's label) excepted, appears among the `shown` strings of the
-records it names, and every record names at least one run. A row with no number in those cells (such as "waiting
-for credentials") needs no record. Numbers outside tables are not checked: the page keeps them to dates and to the
+when every number in its other cells, the first (the row's label) excepted, appears among the `shown` strings or
+the `machine` fields of the records it names, and every record names at least one run. A row with no number in
+those cells (such as "waiting for credentials") needs no record. Numbers outside tables are not checked: the page keeps them to dates and to the
 rows' labels.
 
 Exit 0 and "A8 passes" when every row passes; otherwise each failing row is printed and the exit is 1.
@@ -69,7 +69,7 @@ def check(page: Path = PAGE) -> list[str]:
             record = json.loads(path.read_text(encoding="utf-8"))
             if not record.get("runs"):
                 problems.append(f"{cells[0]}: record {rid} names no run")
-            for text in record.get("shown", {}).values():
+            for text in [*record.get("shown", {}).values(), *record.get("machine", {}).values()]:
                 shown.update(numbers(str(text)))
         missing = [n for n in found if n not in shown]
         if missing:

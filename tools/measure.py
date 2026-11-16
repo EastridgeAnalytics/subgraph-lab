@@ -11,6 +11,8 @@ names.
     uv run python tools/measure.py pull --label L [--since ISO] [--route relate|bolt]
         One schema pull from the master graph in the settings into a fresh run, timed, with its peak memory and the
         store's size on disk. relate is `relate pull`; bolt is the lab's fallback, run on purpose.
+    uv run python tools/measure.py first-pass RUN_ID [--label L]
+        The first pass on a pulled run (Node2Vec training and the summaries), timed, with the lab's peak memory.
     uv run python tools/measure.py serve RUN_ID [--label L]
         `relate serve --read-only=live` on a run's store: its memory once it answers, and after a two-hop query.
     uv run python tools/measure.py image [--tag subgraph-lab:dev] [--build CLONE]
@@ -258,6 +260,25 @@ def measure_pull(label: str, since: str | None, route: str) -> Path:
                  [run.id])
 
 
+# ---- first pass ----------------------------------------------------------------------------------------------------
+def measure_first_pass(run_id: str, label: str | None) -> Path:
+    """The first pass (Node2Vec from PyG's example, then the account summaries) on a pulled run, with the lab's peak
+    memory: PyG training's memory, with the graph it trains on."""
+    from lab.runs import Run
+    from lab.slice.first_pass import first_pass
+
+    run = Run(run_id)
+    with PeakMemory() as mem:
+        started = time.perf_counter()
+        counts = first_pass(run)
+        elapsed = time.perf_counter() - started
+    run.close()
+    values = {"counts": counts, "seconds": elapsed, "peak_rss_growth_bytes": mem.peak_self}
+    shown = {"graph nodes": count(counts["graph_nodes"]), "accounts embedded": count(counts["accounts"]),
+             "first pass time": seconds(elapsed), "first pass peak memory": megabytes(mem.peak_self)}
+    return write("firstpass", label or run_id.rsplit("-", 1)[-1], f"the first pass on {run_id}", values, shown, [run_id])
+
+
 # ---- serve ---------------------------------------------------------------------------------------------------------
 def free_port() -> int:
     with socket.socket() as s:
@@ -322,10 +343,21 @@ def measure_image(tag: str, build_dir: str | None = None) -> Path:
     # image list's size is the unpacked layers on disk. Both are recorded, each named for what it is.
     unpacked = subprocess.run(["docker", "image", "ls", tag, "--format", "{{.Size}}"], capture_output=True, text=True,
                               check=True).stdout.strip()
+    # tools/check_licenses.py inside the image: every Python distribution's licence, from its own metadata
+    lic = subprocess.run(["docker", "run", "--rm", "-v", f"{REPO / 'tools'}:/check:ro", tag, "python",
+                          "/check/check_licenses.py"], capture_output=True, text=True, env={**os.environ,
+                          "MSYS_NO_PATHCONV": "1"}).stdout.strip().splitlines()
+    last = lic[-1] if lic else ""
+    parts = last.split(" distributions, ")
+    dists = int(parts[0]) if len(parts) == 2 and parts[0].isdigit() else None
+    flagged = int(parts[1].split(" ")[0]) if dists is not None else None
     values = {"tag": tag, "compressed_bytes": size, "unpacked": unpacked, "image_id": image_id,
-              "build_seconds": built, "build_dir": build_dir}
+              "build_seconds": built, "build_dir": build_dir, "licence_check": lic}
     shown = {"image size compressed": f"{size / 10**9:.2f} GB",
              "image size unpacked on disk": unpacked.replace("GB", " GB").replace("MB", " MB")}
+    if dists is not None:
+        shown["python distributions in the image"] = count(dists)
+        shown["copyleft or unknown licences"] = count(flagged)
     if built is not None:
         shown["build time with no cache"] = seconds(built)
     label = tag.replace(":", "-").replace("/", "-") + ("-build" if build_dir else "")
@@ -343,6 +375,9 @@ def main() -> None:
     p.add_argument("--label", required=True)
     p.add_argument("--since")
     p.add_argument("--route", choices=["relate", "bolt"], default="relate")
+    f = sub.add_parser("first-pass")
+    f.add_argument("run_id")
+    f.add_argument("--label")
     s = sub.add_parser("serve")
     s.add_argument("run_id")
     s.add_argument("--label")
@@ -354,6 +389,8 @@ def main() -> None:
         measure_run(a.run_id, a.truth, a.label)
     elif a.cmd == "pull":
         measure_pull(a.label, a.since, a.route)
+    elif a.cmd == "first-pass":
+        measure_first_pass(a.run_id, a.label)
     elif a.cmd == "serve":
         measure_serve(a.run_id, a.label)
     else:

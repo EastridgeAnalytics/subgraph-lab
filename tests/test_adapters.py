@@ -475,3 +475,31 @@ def test_mapped_keys_are_the_customers_own(mapped_run: Run):
     assert to_pyg(mapped_run, keys=["c1", "c2"], nodes="accounts").account_index == {"c1": 0, "c2": 1}
     assert set(to_networkx(mapped_run, keys=["c1", "c2"]).nodes) == {"c1", "c2"}
     assert to_series(mapped_run, keys=["c2"])["unique_id"].unique().to_list() == ["c2"]
+
+
+# ---- whole-store reads go out in pages (wave 6: the 1M seed's payments in one result passed Relate's value limit) --
+def test_a_whole_store_read_pages_over_every_account_and_gives_the_same_rows(fixture_run: Run, monkeypatch):
+    whole = {name: fn(fixture_run, None) for name, fn in
+             (("payments", reads.payments), ("outflow", reads.outflow), ("identifiers", reads.identifiers))}
+    monkeypatch.setenv("LAB_KEY_BATCH", "50")
+    reload_settings()
+    seen: list[dict] = []
+    original = Run.table
+
+    def counting(self, query, params=None):
+        seen.append(params or {})
+        return original(self, query, params)
+
+    monkeypatch.setattr(Run, "table", counting)
+    try:
+        for name, fn in (("payments", reads.payments), ("outflow", reads.outflow), ("identifiers", reads.identifiers)):
+            seen.clear()
+            again = fn(fixture_run, None)
+            cols = again.columns
+            assert again.sort(cols).equals(whole[name].sort(cols)), name
+            paged = [p for p in seen if "keys" in p]
+            assert paged and all(len(p["keys"]) <= 50 for p in paged), name
+            assert sum(len(p["keys"]) for p in paged) >= N_ACCOUNTS, name  # every account, once per statement kind
+    finally:
+        monkeypatch.delenv("LAB_KEY_BATCH")
+        reload_settings()

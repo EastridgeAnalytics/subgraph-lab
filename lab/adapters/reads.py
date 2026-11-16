@@ -8,6 +8,10 @@ A long key list does not go into one `IN $keys`: in Relate 1.0.1 the lookup slow
 accounts and 100,000 payments; to re-measure on the 1M seed). The readers send `LAB_KEY_BATCH` keys at a time,
 restrict the account that a relationship leaves from, and keep only the ones that land inside the slice
 in Polars, where a semi join is linear.
+
+A whole-store read (`keys` None) of payments or identifiers is paged the same way, over every account key. In one
+statement the 1M seed's payments came to a single result over Relate 1.0.1's 256 MB value limit, and the first pass
+failed (wave 6). Paging adds one statement per `LAB_KEY_BATCH` accounts.
 """
 from __future__ import annotations
 
@@ -40,6 +44,11 @@ def _read(run: Run, query: str, keys: list[str] | None, columns: list[str]) -> p
     if not frames:  # keys == []
         return pl.DataFrame({c: pl.Series(c, [], dtype=pl.Null) for c in columns})
     return pl.concat(frames, how="vertical_relaxed")
+
+
+def _scope(run: Run, keys: list[str] | None) -> list[str]:
+    """The keys to read in pages: the slice's, or every account in the store when there is no slice."""
+    return keys if keys is not None else accounts(run)["key"].to_list()
 
 
 def _where(var: str, key: str, keys: list[str] | None) -> str:
@@ -77,7 +86,8 @@ def payments(run: Run, keys: list[str] | None = None, *, detail: bool = True) ->
     else:
         cols = ["src", "dst"]
         ret = f"RETURN DISTINCT {s} AS src, {d} AS dst"
-    df = _read(run, f"{match} {_where('s', g.account_key, keys)} {ret}", keys, cols)
+    scope = _scope(run, keys)
+    df = _read(run, f"{match} {_where('s', g.account_key, scope)} {ret}", scope, cols)
     df = df.with_columns(pl.col("src").cast(pl.Utf8), pl.col("dst").cast(pl.Utf8))
     if detail:
         df = df.with_columns(pl.col("tx_id").cast(pl.Utf8), pl.col("amount").cast(pl.Float64))
@@ -87,9 +97,10 @@ def payments(run: Run, keys: list[str] | None = None, *, detail: bool = True) ->
 def outflow(run: Run, keys: list[str] | None = None) -> pl.DataFrame:
     """Every payment out of an account in scope, wherever it went: `unique_id`, `ts`, `amount` (f64)."""
     g = run.recipe.graph
-    query = (f"MATCH (s:{q(g.account_label)})-[t:{q(g.payment_type)}]->() {_where('s', g.account_key, keys)} "
+    scope = _scope(run, keys)
+    query = (f"MATCH (s:{q(g.account_label)})-[t:{q(g.payment_type)}]->() {_where('s', g.account_key, scope)} "
              f"RETURN s.{q(g.account_key)} AS unique_id, t.{q(g.payment_time)} AS ts, t.{q(g.payment_amount)} AS amount")
-    df = _read(run, query, keys, ["unique_id", "ts", "amount"])
+    df = _read(run, query, scope, ["unique_id", "ts", "amount"])
     return df.with_columns(pl.col("unique_id").cast(pl.Utf8), pl.col("amount").cast(pl.Float64))
 
 
@@ -99,7 +110,8 @@ def identifiers(run: Run, keys: list[str] | None = None) -> pl.DataFrame:
     One row per account and identifier node. `label` and `identifier` together name the node.
     """
     g = run.recipe.graph
-    frames = [_identifier_links(run, g, link, keys) for link in g.identifiers]
+    scope = _scope(run, keys) if g.identifiers else keys
+    frames = [_identifier_links(run, g, link, scope) for link in g.identifiers]
     if not frames:
         return pl.DataFrame(schema={"account": pl.Utf8, "identifier": pl.Utf8, "label": pl.Utf8, "kind": pl.Utf8})
     return pl.concat(frames).unique().sort("account", "label", "identifier")

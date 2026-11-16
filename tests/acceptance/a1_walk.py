@@ -8,6 +8,7 @@ With `--dir` it runs `docker compose -p P --profile local up -d --build` in that
 does, clicking only what a new user would:
 
     Connect     test the bundled Neo4j, use it
+    Models      untick TGN unless --with-tgn (it trains on every account's payments: the slow step on 98)
     Slice       by schema, payments since --since, Estimate, Run this slice
     Run         follow the steps until the run is done
     Review      read the delta, Push to the master graph, Confirm and push, wait for "Pushed"
@@ -53,7 +54,7 @@ def wait_healthy(base: str, limit: float = 900) -> float:
     raise TimeoutError(f"{base}/api/health did not answer ok within {limit:.0f} s")
 
 
-def walk(base: str, since: str, shots: Path | None) -> dict[str, float]:
+def walk(base: str, since: str, shots: Path | None, with_tgn: bool = False) -> dict[str, float]:
     from playwright.sync_api import expect, sync_playwright
 
     times: dict[str, float] = {}
@@ -75,29 +76,38 @@ def walk(base: str, since: str, shots: Path | None) -> dict[str, float]:
         times["connect"] = time.perf_counter() - t
 
         t = time.perf_counter()
+        page.get_by_role("link", name="Models").click()
+        tgn = page.get_by_label("tgn", exact=True)
+        tgn.wait_for()
+        if not with_tgn and tgn.is_checked():
+            tgn.uncheck()
+        shot("2-models")
+        times["models"] = time.perf_counter() - t
+
+        t = time.perf_counter()
         page.get_by_role("link", name="Slice").click()
         page.get_by_role("tab", name="By schema").click()
         page.get_by_label("Since").fill(since)
         page.get_by_role("button", name="Estimate").click()
         expect(page.get_by_text("Memory", exact=True)).to_be_visible()
-        shot("2-estimate")
+        shot("3-estimate")
         page.get_by_role("button", name="Run this slice").click()
         page.wait_for_url("**/run**")
         times["slice"] = time.perf_counter() - t
 
         t = time.perf_counter()
         page.get_by_role("button", name="See the results").wait_for(timeout=STEP_TIMEOUT_MS)
-        shot("3-run")
+        shot("4-run")
         times["run"] = time.perf_counter() - t
 
         t = time.perf_counter()
         page.get_by_role("button", name="Review and push").click()
         expect(page.get_by_text("What changes")).to_be_visible(timeout=STEP_TIMEOUT_MS)
-        shot("4-review")
+        shot("5-review")
         page.get_by_role("button", name="Push to the master graph").click()
         page.get_by_role("button", name="Confirm and push").click()
         expect(page.get_by_text("Pushed to the master graph")).to_be_visible(timeout=STEP_TIMEOUT_MS)
-        shot("5-pushed")
+        shot("6-pushed")
         times["review_and_push"] = time.perf_counter() - t
         browser.close()
     return times
@@ -112,6 +122,7 @@ def main() -> int:
     ap.add_argument("--record", action="store_true")
     ap.add_argument("--shots", type=Path, help="a folder for a screenshot of each screen")
     ap.add_argument("--down", action="store_true")
+    ap.add_argument("--with-tgn", action="store_true", help="keep the TGN model ticked")
     a = ap.parse_args()
 
     base = a.base
@@ -127,8 +138,8 @@ def main() -> int:
     if a.shots:
         a.shots.mkdir(parents=True, exist_ok=True)
     try:
-        times |= walk(base, a.since, a.shots)
-        times["walk"] = sum(v for k, v in times.items() if k in ("connect", "slice", "run", "review_and_push"))
+        times |= walk(base, a.since, a.shots, a.with_tgn)
+        times["walk"] = sum(v for k, v in times.items() if k in ("connect", "models", "slice", "run", "review_and_push"))
         times["total"] = times["walk"] + times.get("compose_up", 0) + times.get("until_healthy", 0)
         print(json.dumps({k: round(v, 1) for k, v in times.items()}, indent=1))
         if a.record:
@@ -137,7 +148,7 @@ def main() -> int:
             with urllib.request.urlopen(f"{base}/api/runs", timeout=10) as r:
                 runs = [m["run_id"] for m in json.loads(r.read())["runs"]][:1]
             shown = {f"{k.replace('_', ' ')} time": seconds(v) for k, v in times.items()}
-            write("walk", a.project, f"A1: compose up to a reviewed push, payments since {a.since}, by script", times,
+            write("walk", a.project, f"A1: compose up to a reviewed push, payments since {a.since}, {'with' if a.with_tgn else 'without'} TGN, by script", times,
                   shown, runs)
     finally:
         if a.dir and a.down:

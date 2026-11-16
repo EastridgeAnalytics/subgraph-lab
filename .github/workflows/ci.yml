@@ -26,3 +26,11 @@ jobs:
       - run: npm ci --no-audit --no-fund
       - run: npm run typecheck
       - run: npm test
+  image:
+    # The image is the product a user runs: it must build, run relate, and hold no copyleft package.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t subgraph-lab:ci .
+      - run: docker run --rm -e DO_NOT_TRACK=1 subgraph-lab:ci relate --version
+      - run: docker run --rm -v "$PWD/tools:/check:ro" subgraph-lab:ci python /check/check_licenses.py
