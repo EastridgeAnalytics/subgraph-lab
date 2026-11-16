@@ -13,8 +13,8 @@ names.
         store's size on disk. relate is `relate pull`; bolt is the lab's fallback, run on purpose.
     uv run python tools/measure.py serve RUN_ID [--label L]
         `relate serve --read-only=live` on a run's store: its memory once it answers, and after a two-hop query.
-    uv run python tools/measure.py image [--tag subgraph-lab:dev]
-        The lab image's size, as Docker reports it.
+    uv run python tools/measure.py image [--tag subgraph-lab:dev] [--build CLONE]
+        The lab image's size, as Docker reports it; with --build, first built in a clean clone with no cache, timed.
 
 Every Relate call runs with DO_NOT_TRACK=1. Nothing here writes to the master graph.
 """
@@ -157,6 +157,11 @@ def measure_run(run_id: str, truth: str | None, label: str | None) -> Path:
         if st.started_at and st.finished_at:
             a, b = (datetime.fromisoformat(x.replace("Z", "+00:00")) for x in (st.started_at, st.finished_at))
             steps[name] = {"seconds": (b - a).total_seconds(), "counts": st.counts}
+    ends = [s.finished_at for s in manifest.steps if s.finished_at]
+    whole = None
+    if ends:
+        first = datetime.fromisoformat(manifest.created_at.replace("Z", "+00:00"))
+        whole = (max(datetime.fromisoformat(e.replace("Z", "+00:00")) for e in ends) - first).total_seconds()
 
     accounts = pl.read_parquet(sorted(paths.staged.glob("account-*.parquet"))[-1])
     alerts = pl.read_parquet(sorted(paths.staged.glob("alert-*.parquet"))[-1])
@@ -200,11 +205,14 @@ def measure_run(run_id: str, truth: str | None, label: str | None) -> Path:
         "communities_high_with_planted": high_with_ring, "alert_threshold": policy.alert_threshold,
         "min_size": min_size, "policy_combine": policy.combine, "community_combine": policy.community.combine,
     }
+    values["whole_run_seconds"] = whole
     shown = {f"{k} time": seconds(v["seconds"]) for k, v in steps.items()}
+    if whole is not None:
+        shown["whole run time"] = seconds(whole)
     shown |= {
         "accounts in slice": count(len(in_slice)), "planted accounts in slice": count(len(planted)),
         "alerts": count(len(alerted)), "precision": ratio(precision), "recall": ratio(recall),
-        "look-alike accounts alerted": f"{len(alerted & lookalike)} of {len(lookalike)}",
+        "look-alike accounts alerted": f"{count(len(alerted & lookalike))} of {count(len(lookalike))}",
         "rings held": f"{len(held)} of {all_rings}", "rings whole": f"{rep['whole']} of {len(held)}",
         "look-alike groups high": f"{rep['lookalikes_in_high_scoring_community']} of {rep['lookalikes']}",
         "communities high": f"{high_communities} of {communities.height}",
@@ -299,12 +307,19 @@ def measure_serve(run_id: str, label: str | None) -> Path:
 
 
 # ---- image ---------------------------------------------------------------------------------------------------------
-def measure_image(tag: str) -> Path:
+def measure_image(tag: str, build_dir: str | None = None) -> Path:
+    built = None
+    if build_dir:  # a clean clone: every layer built, nothing from Docker's cache
+        started = time.perf_counter()
+        subprocess.run(["docker", "compose", "build", "--no-cache", "--pull", "lab"], cwd=build_dir, check=True)
+        built = time.perf_counter() - started
     out = subprocess.run(["docker", "image", "inspect", tag, "--format", "{{.Size}} {{.Id}}"],
                          capture_output=True, text=True, check=True).stdout.split()
     size, image_id = int(out[0]), out[1]
-    values = {"tag": tag, "bytes": size, "image_id": image_id}
+    values = {"tag": tag, "bytes": size, "image_id": image_id, "build_seconds": built, "build_dir": build_dir}
     shown = {"image size": f"{size / 10**9:.2f} GB"}
+    if built is not None:
+        shown["build time with no cache"] = seconds(built)
     return write("image", tag.replace(":", "-").replace("/", "-"), f"the lab image {tag}", values, shown, [image_id])
 
 
@@ -324,6 +339,7 @@ def main() -> None:
     s.add_argument("--label")
     i = sub.add_parser("image")
     i.add_argument("--tag", default="subgraph-lab:dev")
+    i.add_argument("--build", help="a clean clone to build the image in first, with no cache, and time it")
     a = ap.parse_args()
     if a.cmd == "run":
         measure_run(a.run_id, a.truth, a.label)
@@ -332,7 +348,7 @@ def main() -> None:
     elif a.cmd == "serve":
         measure_serve(a.run_id, a.label)
     else:
-        measure_image(a.tag)
+        measure_image(a.tag, a.build)
 
 
 if __name__ == "__main__":

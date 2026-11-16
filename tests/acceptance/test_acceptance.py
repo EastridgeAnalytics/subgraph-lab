@@ -180,6 +180,30 @@ def test_a7_the_small_seed_loads_into_aura_free():  # pragma: no cover (runs whe
     pytest.fail("load the small seed into the Aura instance in .env and count it here")
 
 
+# ---- A8 · every number on the measured page names its run -------------------------------------------------------------
+def test_a8_every_number_on_the_measured_page_names_its_run():
+    from tests.acceptance.check_measured import PAGE, check
+
+    if not PAGE.exists():
+        pytest.skip("the measured page is written in wave 6")
+    assert check() == []
+
+
+def test_a8_the_check_catches_a_number_with_no_record_and_a_number_its_record_lacks(tmp_path, monkeypatch):
+    from tests.acceptance import check_measured
+
+    records = tmp_path / "measured"
+    records.mkdir()
+    (records / "20261115-pull-x.json").write_text(json.dumps({"runs": ["run-1"], "shown": {"time": "57 s"}}))
+    monkeypatch.setattr(check_measured, "RECORDS", records)
+    page = tmp_path / "98.md"
+    page.write_text("| What | Value | Record |\n|---|---|---|\n| Pull at 100k | 57 s | `20261115-pull-x` |\n"
+                    "| Push | 12 s | `20261115-pull-x` |\n| Memory | 3 GB | |\n| Aura | waiting for credentials | |\n",
+                    encoding="utf-8")
+    problems = check_measured.check(page)
+    assert len(problems) == 2 and problems[0].startswith("Push: ['12']") and problems[1].startswith("Memory: numbers")
+
+
 # ---- A9 · a summary with a planted number falls back to the template --------------------------------------------------
 def test_a9_a_planted_number_sends_the_summary_to_the_template(data_dir, fixture_store_path):
     from lab.summaries import describe, read_evidence

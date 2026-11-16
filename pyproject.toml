@@ -31,6 +31,7 @@ dependencies = [
 [dependency-groups]
 dev = [
     "psutil>=7.2",  # tools/measure.py: peak memory for the measured page (BSD 3-clause)
+    "playwright>=1.50",  # tests/acceptance/a1_walk.py: the 15-minute walk in a browser (Apache 2.0)
     "pytest>=8.3",
     "pytest-timeout>=2.3",
     "ruff>=0.8",
