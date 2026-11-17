@@ -22,17 +22,19 @@ OUT = ROOT / "about.html"
 REPO = "github.com/EastridgeAnalytics/subgraph-lab"
 
 FIGS = {
-    "ring": "Figure 1 · A ring in plain sight",
-    "loop": "Figure 2 · The loop",
-    "next": "Figure 3 · One loop, more industries",
+    "relate": "Figure 1 · Relate in one picture",
+    "ring": "Figure 2 · A ring in plain sight",
+    "loop": "Figure 3 · The loop",
+    "next": "Figure 4 · One loop, more industries",
 }
 IMGS = {
     "graph": (DEMO / "img" / "graph.png",
               "The same ring in the lab’s app: circles are accounts, squares the device and address they share, "
               "arrows the payments between them."),
 }
-DESCRIPTION = ("subgraph-lab in plain English: what it is, why it matters, and why Eastridge Analytics is building it "
-               "now. Find fraud rings in a Neo4j graph, explain them, and write the results back after a review.")
+DESCRIPTION = ("subgraph-lab in plain English: what Relate is, why Eastridge Analytics built subgraph-lab on it, and the "
+               "fraud detection use case on top. Pull a slice of a Neo4j graph into one file, learn from it, and write "
+               "the results back after a review.")
 
 CSS = """
   @font-face { font-family:"Departure Mono"; src:url("https://cdn.jsdelivr.net/gh/rektdeckard/departure-mono@main/public/assets/DepartureMono-Regular.woff2") format("woff2"); font-display:swap; }

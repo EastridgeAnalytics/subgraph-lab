@@ -1,4 +1,4 @@
-/* subgraph-lab in plain English: the three figures on about.html, drawn in Eastridge Analytics' technical-figures
+/* subgraph-lab in plain English: the four figures on about.html, drawn in Eastridge Analytics' technical-figures
    house style (isometric line drawings in one blue, Departure Mono labels, EB Garamond text, click to open).
    Data first (parts, connections, paths), drawing second, so the card and the drawing say the same thing.
    Inlined into about.html by demo/build_about.py. Edit this file and demo/about/about.md, then rebuild. */
@@ -280,14 +280,61 @@ function Figure(spec) {
 }
 
 /* =====================================================================================================
-   Figure 1 · a ring in plain sight: planted ring R0006 from the demo data
+   Figure 1 · Relate in one picture: Neo4j, one file, and three ways to open it, from Relate's README
+   ===================================================================================================== */
+Figure({ svg:'fig-relate', card:'card-relate', ctl:'ctl-relate', w:1200, h:560, s:16, num:'FIG_001', title:'RELATE IN ONE PICTURE',
+  aria:'Isometric drawing of Neo4j on the left, one Relate file in the middle, and three ways to open the file on the right: the command line, a program and an AI agent, with a pull from Neo4j into the file and a push back',
+  notes:[{ x:60, y:52, text:'RELATE 1.0 · 11 NOVEMBER 2026 · APACHE 2.0 · FROM NEO4J' },
+         { x:60, y:518, text:'ITS OWN LIMITS · THE GRAPH FITS IN MEMORY · ONE GRAPH PER FILE · ONE USER OR AGENT AT A TIME' }],
+  parts:[
+    { id:'neo4j', draw:'graph', out:true, dashed:true, sx:180, sy:300, lab:['NEO4J', 'THE WHOLE GRAPH · A SERVER'], pos:'below',
+      name:'Neo4j', where:'the server that holds the whole graph · not ours',
+      d:['Neo4j runs as a server and holds the whole graph for a company: every account, device, address and payment, and the links between them.', 'Relate pulls a piece of it out, by a query, and pushes results back.'],
+      files:'Relate README: pull and push' },
+    { id:'file', draw:'sheet', hot:true, sx:540, sy:300, lab:['ONE RELATE FILE', 'A PIECE OF THE GRAPH · NO SERVER'], pos:'below',
+      name:'One Relate file', where:'a graph database in a single file',
+      d:['Relate is a graph database that runs inside a program. A graph is one file. It speaks Cypher, the same query language as Neo4j, and has search by words and by meaning built in.', 'Its own limits: the graph fits in memory, one graph per file, one user or agent at a time. It is not a warehouse.'],
+      files:'Relate README, read 16 November 2026' },
+    { id:'cli', draw:'terminal', sx:920, sy:140, lab:['THE COMMAND LINE', 'QUERY · PULL · PUSH'], pos:'right',
+      name:'The command line', where:'relate query, relate pull, relate push',
+      d:['One command opens a file and runs a query. One pulls a slice from Neo4j. One pushes results back, with a dry run first that shows what it would write.', 'The demo store in this repo opens this way, in five minutes.'],
+      files:'demo/README.md, “Inspect it yourself”' },
+    { id:'program', draw:'machine', sx:920, sy:300, lab:['A PROGRAM', 'PYTHON HERE'], pos:'right',
+      name:'A program', where:'Python here; also Node.js, the browser and Rust',
+      d:['The same engine runs inside a program, with no server to run. The lab opens its file from Python and hands the slice to the models.', 'An optional server speaks Bolt and HTTP for apps, and MCP for agents.'],
+      files:'lab/common/store.py' },
+    { id:'agent', draw:'cage', sx:920, sy:455, lab:['AN AI AGENT', 'MCP AND THE SKILL'], pos:'right',
+      name:'An AI agent', where:'through MCP and the Relate skill',
+      d:['Relate ships a server that speaks MCP, the way agents talk to tools, and a skill that teaches an agent its commands.', 'In the lab the agent reads the file this way, read only.'],
+      files:'demo/agent.md' },
+  ],
+  conns:[
+    { a:'neo4j', b:'file', f:'r', t:'l', label:'PULL · A SLICE, BY A QUERY', route:['trip'] },
+    { a:'file', b:'neo4j', f:'l', t:'r', lane:180, fk:-.3, tk:-.3, label:'PUSH · DRY RUN FIRST', route:['trip'] },
+    { a:'file', b:'cli', f:'r', t:'l', mx:.3, fk:-.3, label:'', route:['readers'] },
+    { a:'file', b:'program', f:'r', t:'l', mx:.5, fk:.5, label:'CYPHER · SEARCH', route:['readers'] },
+    { a:'file', b:'agent', f:'r', t:'l', mx:.3, fk:1.3, label:'OVER MCP', route:['readers'] },
+  ],
+  routes:{
+    trip:{ name:'The trip', where:'pull a piece out, push results back',
+      d:['A query says which piece of the Neo4j graph to copy into the file. Work happens on the file.', 'The push shows what it would write before it writes anything. That dry run is where a person decides.'] },
+    readers:{ name:'Who opens the file', where:'the command line, a program, an AI agent',
+      d:['The same file opens from the command line, inside a program, or through an AI agent over MCP.', 'No server runs in any of the three.'] },
+  },
+  overview:{ title:'Relate in one picture', where:'click any part, or a path above',
+    d:['Neo4j holds the whole graph on a server. Relate holds a piece of it in one file, with no server, and three ways to open it.', 'Dashed shapes aren’t ours.'],
+    order:['neo4j', 'file', 'cli', 'program', 'agent'] },
+});
+
+/* =====================================================================================================
+   Figure 2 · a ring in plain sight: planted ring R0006 from the demo data
    ===================================================================================================== */
 const RING = ['A0000897', 'A0001287', 'A0001723', 'A0001818', 'A0005373'];
 const ringAccount = (id, i) => ({ id:'a' + i, draw:'account', sx:380 + i * 125, sy:290, pos:'none',
   name:'Account ' + id, where:'one of five, opened within weeks of each other',
   d:['On its own, an ordinary new account: money in, money out.', 'It shares one device and one address with the other four, and pays them in a loop. The lab scored each of the five 0.90.'],
   files:'demo/README.md, steps 4 and 8' });
-Figure({ svg:'fig-ring', card:'card-ring', ctl:'ctl-ring', w:1200, h:540, s:16, num:'FIG_001', title:'A RING IN PLAIN SIGHT',
+Figure({ svg:'fig-ring', card:'card-ring', ctl:'ctl-ring', w:1200, h:540, s:16, num:'FIG_002', title:'A RING IN PLAIN SIGHT',
   aria:'Isometric drawing of five new bank accounts in a row, linked up to one shared laptop and down to one shared house, with money coming in from outside and going round between them',
   notes:[{ x:60, y:52, text:'RING R0006 · FIVE NEW ACCOUNTS · PLANTED IN THE DEMO DATA' }],
   parts:[
@@ -326,9 +373,9 @@ Figure({ svg:'fig-ring', card:'card-ring', ctl:'ctl-ring', w:1200, h:540, s:16, 
 });
 
 /* =====================================================================================================
-   Figure 2 · the loop: pull a slice, find, learn, explain, review, push back
+   Figure 3 · the loop: pull a slice, find, learn, explain, review, push back
    ===================================================================================================== */
-Figure({ svg:'fig-loop', card:'card-loop', ctl:'ctl-loop', w:1200, h:560, s:15, num:'FIG_002', title:'THE LOOP',
+Figure({ svg:'fig-loop', card:'card-loop', ctl:'ctl-loop', w:1200, h:560, s:15, num:'FIG_003', title:'THE LOOP',
   aria:'Isometric drawing of the loop: Neo4j, a pull into one Relate file, find, learn, score and explain, a person reviewing, and a push back to Neo4j after one confirm, with an AI agent above reading read-only and acting through nine tools',
   zones:[{ x:206, y:226, w:780, h:226, label:'' }],
   notes:[{ x:216, y:442, text:'SUBGRAPH-LAB · ONE CONTAINER BESIDE NEO4J' }],
@@ -337,9 +384,9 @@ Figure({ svg:'fig-loop', card:'card-loop', ctl:'ctl-loop', w:1200, h:560, s:15, 
       name:'Neo4j', where:'your graph, on Aura or your own server · not ours',
       d:['Neo4j holds the whole graph: every account, device, address and payment, and the links between them.', 'The lab never changes it without a review and one confirm.'],
       files:'compose.yaml, .env.example' },
-    { id:'store', draw:'sheet', sx:290, sy:340, lab:['RELATE STORE', 'ONE FILE PER RUN'], pos:'below',
-      name:'A Relate store', where:'one file, made fresh for each run',
-      d:['Relate copies a slice of the graph into one file. The lab works on the file and leaves Neo4j alone.', 'Search and queries run on it with no server. The demo run’s store is in the repo, 9.8 MB.'],
+    { id:'store', draw:'sheet', hot:true, sx:290, sy:340, lab:['RELATE STORE', 'ONE FILE PER RUN'], pos:'below',
+      name:'A Relate store', where:'the file from Figure 1, made fresh for each run',
+      d:['This is the Relate file from Figure 1. Relate copies a slice of the graph into it, and the lab works on the file and leaves Neo4j alone.', 'Search and queries run on it with no server. The demo run’s store is in the repo, 9.8 MB.'],
       files:'lab/roundtrip/pull.py, demo/store.rl' },
     { id:'find', draw:'filter', sx:430, sy:340, lab:['FIND', 'SEARCH, THEN THE LINKS'], pos:'below',
       name:'Find the part that matters', where:'search by meaning and by words, then follow the links',
@@ -381,18 +428,18 @@ Figure({ svg:'fig-loop', card:'card-loop', ctl:'ctl-loop', w:1200, h:560, s:15, 
       d:['It reads everything in the store, read only, and acts through the lab’s nine tools.', 'The one tool that writes to Neo4j refuses without a fresh review and a confirm.'] },
   },
   overview:{ title:'The loop', where:'click any part, or a path above',
-    d:['Left to right: take a slice of the graph out, learn from it, explain what was found, and write it back after a review.', 'Dashed shapes aren’t ours.'],
+    d:['Left to right: take a slice of the graph out into a Relate file, learn from it, explain what was found, and write it back after a review.', 'Dashed shapes aren’t ours.'],
     order:['neo4j', 'store', 'find', 'learn', 'explain', 'review', 'agent'] },
 });
 
 /* =====================================================================================================
-   Figure 3 · one loop, more industries: the packs on the 2.0 row of architecture-docs/99-build-status.md
+   Figure 4 · one loop, more industries: the packs on the 2.0 row of architecture-docs/99-build-status.md
    ===================================================================================================== */
 const PACK = (id, sx, name, means) => ({ id, draw:'sheet', dashed:true, sx, sy:160, lab:[name.toUpperCase(), 'NOT YET'], pos:'above',
   name, where:'a pack on the plan · not built', status:['not', 'Not built'],
   d:[means, 'A pack is a recipe, a factor file, an example and a review checklist. This one is on the 2.0 row of the build plan.'],
   files:'architecture-docs/99-build-status.md' });
-Figure({ svg:'fig-next', card:'card-next', ctl:'ctl-next', w:1200, h:500, s:17, num:'FIG_003', title:'ONE LOOP, MORE INDUSTRIES',
+Figure({ svg:'fig-next', card:'card-next', ctl:'ctl-next', w:1200, h:500, s:17, num:'FIG_004', title:'ONE LOOP, MORE INDUSTRIES',
   aria:'Isometric drawing of five packs above one loop: fraud, which ships today, and four dashed packs not built yet, all feeding the same loop, which pushes back to Neo4j',
   parts:[
     { id:'fraud', draw:'sheet', hot:true, sx:200, sy:160, lab:['FRAUD', 'SHIPS TODAY'], pos:'above',

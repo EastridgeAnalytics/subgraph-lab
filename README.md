@@ -10,8 +10,8 @@ fraud ring followed from the graph to a score, a written reason, a reviewer's de
 the screenshots from one real run · **[The agent](demo/agent.md)**, Claude Code doing the same job through the two
 MCP servers, from its own log · **[Inspect the store](demo/README.md#inspect-it-yourself)**, five minutes with the
 `relate` CLI and nothing else to install · **[Run it](#run)**, one compose command ·
-**[In plain English](https://eastridgeanalytics.github.io/subgraph-lab/about.html)**, what this is, why it matters and
-why now, for readers who don't read code.
+**[In plain English](https://eastridgeanalytics.github.io/subgraph-lab/about.html)**, what Relate is, why we built on
+it, and the fraud use case on top, for readers who don't read code.
 
 ## What you will see
 
@@ -58,7 +58,7 @@ connects can show the connections it used. Every summary and every push here has
 We build graph fraud detection on Neo4j for a living. Tim Eastridge, who leads Eastridge Analytics, is a Neo4j
 certified expert, a Neo4j Ninja, and the author of *Graph Data Science with Python and Neo4j*. The team has five
 certified Neo4j experts. The largest graph we run is fraud detection and entity resolution for federal
-pandemic-spending oversight (PRAC), at over 200 million nodes.
+pandemic-spending oversight (PRAC), at 1 billion nodes and 2 billion relationships.
 
 The factors, the community score and the evidence-first summaries here come from that work. No client's code,
 schema or name is in this repo. Every one of those engagements wanted the same loop: try a model on part of the
