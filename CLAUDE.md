@@ -9,6 +9,7 @@ brief and the pages it names.
 
 `demo/` is the judge-facing walkthrough and the committed store. `demo/build_walkthrough.py` remakes the pages and
 figures from the screenshots that `demo/walk.py` takes; change the text there, not in the generated files.
+`about.html` at the root is the plain-English page; `demo/build_about.py` builds it from `demo/about/`. Never edit it by hand.
 
 Never write a number that has not been measured as if it had been. Tag it "to measure". When it is measured, say
 which run produced it.

@@ -9,7 +9,9 @@ results back. Built with Relate by Neo4j.
 fraud ring followed from the graph to a score, a written reason, a reviewer's decision and back into Neo4j, with
 the screenshots from one real run · **[The agent](demo/agent.md)**, Claude Code doing the same job through the two
 MCP servers, from its own log · **[Inspect the store](demo/README.md#inspect-it-yourself)**, five minutes with the
-`relate` CLI and nothing else to install · **[Run it](#run)**, one compose command.
+`relate` CLI and nothing else to install · **[Run it](#run)**, one compose command ·
+**[In plain English](https://eastridgeanalytics.github.io/subgraph-lab/about.html)**, what this is, why it matters and
+why now, for readers who don't read code.
 
 ## What you will see
 
@@ -156,7 +158,8 @@ With Aura instead of the bundled Neo4j, set `NEO4J_URI`, `NEO4J_USERNAME` and `N
 Every number in the docs is on [98](architecture-docs/98-measured.md) with the run that produced it, on one
 named machine: a pull of one million relationships takes 124 seconds by `relate pull`, and the loop from a clean
 clone to a reviewed push takes 160 seconds after the first image build. Waiting: the Aura rows on 98 and test A7,
-which need credentials; summaries by API, which need a key; the video.
+which need credentials; summaries by API, which need a key; the video; GitHub Pages for
+[`about.html`](about.html), which goes on when the repo goes public.
 
 ## Working on the code
 

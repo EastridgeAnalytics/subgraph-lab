@@ -13,7 +13,7 @@ ROOT = pathlib.Path(__file__).resolve().parent.parent
 FILES = ([ROOT / "README.md", ROOT / "CLAUDE.md"] + sorted((ROOT / "architecture-docs").glob("*.md"))
          + sorted(p for p in ROOT.glob("*/README.md")
                   if p.parent.name not in {"architecture-docs", "node_modules"} and not p.parent.name.startswith("."))
-         + [p for p in [ROOT / "demo" / "agent.md"] if p.exists()])
+         + [p for p in [ROOT / "demo" / "agent.md", ROOT / "demo" / "about" / "about.md"] if p.exists()])
 
 BANNED = re.compile(r"Neo4j-powered|built to sell", re.I)
 GPL = re.compile(r"igraph|leidenalg")
