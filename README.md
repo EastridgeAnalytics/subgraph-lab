@@ -158,8 +158,7 @@ With Aura instead of the bundled Neo4j, set `NEO4J_URI`, `NEO4J_USERNAME` and `N
 Every number in the docs is on [98](architecture-docs/98-measured.md) with the run that produced it, on one
 named machine: a pull of one million relationships takes 124 seconds by `relate pull`, and the loop from a clean
 clone to a reviewed push takes 160 seconds after the first image build. Waiting: the Aura rows on 98 and test A7,
-which need credentials; summaries by API, which need a key; the video; GitHub Pages for
-[`about.html`](about.html), which goes on when the repo goes public.
+which need credentials; summaries by API, which need a key; the video.
 
 ## Working on the code
 

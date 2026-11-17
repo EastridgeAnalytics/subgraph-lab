@@ -121,9 +121,9 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
     `demo/agent.md`. Nobody edits the page. The README states where the lab goes next and points at 99's 2.0 row.
 48. **A plain-English page sits beside the README for readers who don't read code.** `about.html` is built by
     `demo/build_about.py` from `demo/about/about.md` and `demo/about/figures.js`, in Eastridge Analytics'
-    technical-figures style. Its footer credits that skill with no link, because the skill's repo is private. The
-    README links it at its GitHub Pages address, which works once the repo is public: the organisation's free plan
-    has no Pages for a private repo. `.nojekyll` at the root makes Pages serve every file as written.
+    technical-figures style. Its footer credits that skill with no link, because the skill's repo is private. This
+    repo went public on 16 November 2026 and GitHub Pages serves the page from `main`, where the README links it.
+    `.nojekyll` at the root makes Pages serve every file as written.
 
 ## Open
 
