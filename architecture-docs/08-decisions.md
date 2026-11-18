@@ -32,7 +32,8 @@ Settled, then open. A later decision can replace an earlier one. The number stay
 14. **No model code of our own.** Adapters to PyTorch Geometric, the TGB layout, NetworkX and Arrow, and the
     libraries' own examples.
 15. **No number is published until it is measured.** Until then it is tagged "to measure", and the README says so.
-16. **Freeze on 9 December 2026, submit on 11 December.** The draft rules say 13 December. The plan uses the 11th.
+16. **Freeze on 9 December 2026, submit by 11 December, 6:00 PM PST.** The final rules (13 November) close entries
+    then; judging runs 12 to 16 December and winners are named on 17 December.
 17. **Moved to 1.1:** the Markdown review pack, the single-file run, the in-browser timeline, a local language
     model, Arrow Flight, whole-graph communities.
 

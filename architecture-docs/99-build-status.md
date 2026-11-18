@@ -30,7 +30,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 10 | Review and push | The dry-run plan plus the delta. `relate push` keyed, with a manifest and resume, creating `RiskCommunity` nodes and their links. Dispositions written back. The `LabRun` marker written last. Bolt as the fallback | Data plane | Done (1e): `lab/roundtrip/stage.py`, `push.py`, `delta.py`, `ledger.py`, `retract.py`; a push never creates a customer node (decision 35). Tested live, and on the seed by the loop. The plan's created and updated counts come from the master graph (5c) |
 | 11 | API and agent | FastAPI routes, the eight tools, Relate's skill and MCP wired for the agent | API | Done (2d): `lab/api/`. Nine MCP tools (decision 38); a push needs a fresh review (decision 37). An agent ran the loop through both MCP servers. A recorded session with communities and summaries is [`demo/agent.md`](../demo/agent.md) (16 November, decision 47) |
 | 12 | The app | The seven MVP screens, with accounts and communities on Results and the decision buttons. The 15-minute test, measured | App | Done: all seven screens (1d, 2e, 3d, 3e), brought up to wave 5's lab (5d). A1 walked by a script from a clean clone, timed on [98](98-measured.md). A person's time is not measured |
-| 13 | Compose, README, numbers, video | An `.env` for Aura and one command for the bundled Neo4j. AI use disclosed. A measured-numbers page. A video of two minutes or less | Docs | Done except the recording: compose and `.env.example`, the README's Run and AI-use sections, [98](98-measured.md) with every number tied to its record, the shot list on [video](video.md). The image runs `relate` (Debian 13) and CI builds it. On 16 November the README was rewritten for the judges and `demo/` added: the walkthrough, the committed store, the folder READMEs (decision 46). The recording is the owner's |
+| 13 | Compose, README, numbers, video | An `.env` for Aura and one command for the bundled Neo4j. AI use disclosed. A measured-numbers page. A video of one to two minutes | Docs | Done except the recording: compose and `.env.example`, the README's Run and AI-use sections, [98](98-measured.md) with every number tied to its record, the shot list on [video](video.md). The image runs `relate` (Debian 13) and CI builds it. On 16 November the README was rewritten for the judges and `demo/` added: the walkthrough, the committed store, the folder READMEs (decision 46). The recording is the owner's |
 
 ## Four weeks
 
@@ -39,7 +39,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 1, from 13 November | Contracts. Generator and seed. `relate pull` from Aura. The table and PyG adapters. The app with Connect and Slice | A slice pulled from Aura and visible in the app |
 | 2 | Indexes and first pass. Search-defined slice. TGN and Node2Vec examples. The factor file and account scores. Review and push. MCP tools | Search a slice, score it, push to Aura after a dry run |
 | 3, Thanksgiving week | Communities and the community score. The evidence schema and summaries. The velocity factor. Models, Results and Review screens. Timeline slider | The full loop, end to end |
-| 4 | Measured numbers. README. Video. Fixes only after 7 December | Freeze 9 December, submit 11 December |
+| 4 | Measured numbers. README. Video. Fixes only after 7 December | Freeze 9 December, submit by 11 December, 6:00 PM PST |
 
 ## How the work runs
 
@@ -82,5 +82,16 @@ claimed:
 
 ## Hackathon rules we keep
 
-Started on or after 11 November 2026. Public under MIT at submission. AI use described. A video of two minutes or
-less. "Built with Relate by Neo4j" is fine; a logo or an implied endorsement is not.
+From the final rules and the contest page, read 18 November 2026.
+
+- Entries close on 11 December 2026 at 6:00 PM PST and can be edited until then. Judging runs 12 to 16 December.
+- Started on or after 11 November 2026. Public on GitHub under MIT since 16 November, tagged with the topic `relate`
+  (required) and `relate-neo4j-hackathon`.
+- A persistent Relate store judges can inspect: `demo/store.rl`. Working code with Relate running.
+- A README that says how Relate is used and why: the mode, why that mode, what the graph models, where the data
+  lives.
+- A video of one to two minutes, the entrant's own work, viewable without a login. The shot list is [video](video.md).
+- The submission names the Relate capabilities, third-party tools and AI tools used, and says how AI was used.
+- Scored on Relate and connected context (30 points), functionality and completeness (25), usefulness (20),
+  documentation and reproducibility (15) and creativity (10).
+- "Built with Relate by Neo4j" is fine; a logo or an implied endorsement is not. Nothing disparaging.

@@ -96,5 +96,7 @@ owner's call.
 
 ## Success
 
-By 11 December, a complete submission that passes A1 to A11 and speaks to all five judging criteria. By the end of
-January, one Neo4j team outside Eastridge Analytics runs a recipe on its own Aura.
+By 11 December, a complete submission that passes A1 to A11 and speaks to the five judging criteria as scored:
+Relate and connected context 30 points, functionality and completeness 25, usefulness 20, documentation and
+reproducibility 15, creativity 10. By the end of January, one Neo4j team outside Eastridge Analytics runs a recipe
+on its own Aura.

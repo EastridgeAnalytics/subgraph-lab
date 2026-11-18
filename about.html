@@ -104,7 +104,7 @@
 <li>It pulls a piece of a Neo4j graph into a file with one command and pushes results back with another. The push shows what it would write before it writes anything.</li>
 <li>An AI agent can open the file. Relate ships a server that speaks MCP, the way agents talk to tools, and a skill that teaches the agent its commands.</li>
 </ol>
-<p>Relate's own list of what it is not is just as useful. The graph has to fit in memory. One graph per file. One user or agent at a time. It is not a warehouse. That is the right shape for this job, where every run gets its own file.</p>
+<p>Relate's own list of what it is not is just as useful. The graph has to fit in memory. One graph per file. One user or agent at a time. It is not a warehouse. That is the right shape for this job, where every run gets its own store: a folder in the lab, and one file for the demo run in the repo.</p>
 <p>Relate reached 1.0 on 11 November 2026 under the Apache 2.0 license. Figure 1 is the whole thing in one picture.</p>
 <div class="figwrap" id="wrap-relate"><p class="figcap">Figure 1 · Relate in one picture</p><div class="controls" id="ctl-relate"></div><div class="stage"><figure><svg id="fig-relate" role="img"></svg></figure><aside id="card-relate" aria-live="polite"></aside></div></div>
 <h2>Why we built subgraph-lab on it</h2>
@@ -120,7 +120,7 @@
 <tbody>
 <tr>
 <td>Pull</td>
-<td>A slice of the graph into a fresh file for each run</td>
+<td>A slice of the graph into a fresh store for each run</td>
 </tr>
 <tr>
 <td>Cypher and search</td>
@@ -155,7 +155,7 @@
 <h3>What the lab does with the slice</h3>
 <p>The lab works on a copy, the part of the graph that matters for the question, and writes back only what a person approved.</p>
 <ol>
-<li><strong>Pull.</strong> Copy a slice of the graph from Neo4j into a fresh Relate file.</li>
+<li><strong>Pull.</strong> Copy a slice of the graph from Neo4j into a fresh Relate store.</li>
 <li><strong>Find.</strong> Search it in plain words, then follow the links out from what matched.</li>
 <li><strong>Learn.</strong> Hand the slice to open-source graph models.</li>
 <li><strong>Score and explain.</strong> Give every account and every group a risk score, with the arithmetic shown, and a short summary of why, written only from the evidence.</li>

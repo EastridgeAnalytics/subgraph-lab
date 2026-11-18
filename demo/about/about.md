@@ -26,7 +26,7 @@ Three things make it useful here.
 2. It pulls a piece of a Neo4j graph into a file with one command and pushes results back with another. The push shows what it would write before it writes anything.
 3. An AI agent can open the file. Relate ships a server that speaks MCP, the way agents talk to tools, and a skill that teaches the agent its commands.
 
-Relate's own list of what it is not is just as useful. The graph has to fit in memory. One graph per file. One user or agent at a time. It is not a warehouse. That is the right shape for this job, where every run gets its own file.
+Relate's own list of what it is not is just as useful. The graph has to fit in memory. One graph per file. One user or agent at a time. It is not a warehouse. That is the right shape for this job, where every run gets its own store: a folder in the lab, and one file for the demo run in the repo.
 
 Relate reached 1.0 on 11 November 2026 under the Apache 2.0 license. Figure 1 is the whole thing in one picture.
 
@@ -40,7 +40,7 @@ Before Relate that meant a second graph server, or exporting tables and losing t
 
 | What Relate does | What the lab does with it |
 |---|---|
-| Pull | A slice of the graph into a fresh file for each run |
+| Pull | A slice of the graph into a fresh store for each run |
 | Cypher and search | Find the part that matters: by words, by meaning, then the links out |
 | The file inside Python | Hand the slice to open-source graph models |
 | Serve, read only | The app and the agent read the file while the lab writes it |
@@ -67,7 +67,7 @@ Figure 2 is ring R0006 from the demo data. The buttons above it show what a one-
 
 The lab works on a copy, the part of the graph that matters for the question, and writes back only what a person approved.
 
-1. **Pull.** Copy a slice of the graph from Neo4j into a fresh Relate file.
+1. **Pull.** Copy a slice of the graph from Neo4j into a fresh Relate store.
 2. **Find.** Search it in plain words, then follow the links out from what matched.
 3. **Learn.** Hand the slice to open-source graph models.
 4. **Score and explain.** Give every account and every group a risk score, with the arithmetic shown, and a short summary of why, written only from the evidence.
