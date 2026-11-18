@@ -6,8 +6,7 @@ results back. Built with Relate by Neo4j.
 ![Planted mule ring R0006 as the lab found it: five accounts on one device and one address, paying each other in loops](demo/img/graph.png)
 
 **[The walkthrough](https://github.com/EastridgeAnalytics/subgraph-lab/blob/main/demo/README.md)**, one planted
-ring followed from the graph to a score, a reason, a reviewer's decision and back into Neo4j, with the screenshots
-from one real run · **[The agent](demo/agent.md)**, Claude Code doing the same job through two MCP servers, from
+ring from the graph to a reviewed push, with screenshots from one real run · **[The agent](demo/agent.md)**, Claude Code doing the same job through two MCP servers, from
 its own log · **[Inspect the store](demo/README.md#inspect-it-yourself)**, five minutes with the `relate` CLI ·
 **[In plain English](https://eastridgeanalytics.github.io/subgraph-lab/about.html)**, what Relate is, why we built
 on it, and the fraud use case on top · **[How to get started](#how-to-get-started)**, for people and for agents.
@@ -48,13 +47,21 @@ score and the evidence-first summaries come from that work. No client's code, sc
 
 Nothing in the loop is specific to fraud except `factors.yaml` and the generator. Next is a pack per use case:
 financial crime, churn, supply chain and identity, on the 2.0 row of [99](architecture-docs/99-build-status.md).
-Same pull, same review, same push. Today the lab ships the fraud pack.
+Same pull, same review, same push.
 
 ## How it uses Relate
 
+- **Mode.** Directory: a fresh store for each run. The demo run is also one file, made by `relate clone`.
+- **Why this mode.** `relate pull` fills an empty store, so each run starts clean, and the lab writes it while the
+  app and the agent read it through `relate serve --read-only=live`. One file is what goes in a repo.
+- **What the graph models.** Accounts, the devices, emails and addresses they share, and the payments between them;
+  after a run, also the scores, alerts, communities and the `LabRun` that wrote them.
+- **Where the data lives.** [`demo/store.rl`](demo/README.md#inspect-it-yourself) in this repo; your own runs in
+  `data/runs/<run id>/store`.
+
 | Relate feature | What the lab does with it | Where |
 |---|---|---|
-| `relate pull` | A slice into a fresh store per run, over the Query API. Parallel Bolt is the fallback, and the route taken is on the manifest | `lab/roundtrip/pull.py` |
+| `relate pull` | The slice into the run's store, over the Query API. Parallel Bolt is the fallback; the manifest records the route | `lab/roundtrip/pull.py` |
 | `relate-db` in Python | Opens the store; loads results in `UNWIND` batches that size themselves | `lab/common/store.py`, `lab/roundtrip/loader.py` |
 | Vector and full-text indexes | Recreated after every pull, on Node2Vec embeddings and short summaries | `lab/roundtrip/indexes.py` |
 | Hybrid search in one statement | A vector branch and a full-text branch fused by rank, then hops. That subgraph is the slice | `lab/slice/search.py` |
@@ -85,9 +92,9 @@ Tests are in `tests/`, one file per piece; each code folder has a README.
 
 **In the product.** An agent connects to two MCP servers: Relate's, serving the run's store read-only, and the
 lab's, with nine tools from `egress` to `apply_push`. `apply_push` fails without `confirm=true` and without a
-review newer than the last thing staged. Summaries come from Claude through the Anthropic API when a key is set,
-from the agent through `describe_alert`, or from a template, all from the same evidence object and through the
-same checks: every number in the text is in the evidence, every member named is a member, no verdict words.
+review newer than the last thing staged. Summaries come from Claude through the Anthropic API, from the agent, or
+from a template, all through the same checks: every number in the text is in the evidence, every member named is a
+member, no verdict words.
 
 **In the build.** One Claude Opus session directed it from [the development plan](architecture-docs/97-development-plan.md).
 Claude Sonnet builders took one written brief each, in their own git worktrees, up to three at a time, and nothing
@@ -121,7 +128,7 @@ Open `http://localhost:8000`, then Connect, Slice, Run, and Review and push. Wit
 [07](architecture-docs/07-what-runs-where.md).
 
 **Agents.** Point Claude Code, or any agent that reads a repo, at this folder. `CLAUDE.md` and
-[`architecture-docs/README.md`](architecture-docs/README.md) say what to read first, people and agents alike. With
+[`architecture-docs/README.md`](architecture-docs/README.md) say what to read first. With
 the lab running, give the agent its two MCP servers, Relate's at `http://localhost:7475/mcp` and the lab's at
 `http://localhost:8000/mcp` by default, and run `relate skill install` so it knows Relate's commands. To read the
 demo store alone, `relate serve --database demo/store.rl --mcp stdio --read-only`. [`demo/agent.md`](demo/agent.md)
