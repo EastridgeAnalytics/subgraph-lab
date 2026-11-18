@@ -12,6 +12,7 @@ that lands. Each wave's report goes in `reviews/`.
 | 4 · the director's review | Done, 13 November 2026 | [mvp-review](reviews/mvp-review.md) |
 | 5 · fix and redesign | Done, 13 November 2026 | [wave-5](reviews/wave-5.md) |
 | 6 · measured numbers, packaging | Done, 15 November 2026 | [wave-6](reviews/wave-6.md) |
+| Relate 1.1.0 · the pin moved | Done, 18 November 2026 | [relate-1.1.0](reviews/relate-1.1.0.md) |
 
 ## The MVP, by 11 December 2026
 

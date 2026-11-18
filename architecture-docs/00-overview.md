@@ -72,7 +72,8 @@ flowchart LR
 | Arrow results, through the cursor's `to_arrow()` | The table adapter |
 | `DO_NOT_TRACK=1` | Every container |
 
-Every row was run against Relate 1.0.1 in wave 0 ([review](reviews/wave-0-relate-1.0.1.md)).
+Every row was run against Relate 1.0.1 in wave 0 ([review](reviews/wave-0-relate-1.0.1.md)) and again on 1.1.0
+([review](reviews/relate-1.1.0.md)), the version the lab pins.
 
 ## Words we use
 

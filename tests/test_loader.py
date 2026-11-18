@@ -14,6 +14,12 @@ WAL_REFUSAL = (
     "This statement tried to commit a single WAL record of at least 64 MB. This is a safety limit protecting "
     "against memory exhaustion — the per-record WAL payload cap is 64 MB; commit the data in smaller transactions."
 )
+# The same refusal from Relate 1.1.0, verbatim: MiB, and a longer hint. The loader must know both.
+WAL_REFUSAL_1_1 = (
+    "This statement tried to commit a single WAL record of at least 64 MiB. This is a safety limit protecting "
+    "against memory exhaustion — the per-commit WAL payload cap is 64 MiB (ADR-0086); commit the data in smaller "
+    "transactions (CALL { … } IN TRANSACTIONS OF n ROWS, or client-side batches)."
+)
 STATEMENT = "UNWIND $rows AS r CREATE (:N {id: r.id})"
 
 
@@ -42,6 +48,7 @@ def data(n: int) -> list[dict]:
 
 def test_the_refusal_text_is_recognised():
     assert is_wal_refusal(DataError(WAL_REFUSAL))
+    assert is_wal_refusal(DataError(WAL_REFUSAL_1_1))
     assert not is_wal_refusal(DataError("type error: InvalidPropertyType"))
     assert not is_wal_refusal(RuntimeError("disk full"))
 
@@ -114,7 +121,7 @@ def test_it_loads_into_a_real_store(tmp_path):
 
 @pytest.mark.slow
 def test_real_relate_refuses_a_big_commit_and_the_loader_recovers(tmp_path):
-    """About 63 MB in one go is refused by Relate 1.0.1 (wave 0). Takes ten seconds or so."""
+    """About 63 MB in one go is refused by the pinned Relate (wave 0 on 1.0.1, again on 1.1.0). Takes ten seconds or so."""
     pad = "x" * 380
     big = [{"id": i, "pad": pad} for i in range(150_000)]
     conn = open_store(tmp_path / "s")

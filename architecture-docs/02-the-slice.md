@@ -72,7 +72,7 @@ ORDER BY rrf DESC LIMIT $k
 RETURN a, rrf, found_by
 ```
 
-This runs on Relate 1.0.1 as written. Each branch ranks its own hits; the ranks are fused because the two lists'
+This runs on Relate 1.0.1 and 1.1.0 as written. Each branch ranks its own hits; the ranks are fused because the two lists'
 raw scores are not comparable. The hop is a second statement over the hits' keys, so the estimate can run first.
 
 ## What the Slice screen shows first

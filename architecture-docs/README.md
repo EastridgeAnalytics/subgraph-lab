@@ -26,7 +26,7 @@ the build.
 | Page | What it answers |
 |---|---|
 | [97 Development plan](97-development-plan.md) | The waves, the director and the builders, how the work ran |
-| [Reviews](reviews/) | Each wave's report, the Relate 1.0.1 check, and the director's review of the whole codebase |
+| [Reviews](reviews/) | Each wave's report, the Relate 1.0.1 and 1.1.0 checks, and the director's review of the whole codebase |
 | [Video](video.md) | The two-minute shot list: six beats, the clicks and the Cypher |
 
 ## Evidence and scope

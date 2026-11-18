@@ -174,10 +174,10 @@ INSPECT_INTRO = (
     "account's embedding and summary, the 172 communities with their scores and summaries, and the 11 indexes. "
     "Relate wrote it with `relate clone`. With the `relate` CLI installed ([relatedb.ai/docs](https://relatedb.ai/docs/), "
     "or `uv run python tools/install_relate.py` from the repo root), run these from this folder. The output under "
-    "each is what the committed file returns."
+    "each is what the committed file returns. Every query opens it read-only, so the file stays as committed."
 )
 
-# (what it shows, the command, the output as captured against store.rl on 16 November 2026)
+# (what it shows, the command, the output as captured against store.rl on 16 November 2026, again on Relate 1.1.0 on 18 November)
 INSPECT: list[tuple[str, str, str]] = [
     ("The store, without opening it.",
      "relate info -d store.rl",
@@ -185,7 +185,7 @@ INSPECT: list[tuple[str, str, str]] = [
      "indexes: 11\n  account_embedding: :Account(risk_embedding)\n  account_summary: :Account(lab_summary)\n"
      "  community_embedding: :RiskCommunity(embedding)\n  community_summary: :RiskCommunity(summary)\n  ..."),
     ("The riskiest communities, with the reason the lab wrote for each.",
-     "relate query -d store.rl --mode table \"MATCH (c:RiskCommunity) RETURN c.size AS members, round(c.score,2) AS score, "
+     "relate query -d store.rl --read-only --mode table \"MATCH (c:RiskCommunity) RETURN c.size AS members, round(c.score,2) AS score, "
      "left(c.summary, 90) AS summary ORDER BY c.score DESC LIMIT 5\"",
      "+---------+-------+----------------------------------------------------------------------------------------------+\n"
      "| members | score | summary                                                                                      |\n"
@@ -197,7 +197,7 @@ INSPECT: list[tuple[str, str, str]] = [
      "| 7       | 0.72  | \"This community has 7 accounts and scores 0.72, ranking 5 of 172 communities in the slice; \" |\n"
      "+---------+-------+----------------------------------------------------------------------------------------------+"),
     ("The ring's members and what they share. The connected context is the evidence.",
-     f"relate query -d store.rl --mode table \"MATCH (c:RiskCommunity {{community_key:'{RING}'}})<-[:IN_RISK_COMMUNITY]-(a:Account)"
+     f"relate query -d store.rl --read-only --mode table \"MATCH (c:RiskCommunity {{community_key:'{RING}'}})<-[:IN_RISK_COMMUNITY]-(a:Account)"
      "-[:USES_DEVICE|HAS_ADDRESS]->(i) RETURN a.account_id AS account, labels(i)[0] AS shares, "
      "coalesce(i.device_id, i.address_id) AS id ORDER BY account, shares\"",
      "+------------+-----------+-------------+\n| account    | shares    | id          |\n+------------+-----------+-------------+\n"
@@ -208,12 +208,12 @@ INSPECT: list[tuple[str, str, str]] = [
      "| \"A0005373\" | \"Address\" | \"AD0000896\" |\n| \"A0005373\" | \"Device\"  | \"D0000896\"  |\n"
      "+------------+-----------+-------------+"),
     ("Ask the store in plain words. Full-text search over the account summaries returns the five members.",
-     "relate query -d store.rl --mode table \"MATCH (a:Account) SEARCH a IN (FULLTEXT INDEX account_summary "
+     "relate query -d store.rl --read-only --mode table \"MATCH (a:Account) SEARCH a IN (FULLTEXT INDEX account_summary "
      "FOR 'new accounts sharing one device and address' LIMIT 5) SCORE AS s RETURN a.account_id AS account, round(s, 2) AS score\"",
      "+------------+-------+\n| account    | score |\n+------------+-------+\n| \"A0001818\" | 5.61  |\n| \"A0000897\" | 5.61  |\n"
      "| \"A0001287\" | 5.61  |\n| \"A0005373\" | 5.61  |\n| \"A0001723\" | 5.61  |\n+------------+-------+"),
     ("Communities like the ring, by vector search on the community embeddings.",
-     f"relate query -d store.rl --mode table \"MATCH (seed:RiskCommunity {{community_key:'{RING}'}}) MATCH (c:RiskCommunity) "
+     f"relate query -d store.rl --read-only --mode table \"MATCH (seed:RiskCommunity {{community_key:'{RING}'}}) MATCH (c:RiskCommunity) "
      "SEARCH c IN (VECTOR INDEX community_embedding FOR seed.embedding LIMIT 4) SCORE AS s "
      "RETURN c.size AS members, round(c.score,2) AS risk, round(s,3) AS similarity\"",
      "+---------+------+------------+\n| members | risk | similarity |\n+---------+------+------------+\n| 5       | 0.84 | 1.0        |\n"
@@ -221,6 +221,7 @@ INSPECT: list[tuple[str, str, str]] = [
     ("Let an agent read it. Relate's own MCP server on the file, read-only, for Claude Desktop or Claude Code.",
      "relate serve --database store.rl --mcp stdio --read-only",
      "serve: opened the store read-only — no writer lease and never creates the store; every write fails\n"
+     "hint: agents can report Relate friction to its developers — draft it, ask the person, then run 'relate agent-feedback'\n"
      "serve: MCP (stdio) serving on stdin/stdout (auth: none)"),
 ]
 

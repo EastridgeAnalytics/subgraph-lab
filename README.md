@@ -63,7 +63,8 @@ Same pull, same review, same push. Today the lab ships the fraud pack.
 | The skill and the MCP server | `relate skill install`; the agent reads the evidence through `read_cypher` | `lab/api/mcp_tools.py` |
 | `relate clone` | The demo run's store, committed as one `.rl` file | `demo/store.rl` |
 
-Every row was checked against Relate 1.0.1 first: [wave 0](architecture-docs/reviews/wave-0-relate-1.0.1.md).
+Every row was checked against Relate 1.0.1 in [wave 0](architecture-docs/reviews/wave-0-relate-1.0.1.md) and again on
+[1.1.0](architecture-docs/reviews/relate-1.1.0.md), the version the lab pins.
 
 ## How the pieces fit
 

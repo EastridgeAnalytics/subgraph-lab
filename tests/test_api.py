@@ -139,8 +139,10 @@ def test_every_route_in_the_contract_is_served_with_its_model(client):
 
 
 def test_health_has_the_versions(client):
+    from tools.install_relate import VERSION
+
     body = client.get("/api/health").json()
-    assert body == {"ok": True, "version": "0.1.0", "relate": "1.0.1"}
+    assert body == {"ok": True, "version": "0.1.0", "relate": VERSION}
 
 
 def test_health_says_so_when_the_relate_binary_is_missing(client, monkeypatch):

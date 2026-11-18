@@ -610,7 +610,7 @@ def test_live_a3_pushing_the_same_run_twice_changes_nothing(lab):
 def test_live_a6_a_failing_batch_resumes_and_finishes(lab):
     keys = master_keys()
     stage_all(lab, keys[:3])
-    # the known failure: a zoned datetime in the push store makes relate 1.0.1 fail with HTTP 400
+    # the known failure: a zoned datetime in the push store makes relate push fail with HTTP 400 (1.0.1 and 1.1.0)
     lab.push_store().execute(
         "MATCH (a:Alert {alert_key: $k}) SET a.created_at = datetime('2026-11-12T00:00:00Z')", {"k": f"alert-{keys[0]}"})
     result = apply(lab, confirm=True)

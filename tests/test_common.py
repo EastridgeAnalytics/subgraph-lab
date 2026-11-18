@@ -17,7 +17,7 @@ from lab.common import (
     relate_cli,
     run_id,
 )
-from lab.common.relate_cli import credentials_file
+from lab.common.relate_cli import CliResult, credentials_file
 from lab.settings import Settings, derive_query_uri
 
 
@@ -99,8 +99,25 @@ def test_query_frame_through_arrow(fixture_run):
     assert df["id"].to_list() == ["A0001", "A0002", "A0003"]
 
 
-def test_relate_binary_is_1_0_1_and_untracked():
+def test_relate_is_one_version_everywhere_and_untracked():
+    # tools/install_relate.py holds the pin; the CLI, the library and the image's binary must all be that version
+    from importlib.metadata import version
+    from pathlib import Path
+
+    from tools.install_relate import VERSION
+
     out = relate_cli(["--version"])
-    assert "1.0.1" in out.stdout
+    assert f"v{VERSION}" in out.stdout
+    assert version("relate-db") == VERSION
+    dockerfile = (Path(__file__).resolve().parents[1] / "Dockerfile").read_text(encoding="utf-8")
+    assert f"ARG RELATE_VERSION={VERSION}\n" in dockerfile
     status = relate_cli(["telemetry", "status"])
     assert "disabled" in status.stdout
+
+
+def test_the_error_line_is_the_reason_not_relates_hint():
+    hint = "hint: agents can report Relate friction to its developers"
+    refused = CliResult(1, "", f"Error: destination database is not empty\n{hint}\n")
+    assert refused.error_line() == "Error: destination database is not empty"
+    locked = CliResult(1, "", f"storage locked: store.rl\n{hint}\n")
+    assert locked.error_line() == "storage locked: store.rl"

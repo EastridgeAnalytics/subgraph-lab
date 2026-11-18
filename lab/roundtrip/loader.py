@@ -1,7 +1,7 @@
 """The auto-sizing batch loader.
 
 One commit to a Relate store cannot carry a WAL record of 64 MB or more; a bigger one is refused whole with a
-`DataError` and nothing is written (page 07, checked in wave 0). So the loader starts at `LAB_LOAD_START_ROWS`
+`DataError` and nothing is written (page 07, checked in wave 0 and on 1.1.0, which says 64 MiB). So the loader starts at `LAB_LOAD_START_ROWS`
 rows, doubles after each success, and halves when Relate refuses, retrying the same rows. A refused commit wrote
 nothing, so every row still loads exactly once. After the first refusal the size only goes down: the ceiling is
 known, and probing it again would cost a refused commit each time.
@@ -38,9 +38,9 @@ class LoadStats:
 
 
 def is_wal_refusal(exc: BaseException) -> bool:
-    """Relate's refusal of a commit that is too big: 'a single WAL record of at least 64 MB'."""
+    """Relate's refusal of a commit that is too big: 'a single WAL record of at least 64 MB' (1.0.1), '64 MiB' (1.1.0)."""
     text = str(exc)
-    return "WAL record" in text and "64 MB" in text
+    return "WAL record" in text and ("64 MB" in text or "64 MiB" in text)
 
 
 def load_rows(conn, statement: str, rows: Iterable[dict], start: int | None = None) -> LoadStats:

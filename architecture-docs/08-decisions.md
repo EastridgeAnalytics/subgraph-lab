@@ -124,6 +124,10 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
     technical-figures style. Its footer credits that skill with no link, because the skill's repo is private. This
     repo went public on 16 November 2026 and GitHub Pages serves the page from `main`, where the README links it.
     `.nojekyll` at the root makes Pages serve every file as written.
+49. **The Relate pin follows Relate's release at submission.** The CLI, `relate-db` and the image's binary moved
+    together to 1.1.0 on 18 November 2026, after the wave-0 rows and the tests ran on it
+    ([review](reviews/relate-1.1.0.md)). `tools/install_relate.py` holds the version, and a test keeps the three in
+    step. 98 names the version each number was measured on.
 
 ## Open
 

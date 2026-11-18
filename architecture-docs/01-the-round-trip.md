@@ -1,8 +1,8 @@
 # 01 · The round trip
 
 A slice goes from Aura into Relate, gets enriched, and comes back as a keyed merge after a dry run. Every Relate
-behaviour on this page was run against Relate 1.0.1 in wave 0 ([review](reviews/wave-0-relate-1.0.1.md)) unless
-it says "to measure".
+behaviour on this page was run against Relate 1.0.1 in wave 0 ([review](reviews/wave-0-relate-1.0.1.md)) and
+again on 1.1.0 ([review](reviews/relate-1.1.0.md)) unless it says "to measure".
 
 ```mermaid
 sequenceDiagram
@@ -53,10 +53,10 @@ Results come back from a model or a rule as one table with a key column. The lab
 - **One format in: a table with a key column.**
 - **The pulled store is never pushed.** It would re-send every pulled property, and payments between the same two
   accounts would merge into one.
-- **Timestamps in the push store are UTC ISO-8601 strings.** `relate push` 1.0.1 fails on zoned datetimes.
+- **Timestamps in the push store are UTC ISO-8601 strings.** `relate push` fails on zoned datetimes, on 1.0.1 and on 1.1.0.
 - One commit cannot exceed 64 MiB. The loader starts at 20,000 rows, raises until refused, and backs off by half.
 - Alert keys are `sha1(run_id | account_id | window)`. Community keys are `sha1(run_id | lowest member key)`.
-- The library is `relate-db` on PyPI, pinned at 1.0.1.
+- The library is `relate-db` on PyPI, pinned at 1.1.0 with the CLI (decision 49).
 
 ## Review
 

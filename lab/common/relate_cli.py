@@ -30,7 +30,8 @@ class CliResult:
         for line in (self.stderr + "\n" + self.stdout).splitlines():
             if line.startswith("Error:"):
                 return line
-        tail = (self.stderr or self.stdout).strip().splitlines()
+        # Relate 1.1.0 ends an error with a "hint:" line about its feedback channel; the reason is the line before it
+        tail = [ln for ln in (self.stderr or self.stdout).strip().splitlines() if not ln.startswith("hint:")]
         return tail[-1] if tail else ""
 
 

@@ -13,7 +13,7 @@ import tempfile
 import urllib.request
 from pathlib import Path
 
-VERSION = "1.0.1"
+VERSION = "1.1.0"
 BASE = f"https://github.com/relatedb/relate/releases/download/v{VERSION}"
 
 

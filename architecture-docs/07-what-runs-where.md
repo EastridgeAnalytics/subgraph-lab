@@ -89,7 +89,7 @@ inline in code.
 - Relate uses about 502 bytes per node and 404 bytes per relationship on disk, and a served store runs at 1.2 to
   1.5 times that in memory. From the docs.
 - Relate's WebAssembly build has no Arrow or Parquet, so the in-browser timeline waits for 1.1.
-- `relate push` 1.0.1 fails on zoned datetime properties, so the push store carries timestamps as strings.
+- `relate push` fails on zoned datetime properties (1.0.1 and 1.1.0), so the push store carries timestamps as strings.
 - Aura Free's limits differ between Neo4j's own pages: 200,000 nodes and 400,000 relationships in the docs,
   50,000 and 175,000 on the product page. The small seed fits the smaller one.
 

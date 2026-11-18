@@ -14,7 +14,7 @@ The same job done by an agent through the two MCP servers, from its own log: [ag
 
 ## Inspect it yourself
 
-The store this run pulled and enriched is in this folder as one file, `store.rl` (9.8 MB): the slice, every account's embedding and summary, the 172 communities with their scores and summaries, and the 11 indexes. Relate wrote it with `relate clone`. With the `relate` CLI installed ([relatedb.ai/docs](https://relatedb.ai/docs/), or `uv run python tools/install_relate.py` from the repo root), run these from this folder. The output under each is what the committed file returns.
+The store this run pulled and enriched is in this folder as one file, `store.rl` (9.8 MB): the slice, every account's embedding and summary, the 172 communities with their scores and summaries, and the 11 indexes. Relate wrote it with `relate clone`. With the `relate` CLI installed ([relatedb.ai/docs](https://relatedb.ai/docs/), or `uv run python tools/install_relate.py` from the repo root), run these from this folder. The output under each is what the committed file returns. Every query opens it read-only, so the file stays as committed.
 
 **The store, without opening it.**
 
@@ -38,7 +38,7 @@ indexes: 11
 **The riskiest communities, with the reason the lab wrote for each.**
 
 ```
-relate query -d store.rl --mode table "MATCH (c:RiskCommunity) RETURN c.size AS members, round(c.score,2) AS score, left(c.summary, 90) AS summary ORDER BY c.score DESC LIMIT 5"
+relate query -d store.rl --read-only --mode table "MATCH (c:RiskCommunity) RETURN c.size AS members, round(c.score,2) AS score, left(c.summary, 90) AS summary ORDER BY c.score DESC LIMIT 5"
 ```
 
 ```
@@ -56,7 +56,7 @@ relate query -d store.rl --mode table "MATCH (c:RiskCommunity) RETURN c.size AS 
 **The ring's members and what they share. The connected context is the evidence.**
 
 ```
-relate query -d store.rl --mode table "MATCH (c:RiskCommunity {community_key:'6cb5be18371a49ace1bdea774b6878ef87612fea'})<-[:IN_RISK_COMMUNITY]-(a:Account)-[:USES_DEVICE|HAS_ADDRESS]->(i) RETURN a.account_id AS account, labels(i)[0] AS shares, coalesce(i.device_id, i.address_id) AS id ORDER BY account, shares"
+relate query -d store.rl --read-only --mode table "MATCH (c:RiskCommunity {community_key:'6cb5be18371a49ace1bdea774b6878ef87612fea'})<-[:IN_RISK_COMMUNITY]-(a:Account)-[:USES_DEVICE|HAS_ADDRESS]->(i) RETURN a.account_id AS account, labels(i)[0] AS shares, coalesce(i.device_id, i.address_id) AS id ORDER BY account, shares"
 ```
 
 ```
@@ -79,7 +79,7 @@ relate query -d store.rl --mode table "MATCH (c:RiskCommunity {community_key:'6c
 **Ask the store in plain words. Full-text search over the account summaries returns the five members.**
 
 ```
-relate query -d store.rl --mode table "MATCH (a:Account) SEARCH a IN (FULLTEXT INDEX account_summary FOR 'new accounts sharing one device and address' LIMIT 5) SCORE AS s RETURN a.account_id AS account, round(s, 2) AS score"
+relate query -d store.rl --read-only --mode table "MATCH (a:Account) SEARCH a IN (FULLTEXT INDEX account_summary FOR 'new accounts sharing one device and address' LIMIT 5) SCORE AS s RETURN a.account_id AS account, round(s, 2) AS score"
 ```
 
 ```
@@ -97,7 +97,7 @@ relate query -d store.rl --mode table "MATCH (a:Account) SEARCH a IN (FULLTEXT I
 **Communities like the ring, by vector search on the community embeddings.**
 
 ```
-relate query -d store.rl --mode table "MATCH (seed:RiskCommunity {community_key:'6cb5be18371a49ace1bdea774b6878ef87612fea'}) MATCH (c:RiskCommunity) SEARCH c IN (VECTOR INDEX community_embedding FOR seed.embedding LIMIT 4) SCORE AS s RETURN c.size AS members, round(c.score,2) AS risk, round(s,3) AS similarity"
+relate query -d store.rl --read-only --mode table "MATCH (seed:RiskCommunity {community_key:'6cb5be18371a49ace1bdea774b6878ef87612fea'}) MATCH (c:RiskCommunity) SEARCH c IN (VECTOR INDEX community_embedding FOR seed.embedding LIMIT 4) SCORE AS s RETURN c.size AS members, round(c.score,2) AS risk, round(s,3) AS similarity"
 ```
 
 ```
@@ -119,6 +119,7 @@ relate serve --database store.rl --mcp stdio --read-only
 
 ```
 serve: opened the store read-only — no writer lease and never creates the store; every write fails
+hint: agents can report Relate friction to its developers — draft it, ask the person, then run 'relate agent-feedback'
 serve: MCP (stdio) serving on stdin/stdout (auth: none)
 ```
 
