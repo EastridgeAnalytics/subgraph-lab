@@ -1,5 +1,8 @@
 """Download the Relate CLI for this platform, check it against the release's SHA256SUMS, and put it on the venv's
 path. `uv run python tools/install_relate.py`. The Dockerfile does the same for Linux.
+
+The download is written beside its destination and renamed into place, so the last step never crosses a drive. A
+download staged in the system temp folder could not be moved onto a venv on another drive (Windows, `WinError 17`).
 """
 from __future__ import annotations
 
@@ -9,7 +12,6 @@ import platform
 import stat
 import sys
 import sysconfig
-import tempfile
 import urllib.request
 from pathlib import Path
 
@@ -32,10 +34,25 @@ def fetch(url: str) -> bytes:
         return r.read()
 
 
+def scripts_dir() -> Path:
+    return Path(sysconfig.get_path("scripts"))
+
+
+def place(blob: bytes, target: Path) -> None:
+    """Write `blob` to `target` through `<target>.part` in the same folder. Nothing is left behind if a step fails."""
+    staged = target.with_name(target.name + ".part")
+    try:
+        staged.write_bytes(blob)
+        staged.chmod(staged.stat().st_mode | stat.S_IEXEC)
+        os.replace(staged, target)
+    except BaseException:
+        staged.unlink(missing_ok=True)
+        raise
+
+
 def main() -> int:
     name = asset_name()
-    target_dir = Path(sysconfig.get_path("scripts"))
-    target = target_dir / ("relate.exe" if name.endswith(".exe") else "relate")
+    target = scripts_dir() / ("relate.exe" if name.endswith(".exe") else "relate")
     sums = fetch(f"{BASE}/SHA256SUMS").decode()
     expected = next((ln.split()[0] for ln in sums.splitlines() if ln.strip().endswith(name)), None)
     if not expected:
@@ -44,16 +61,17 @@ def main() -> int:
     if target.exists() and hashlib.sha256(target.read_bytes()).hexdigest() == expected:
         print(f"relate {VERSION} already installed at {target}")
         return 0
-    with tempfile.TemporaryDirectory() as tmp:  # an empty folder for the download
-        blob = fetch(f"{BASE}/{name}")
-        got = hashlib.sha256(blob).hexdigest()
-        if got != expected:
-            print(f"checksum mismatch for {name}: {got} != {expected}", file=sys.stderr)
-            return 1
-        staged = Path(tmp) / target.name
-        staged.write_bytes(blob)
-        staged.chmod(staged.stat().st_mode | stat.S_IEXEC)
-        os.replace(staged, target)
+    blob = fetch(f"{BASE}/{name}")
+    got = hashlib.sha256(blob).hexdigest()
+    if got != expected:
+        print(f"checksum mismatch for {name}: {got} != {expected}", file=sys.stderr)
+        return 1
+    try:
+        place(blob, target)
+    except PermissionError as e:  # Windows will not replace a program that is running
+        print(f"could not replace {target} ({e.strerror}): stop any running relate, then run this again",
+              file=sys.stderr)
+        return 1
     print(f"installed relate {VERSION} at {target} (sha256 {expected[:12]})")
     return 0
 
