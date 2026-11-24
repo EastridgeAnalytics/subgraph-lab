@@ -116,7 +116,7 @@ summaries by API, which need a key; the video.
 
 | What | Needs |
 |---|---|
-| Docker | Docker running, with Compose. Built and tested on Docker 29 with Compose 5 (Docker Desktop on Windows 11), and built in CI on Linux |
+| Docker | Docker running, with Compose. Built and tested on Docker 29 with Compose 5 (Docker Desktop on Windows 11), and built in CI on Linux. If the build cannot download Relate, [07](architecture-docs/07-what-runs-where.md#two-ways-to-run) shows how to build from a copy downloaded on the host |
 | Disk | 4.66 GB for the lab's image once built, plus Neo4j's own image for the bundled graph |
 | Memory | On the 1M graph the first pass peaked at 2.2 GB and Relate's server at 674 MB. The demo seed needs less |
 | Ports | 8000 for the lab; 7687, 7474 and 7475 for Relate; 17687 and 17474 for the bundled Neo4j. All on 127.0.0.1, and each is a setting in `.env` |

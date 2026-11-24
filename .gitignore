@@ -8,3 +8,4 @@ dist/
 data/
 app/*.tsbuildinfo
 demo/shots/
+vendor/

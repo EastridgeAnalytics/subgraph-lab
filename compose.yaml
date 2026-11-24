@@ -4,7 +4,10 @@ name: subgraph-lab
 
 services:
   lab:
-    build: .
+    build:
+      context: .
+      args:
+        - RELATE_SRC  # unset: the Dockerfile's release URL. See page 07 for a build that cannot reach GitHub
     image: subgraph-lab:dev
     env_file:
       - path: .env

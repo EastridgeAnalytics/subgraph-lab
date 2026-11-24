@@ -52,6 +52,15 @@ merging on each key, and it refuses a database that holds anything but this seed
 docker compose --profile local up     # plus the bundled Neo4j and the seed
 ```
 
+The image build downloads Relate's Linux binary from its GitHub release. Where the build cannot reach GitHub but
+the host can (some Docker Desktop networks and proxies), download the same file on the host and build from it.
+The Dockerfile checks its SHA-256 either way, and `vendor/` is ignored by git:
+
+```
+curl -L -o vendor/relate-linux-amd64 https://github.com/relatedb/relate/releases/download/v1.1.0/relate-linux-amd64
+RELATE_SRC=vendor/relate-linux-amd64 docker compose --profile local up --build      # PowerShell: $env:RELATE_SRC=...
+```
+
 ## Settings
 
 Every setting lives in `lab/settings.py` and `.env.example`. The judgment numbers are settings too, so none sits

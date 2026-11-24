@@ -12,7 +12,10 @@ ENV DO_NOT_TRACK=1 PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 UV_COMPILE_BYTEC
 COPY --from=ghcr.io/astral-sh/uv:0.11.2 /uv /usr/local/bin/uv
 ARG RELATE_VERSION=1.1.0
 ARG RELATE_SHA256=7c90a2ecbd3c67e6009006332b1dc839a2c70ab00185b604a6b02db45f6600c9
-ADD https://github.com/relatedb/relate/releases/download/v${RELATE_VERSION}/relate-linux-amd64 /usr/local/bin/relate
+# The release asset by default. Where the build cannot reach GitHub, download the same file on the host into vendor/
+# and build with RELATE_SRC=vendor/relate-linux-amd64 (page 07). The checksum below is checked either way.
+ARG RELATE_SRC=https://github.com/relatedb/relate/releases/download/v${RELATE_VERSION}/relate-linux-amd64
+ADD ${RELATE_SRC} /usr/local/bin/relate
 RUN echo "${RELATE_SHA256}  /usr/local/bin/relate" | sha256sum -c - && chmod 0755 /usr/local/bin/relate \
     && relate --version
 # relate --version above fails the build, not the first pull, when the binary cannot run on this base
