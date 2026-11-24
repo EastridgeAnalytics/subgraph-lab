@@ -103,7 +103,7 @@ One person owns the project and reviews it.
 
 ## What is measured, and what waits
 
-702 unit tests on a fixture graph, 35 live tests against Neo4j, 254 app tests, and A1 to A11 from
+760 tests on a fixture graph, 35 live tests against Neo4j, 254 app tests, and A1 to A11 from
 [the requirements](architecture-docs/88-product-requirements.md) in [`tests/acceptance/`](tests/acceptance/).
 Every number in the docs is on [98](architecture-docs/98-measured.md) with the run that produced it: a pull of one
 million relationships takes 124 seconds by `relate pull`, and a clean clone to a reviewed push takes 160 seconds
