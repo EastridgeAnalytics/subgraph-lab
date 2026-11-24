@@ -31,7 +31,7 @@ Relate is `relate pull` through the Query API. Bolt is the lab's fallback, run o
 | The whole seed, Bolt | 39,481 | 149,937 | 108 s | 435 MB | `20261116-pull-seed-all-bolt` |
 | The 1M graph, Relate | 276,111 | 999,343 | 124 s | 1,677 MB | `20261116-pull-1m-relate` |
 | The 1M graph, Bolt | 276,111 | 999,343 | 400 s | 2,155 MB | `20261116-pull-1m-bolt` |
-| From Aura | | | Waiting for credentials | | |
+| From Aura | | | Waiting for a run on Aura | | |
 
 - **Relate pulls three to four times faster than the Bolt fallback, at both sizes.** The fallback stays a fallback.
 - A pull takes the schema's labels and relationship types, so a few unlinked nodes the generator writes stay behind.
@@ -148,6 +148,6 @@ on Debian 13 with Python 3.12.
 
 | What | Why | Record |
 |---|---|---|
-| Pull and push timings from Aura, and loading the seed into Aura Free (A7) | Waiting for credentials | |
+| Pull and push timings from Aura, and loading the seed into Aura Free (A7) | Waiting for a run on Aura. The seed loader and its Aura test are ready | |
 | Cost per summary through the Anthropic API | Waiting for a key; every summary so far came from the template | |
 | How long a person takes to go from `docker compose up` to a reviewed push | The walk above is a script's clicks | |

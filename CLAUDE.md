@@ -15,4 +15,6 @@ Never write a number that has not been measured as if it had been. Tag it "to me
 which run produced it.
 
 Nothing reads from or writes to the master graph except `relate pull`, `relate push` and the Bolt fallback in
-`lab/`, and `apply_push` with confirm set is the only path that writes.
+`lab/`, and `apply_push` with confirm set is the only path that writes. The one exception is outside the lab:
+`python -m generator.load` fills an empty database with the demo seed, and refuses one that holds anything else
+(decision 52).

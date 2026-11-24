@@ -46,7 +46,7 @@ Any failure keeps the template. Summaries are stored and cached with their evide
 
 **Review and push.** R19 Results staged in Relate under a run id, in `risk_*` properties. R20 Review shows the
 dry-run plan plus the delta: new alerts and communities, score changes, keys missing remotely, vectors, bytes.
-R21 One confirm. `apply_push(confirm=true)` is the only code path that writes to the master graph. R22 Reviewers
+R21 One confirm. `apply_push(confirm=true)` is the lab's only code path that writes to the master graph. R22 Reviewers
 mark accounts and communities confirmed, false positive or needs more, written back as `risk_disposition` with
 who and when. R23 `relate push`: keyed merge, batches of 5,000, no deletes, creating `RiskCommunity` nodes and
 member links. R24 A manifest per batch, so a stopped push resumes. R25 A `LabRun` node written last, with counts,

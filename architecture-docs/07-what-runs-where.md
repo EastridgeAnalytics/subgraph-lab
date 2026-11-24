@@ -44,6 +44,10 @@ cp .env.example .env     # NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD, NEO4J_DATA
 docker compose up        # the main path: your Aura instance
 ```
 
+An empty Aura instance gets the demo bank from `docker compose run --rm lab python -m generator.load`, after
+`docker compose build lab`. It writes the generator's CSVs over Bolt as the same graph the bundled import makes,
+merging on each key, and it refuses a database that holds anything but this seed (decision 52).
+
 ```
 docker compose --profile local up     # plus the bundled Neo4j and the seed
 ```

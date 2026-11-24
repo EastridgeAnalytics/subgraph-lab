@@ -107,8 +107,8 @@ One person owns the project and reviews it.
 [the requirements](architecture-docs/88-product-requirements.md) in [`tests/acceptance/`](tests/acceptance/).
 Every number in the docs is on [98](architecture-docs/98-measured.md) with the run that produced it: a pull of one
 million relationships takes 124 seconds by `relate pull`, and a clean clone to a reviewed push takes 160 seconds
-after the first image build. Waiting: the Aura rows on 98 and test A7, which need credentials; summaries by API,
-which need a key; the video.
+after the first image build. Waiting: the Aura rows on 98 and test A7, which need a run on an Aura instance;
+summaries by API, which need a key; the video.
 
 ## How to get started
 
@@ -135,8 +135,16 @@ docker compose --profile local up    # builds the image, makes the seed, starts 
 ```
 
 Open `http://localhost:8000`, then Connect, Slice, Run, and Review and push. With Aura instead of the bundled Neo4j, set `NEO4J_URI`,
-`NEO4J_USERNAME` and `NEO4J_PASSWORD` in `.env` and run `docker compose up`. Ports and every setting are on
-[07](architecture-docs/07-what-runs-where.md).
+`NEO4J_USERNAME`, `NEO4J_PASSWORD` and `NEO4J_DATABASE` in `.env`. A new instance is empty, so load the demo bank
+into it once, then start the lab:
+
+```
+docker compose build lab                                  # the image holds the loader
+docker compose run --rm lab python -m generator.load      # fills an empty instance; refuses one holding other data
+docker compose up
+```
+
+Ports and every setting are on [07](architecture-docs/07-what-runs-where.md).
 
 **Agents.** Point Claude Code, or any agent that reads a repo, at this folder. `CLAUDE.md` and
 [`architecture-docs/README.md`](architecture-docs/README.md) say what to read first. With

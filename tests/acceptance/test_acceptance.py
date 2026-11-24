@@ -177,9 +177,27 @@ def test_a7_the_small_seed_fits_aura_frees_smaller_published_limit(tmp_path):
     assert nodes < AURA_FREE_SMALLER["nodes"] and rels < AURA_FREE_SMALLER["relationships"]
 
 
-@pytest.mark.skipif(not os.environ.get("LAB_AURA_ACCEPTANCE"), reason="needs Aura credentials: the owner's step")
-def test_a7_the_small_seed_loads_into_aura_free():  # pragma: no cover (runs when the owner sets Aura up)
-    pytest.fail("load the small seed into the Aura instance in .env and count it here")
+@pytest.mark.skipif(not os.environ.get("LAB_AURA_ACCEPTANCE"),
+                    reason="needs an empty Aura Free instance in .env and LAB_AURA_ACCEPTANCE=1")
+def test_a7_the_small_seed_loads_into_aura_free():  # pragma: no cover (runs when .env points at Aura)
+    """`python -m generator.load` fills the Aura instance in .env with the small seed, the counts match
+    generator.json, and a second run creates nothing (decision 52). It never wipes: an instance that holds anything
+    but this seed is refused, so start from an empty one."""
+    s = reload_settings()
+    assert ".databases.neo4j.io" in s.neo4j_uri, "A7 needs NEO4J_URI in .env to be an Aura address"
+    env = {**os.environ, "DO_NOT_TRACK": "1"}
+
+    def load() -> dict:
+        done = subprocess.run([sys.executable, "-m", "generator.load", "--size", "small"], cwd=REPO, env=env,
+                              capture_output=True, text=True, timeout=1800)
+        assert done.returncode == 0, done.stderr[-2000:]
+        return json.loads(done.stdout.strip().splitlines()[-1].removeprefix("load: "))
+
+    first = load()
+    assert first["mismatch"] == {}
+    assert sum(first["counts"].values()) == 39_565 + 150_000
+    again = load()
+    assert again["state"] == "seed only" and again["created"] == {"nodes": 0, "relationships": 0}
 
 
 # ---- A8 · every number on the measured page names its run -------------------------------------------------------------

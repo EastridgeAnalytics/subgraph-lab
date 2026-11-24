@@ -166,7 +166,7 @@ def review(state: LabState, run_id: str) -> Review:
 
 
 def push(state: LabState, run_id: str, confirm: bool) -> PushResult:
-    """`apply(run, confirm)`, the only writer to the master graph. Without `confirm` it refuses first, writes nothing."""
+    """`apply(run, confirm)`, the lab's only writer to the master graph. Without `confirm` it refuses first, writes nothing."""
     from lab.roundtrip.push import PushNotConfirmed
 
     if confirm is not True:

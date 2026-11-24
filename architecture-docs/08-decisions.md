@@ -28,7 +28,8 @@ Settled, then open. A later decision can replace an earlier one. The number stay
 12. **The app is React 18, Vite, TypeScript and Tailwind on FastAPI.** Seven screens in the MVP.
 13. **The agent reads through Relate's MCP server and skill, and acts through the lab's tools** (nine since
     decision 38).
-    `apply_push` with confirm set is the only writer to the master graph.
+    `apply_push` with confirm set is the lab's only writer to the master graph (the seed loader, decision 52, only
+    fills an empty one).
 14. **No model code of our own.** Adapters to PyTorch Geometric, the TGB layout, NetworkX and Arrow, and the
     libraries' own examples.
 15. **No number is published until it is measured.** Until then it is tagged "to measure", and the README says so.
@@ -138,6 +139,12 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
     the running lab. The prompt goes in on stdin and the config in a file, so nothing depends on the shell's quoting.
     It replaces the committed log only after a session that ends in a result with the two servers' tools and nothing
     else. `run.sh` stays as a wrapper.
+52. **The demo seed has its own loader for an empty database, and it is not the lab.** `neo4j-admin import` cannot
+    reach Aura, so `python -m generator.load` writes the generator's CSVs over Bolt: the same labels, types, property
+    names and value types as the import, merging on each key, so a retried batch or a second run creates nothing. It
+    reads first and goes on only when the database is empty or holds this seed and nothing else. A label or type
+    outside the seed's, or a node whose key is not one of its keys, is refused before anything is written. A test
+    loads the seed both ways into a throwaway Neo4j and requires the same graph. A7 runs it on Aura.
 
 ## Open
 

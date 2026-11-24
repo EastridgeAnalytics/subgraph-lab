@@ -2,12 +2,14 @@
 
 Unit tests run `--size small` once per module. `slow` builds the 1M size. `live` runs the real import into a real
 Neo4j, using throwaway Docker resources named `sgl-1a-*` and host ports 37474 and 37687 (never the `live_neo4j`
-fixture, never the compose project's own containers or volumes).
+fixture, never the compose project's own containers or volumes). The same test then wipes that Neo4j and loads the
+seed again with `python -m generator.load` (decision 52), and the two graphs must match.
 """
 from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import shutil
 import subprocess
@@ -423,11 +425,34 @@ def test_1m_lands_near_a_million_relationships(tmp_path):
 # --- live: the real import into a real Neo4j ----------------------------------------------------------------------
 
 IMAGE = "neo4j:2026.08.1"
-BOLT_PORT, HTTP_PORT, PASSWORD = 37687, 37474, "sgl-test-pass"
+BOLT_PORT = int(os.environ.get("SGL_1A_BOLT_PORT", "37687"))  # when another Neo4j already holds the defaults
+HTTP_PORT = int(os.environ.get("SGL_1A_HTTP_PORT", "37474"))
+PASSWORD = "sgl-test-pass"
 
 
 def _docker(*args: str, check: bool = True, timeout: int = 300) -> subprocess.CompletedProcess:
     return subprocess.run(["docker", *args], capture_output=True, text=True, check=check, timeout=timeout)
+
+
+def _fingerprint(one) -> dict:
+    """What a load must reproduce: counts, property names, value types, and a hash of every node and relationship."""
+
+    def digest(query: str) -> str:
+        return hashlib.sha256(json.dumps([list(r.values()) for r in one(query)]).encode()).hexdigest()
+
+    out: dict = {label: one(f"MATCH (n:{label}) RETURN count(n) AS n")[0]["n"] for label in NODE_LABELS}
+    out |= {t: one(f"MATCH ()-[r:{t}]->() RETURN count(r) AS n")[0]["n"] for t in REL_TYPES}
+    out["node_keys"] = sorted(one("MATCH (n) UNWIND keys(n) AS k RETURN collect(DISTINCT k) AS k")[0]["k"])
+    out["rel_keys"] = sorted(one("MATCH ()-[r]->() UNWIND keys(r) AS k RETURN collect(DISTINCT k) AS k")[0]["k"])
+    out["types"] = one("MATCH (a:Account)-[t:TX]->() RETURN collect(DISTINCT valueType(a.opened)) AS opened, "
+                       "collect(DISTINCT valueType(t.ts)) AS ts, collect(DISTINCT valueType(t.amount)) AS amount, "
+                       "collect(DISTINCT valueType(t.tx_id)) AS tx_id")[0]
+    out["accounts"] = digest("MATCH (a:Account) RETURN a.account_id AS k, toString(a.opened) AS o ORDER BY k")
+    out["spokes"] = digest("MATCH (a:Account)-[r]->(x) WHERE type(r) <> 'TX' RETURN a.account_id AS a, type(r) AS t, "
+                           "coalesce(x.device_id, x.email_id, x.address_id) AS x ORDER BY a, t")
+    out["tx"] = digest("MATCH (a:Account)-[t:TX]->(b:Account) RETURN t.tx_id AS id, a.account_id AS s, "
+                       "b.account_id AS d, t.amount AS m, toString(t.ts) AS ts ORDER BY id")
+    return out
 
 
 @pytest.mark.live
@@ -502,6 +527,30 @@ def test_import_script_seeds_a_real_neo4j(small):
             "RETURN labelsOrTypes[0] AS label, properties[0] AS property")}
         assert constraints == {("Account", "account_id"), ("Device", "device_id"), ("Email", "email_id"),
                                ("Address", "address_id")}
+
+        # The seed loader (decision 52): the same graph as the import, over Bolt, and nothing twice.
+        imported = _fingerprint(one)
+        with driver.session(database="neo4j") as session:
+            session.run("MATCH (n) CALL (n) { DETACH DELETE n } IN TRANSACTIONS OF 5000 ROWS").consume()
+        assert one("MATCH (n) RETURN count(n) AS n")[0]["n"] == 0
+        env = {**os.environ, "NEO4J_URI": f"bolt://127.0.0.1:{BOLT_PORT}", "NEO4J_USERNAME": "neo4j",
+               "NEO4J_PASSWORD": PASSWORD, "NEO4J_DATABASE": "neo4j", "DO_NOT_TRACK": "1"}
+
+        def loader() -> subprocess.CompletedProcess:
+            return subprocess.run([sys.executable, "-m", "generator.load", "--dir", str(small.out)], cwd=REPO, env=env,
+                                  capture_output=True, text=True, timeout=600)
+
+        first = loader()
+        assert first.returncode == 0, first.stderr[-2000:]
+        assert _fingerprint(one) == imported
+        second = loader()
+        assert second.returncode == 0, second.stderr[-2000:]
+        assert '"created": {"nodes": 0, "relationships": 0}' in second.stdout and '"state": "seed only"' in second.stdout
+        driver.execute_query("CREATE (:Customer {customer_id: 'C1'})", database_="neo4j")
+        third = loader()
+        assert third.returncode == 2 and "Customer" in third.stderr and "Nothing was written" in third.stderr
+        assert {k: v for k, v in _fingerprint(one).items() if k in NODE_LABELS + REL_TYPES} == {
+            k: v for k, v in imported.items() if k in NODE_LABELS + REL_TYPES}
     finally:
         if driver is not None:
             driver.close()

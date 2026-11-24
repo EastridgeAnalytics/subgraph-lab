@@ -6,7 +6,7 @@ The rows' `total`, `batches` and `skipped` are relate's; their `created` and `up
 against the master graph (`_counted`), because relate's dry run does not read the master graph and prints every row
 as created.
 
-`apply(run, confirm)` is the only code path that writes to the master graph (the other is `retract`, and the Bolt
+`apply(run, confirm)` is the lab's only code path that writes to the master graph (the other is `retract`, and the Bolt
 fallback below is inside `apply`). It refuses unless `confirm is True`, as its first act. With a confirm it
 
 1. runs the dry run again, always, and stops before any write if the plan would skip rows;

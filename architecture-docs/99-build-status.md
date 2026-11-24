@@ -19,7 +19,7 @@ that lands. Each wave's report goes in `reviews/`.
 | # | Deliverable | Done means | Track | Status |
 |---|---|---|---|---|
 | 1 | Contracts | The run manifest, the staged-results table, the recipe file, the REST routes, the MCP tool list and the lint config, written and reviewed on day one | Integrator | Done in wave 0: `lab/contracts/`, `lab/common/`, `lab/runs.py` |
-| 2 | Generator and seed | Accounts with devices, emails and addresses. Three planted patterns with ring ids, plus legitimate look-alikes. A small seed that fits Aura Free's smaller published limit, and 1M relationships for the measured page | Data | Done (1a): `generator/`, the `seed` and `seed-schema` services. `small` is 39,565 nodes and 150,000 relationships; `1m` is 276,987 nodes and 1,000,000 relationships, by the generator's own count; its pull is on [98](98-measured.md). Loading the seed into Aura Free (A7) waits for credentials |
+| 2 | Generator and seed | Accounts with devices, emails and addresses. Three planted patterns with ring ids, plus legitimate look-alikes. A small seed that fits Aura Free's smaller published limit, and 1M relationships for the measured page | Data | Done (1a): `generator/`, the `seed` and `seed-schema` services. `small` is 39,565 nodes and 150,000 relationships; `1m` is 276,987 nodes and 1,000,000 relationships, by the generator's own count; its pull is on [98](98-measured.md). `python -m generator.load` loads it into an empty Neo4j or Aura over Bolt, with a guard; a live test requires the same graph as the import (decision 52). Loading it into Aura Free (A7) waits for a run on Aura |
 | 3 | Pull | `relate pull` from Aura into a fresh store per run. Parallel Bolt as the fallback. Both measured at 100k and 1M relationships | Data plane | Done (1b): `lab/roundtrip/pull.py`. Measured at the seed's size and at 1M relationships by both routes on [98](98-measured.md). From Aura waits for credentials |
 | 4 | Indexes and first pass | Node2Vec embeddings and account summaries, with vector and full-text indexes created in Relate | Adapters | Done: the indexes after every pull (1b); Node2Vec embeddings and template summaries on every account (2a). Measured at 1M on [98](98-measured.md); whole-store reads page through the account keys (wave 6) |
 | 5 | Search-defined slice | Hybrid search plus hops, the size and memory shown before expansion, the cap enforced | Data plane | Done (2a): `lab/slice/search.py`, `estimate.py`. A hop is an account step, `h` 1 by default (5c, decision 41). Run on the seed by the loop |
@@ -73,7 +73,7 @@ Measured on [98](98-measured.md), each with its run: pull at the seed's size and
 loop step by step, how big a search slice gets, Relate's running memory, the image, and the scripted walk. Still not
 claimed:
 
-- Anything from Aura, until the owner's credentials arrive.
+- Anything from Aura, until the loop has run on an Aura instance.
 - "Faster than" any other product. 98 compares Relate's pull only with the lab's own Bolt fallback.
 - Model accuracy on real fraud. The demo is synthetic.
 - How well communities match real rings, or how good the summaries are, outside the demo data.

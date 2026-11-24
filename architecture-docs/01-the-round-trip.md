@@ -70,7 +70,8 @@ scores that moved grouped by size, vectors, and bytes to send.
   wave 5c; not yet on Aura). The review counts them over Bolt, read only: `Alert` and `RiskCommunity` created are the
   delta's new keys, an account is created only if the master graph lacks it, and a link is created unless it is
   already there. Total, batches and skipped are relate's. The review's text says which is which.
-- **One confirm. `apply_push(confirm=true)` is the only code path that writes to the master graph.**
+- **One confirm. `apply_push(confirm=true)` is the only code path in the lab that writes to the master graph.** The
+  seed loader outside it only fills an empty database (decision 52).
 
 ## Push
 
