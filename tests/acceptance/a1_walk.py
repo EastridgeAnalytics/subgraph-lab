@@ -57,6 +57,9 @@ def wait_healthy(base: str, limit: float = 900) -> float:
 def walk(base: str, since: str, shots: Path | None, with_tgn: bool = False) -> dict[str, float]:
     from playwright.sync_api import expect, sync_playwright
 
+    # The first check of a Neo4j that has just started can take seconds (12 s once, 18 November). A person waits for
+    # the answer, so the walk waits as long as it waits for a click, and the time counts.
+    expect.set_options(timeout=60_000)
     times: dict[str, float] = {}
     with sync_playwright() as p:
         browser = p.chromium.launch()
