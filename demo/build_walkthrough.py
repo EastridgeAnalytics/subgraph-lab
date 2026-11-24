@@ -174,7 +174,9 @@ INSPECT_INTRO = (
     "account's embedding and summary, the 172 communities with their scores and summaries, and the 11 indexes. "
     "Relate wrote it with `relate clone`. With the `relate` CLI installed ([relatedb.ai/docs](https://relatedb.ai/docs/), "
     "or `uv run python tools/install_relate.py` from the repo root), run these from this folder. The output under "
-    "each is what the committed file returns. Every query opens it read-only, so the file stays as committed."
+    "each is what the committed file returns. Every query opens it read-only, so the file stays as committed. "
+    "The `relate` CLI sends anonymous usage metrics by default; set `DO_NOT_TRACK=1`, or run `relate telemetry off` "
+    "once, to turn that off."
 )
 
 # (what it shows, the command, the output as captured against store.rl on 16 November 2026, again on Relate 1.1.0 on 18 November)

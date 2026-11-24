@@ -112,6 +112,17 @@ which need a key; the video.
 
 ## How to get started
 
+**Before you start.** Numbers are from [98](architecture-docs/98-measured.md).
+
+| What | Needs |
+|---|---|
+| Docker | Docker running, with Compose. Built and tested on Docker 29 with Compose 5 (Docker Desktop on Windows 11), and built in CI on Linux |
+| Disk | 4.66 GB for the lab's image once built, plus Neo4j's own image for the bundled graph |
+| Memory | On the 1M graph the first pass peaked at 2.2 GB and Relate's server at 674 MB. The demo seed needs less |
+| Ports | 8000 for the lab; 7687, 7474 and 7475 for Relate; 17687 and 17474 for the bundled Neo4j. All on 127.0.0.1, and each is a setting in `.env` |
+| Time | The first image build took 383 s from a clean clone. After it, `compose up` to a reviewed push took 160 s |
+| Telemetry | The lab's containers set `DO_NOT_TRACK=1`, so Relate sends no usage metrics from them. The standalone `relate` CLI sends anonymous metrics by default: set `DO_NOT_TRACK=1` or run `relate telemetry off` |
+
 **People.** [The walkthrough](demo/README.md) takes two minutes. Then open the demo run's
 store with nothing else installed: [`demo/store.rl`](demo/README.md#inspect-it-yourself), `relate info`, four
 queries. To run the whole loop on your machine:
