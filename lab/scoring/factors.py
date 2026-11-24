@@ -27,13 +27,14 @@ import math
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, get_args
 
 import polars as pl
 
 from lab.adapters import reads
 from lab.common import canonical_json, get_logger
 from lab.contracts.factors import FACTOR_RESULT_COLUMNS, Factor, FactorFile
+from lab.contracts.recipe import ModelName
 from lab.settings import get_settings
 
 if TYPE_CHECKING:
@@ -272,6 +273,9 @@ def model_output_path(run: Run, factor: Factor) -> Path:
 def _run_model(run: Run, factor: Factor, base: Path, keys: list[str] | None) -> pl.DataFrame:
     path = model_output_path(run, factor)
     if not path.exists():
+        model = Path(factor.source or "").name  # examples/tgn writes the tgn model's output
+        if model in get_args(ModelName) and model not in run.recipe.models:
+            raise _Skip(f"the {model} model was not selected for this run, so it wrote no output")
         raise _Skip(f"no model output at {path.relative_to(run.paths.root).as_posix()}; run {factor.source} first")
     return _result_frame(pl.read_parquet(path), keys, {"source": factor.source})
 

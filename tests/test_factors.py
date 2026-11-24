@@ -388,6 +388,16 @@ def test_a_missing_model_output_is_skipped_with_its_reason(fixture_run):
     assert "tgn" not in fr.results["factor_id"].to_list()
 
 
+def test_a_model_the_recipe_did_not_select_says_so(fixture_run):
+    """A model left out of the recipe writes no output by choice. The reason says that, not "run it first". The
+    status stays skipped, so the score is the same as before."""
+    fixture_run.recipe = fixture_run.recipe.model_copy(update={"models": ["node2vec", "communities", "velocity"]})
+    fr = run_factors(fixture_run)
+    s = status(fr)["tgn"]
+    assert s.status == "skipped" and s.accounts == 0
+    assert s.reason == "the tgn model was not selected for this run, so it wrote no output"
+
+
 def test_a_model_output_off_the_contract_fails_and_a_stray_account_is_ignored(fixture_run):
     write_model(fixture_run, "tgn", pl.DataFrame({"key": ["A0001"], "score": [1.7]}))
     assert status(run_factors(fixture_run))["tgn"].status == "failed"
