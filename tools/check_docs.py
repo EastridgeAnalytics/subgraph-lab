@@ -1,4 +1,5 @@
-"""Check the Markdown pages: banned names, AI-tell words, prose dashes and ampersands, links, ids.
+"""Check the Markdown pages: banned names, AI-tell words, prose dashes and ampersands, links, ids, and that every
+documented `relate query` or `relate serve` on a store opens it read-only.
 
 Run from anywhere: `python -I tools/check_docs.py [--mermaid]`.
 With --mermaid it also writes .tmp/mermaid-check.html, a page that parses and renders every Mermaid block
@@ -23,6 +24,9 @@ TELLS = re.compile(
     r"at the end of the day|in today's)\b",
     re.I,
 )
+# A query or a serve that opens a store for writing changes the file even when it only reads (Relate 1.1.0 touches the
+# header), so a reader who runs the documented command on the committed demo/store.rl would leave it changed.
+STORE_COMMAND = re.compile(r"\brelate (?:query|serve)\b[^\n`]*?(?:\s-d|--database)\s+\S+\.rl\b[^\n`]*")
 FENCE = re.compile(r"```.*?```", re.S)
 INLINE_CODE = re.compile("`[^`\\n]*`")
 LINK = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
@@ -67,6 +71,9 @@ def check(path: pathlib.Path, mermaid_blocks: list) -> list:
             bad.append(target)
     if bad:
         flags.append(f"BAD-LINKS {bad}")
+    writable = [m.group(0)[:60] for m in STORE_COMMAND.finditer(text) if "--read-only" not in m.group(0)]
+    if writable:
+        flags.append(f"STORE-COMMAND-NOT-READ-ONLY {writable}")
     print(f"{path.relative_to(ROOT).as_posix():36} words={words:5} dashes={dashes} amps={amps} {' | '.join(flags)}")
     return flags
 
