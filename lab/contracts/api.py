@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 
 from lab.contracts.evidence import Evidence, Summary
 from lab.contracts.factors import Factor
@@ -194,7 +194,7 @@ class Review(BaseModel):
 
 
 class PushRequest(BaseModel):
-    confirm: bool = False
+    confirm: StrictBool = False  # decision 50: the JSON boolean true, never a string or a number
 
 
 class PushResult(BaseModel):

@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool
 
 from lab.contracts.api import CommunityDetail, PushResult, Review, SliceEstimate
 from lab.contracts.evidence import Evidence, Summary
@@ -66,7 +66,7 @@ class RunStatusIn(BaseModel):
 
 class ApplyPushIn(BaseModel):
     run_id: str
-    confirm: bool = False
+    confirm: StrictBool = False  # decision 50: the JSON boolean true, never a string or a number
 
 
 class SubjectIn(BaseModel):
@@ -114,7 +114,8 @@ TOOLS: dict[str, tuple[type[BaseModel], type[BaseModel], str]] = {
     "score": (ScoreIn, ScoreOut, "Queue the models, factors, policy, communities and summaries on a run's slice. "
               "Answers at once; poll run_status until score is done."),
     "preview_push": (RunIn, Review, "The dry-run plan plus the delta. Writes nothing."),
-    "apply_push": (ApplyPushIn, PushResult, "Push a run to the master graph. Fails unless confirm is true."),
+    "apply_push": (ApplyPushIn, PushResult, "Push a run to the master graph. Fails unless confirm is the JSON "
+                   "boolean true."),
     "explain_alert": (SubjectIn, ExplainOut, "The evidence object for an account, alert or community."),
     "describe_alert": (DescribeIn, DescribeOut, "Store a summary for an alert or community, after the checks."),
     "graph_diff": (GraphDiffIn, GraphDiffOut, "What changed between two runs."),

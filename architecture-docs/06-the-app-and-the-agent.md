@@ -56,7 +56,7 @@ answer at once; the agent polls `run_status` (decision 38). A recorded session i
 | `search_slice` | Hybrid search plus hops; returns the hits, the size and the memory |
 | `score` | Queue the models, factors, policy, communities and summaries on the slice. Answers at once |
 | `preview_push` | The dry-run plan plus the delta |
-| `apply_push` | Push. Fails without `confirm=true`, and without a review newer than the last thing staged (decision 37) |
+| `apply_push` | Push. Fails unless `confirm` is the JSON boolean `true` (decision 50), and without a review newer than the last thing staged (decision 37) |
 | `explain_alert` | The evidence object for an account or a community |
 | `describe_alert` | Store a summary for an account or a community, after the checks |
 | `graph_diff` | What changed between two runs |

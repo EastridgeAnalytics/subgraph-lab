@@ -158,8 +158,9 @@ class Run:
         return apply(self, confirm)
 
     def push(self, confirm: bool = False):
-        """The examples' last line. Without confirm it is the preview: the dry run plus the delta."""
-        return self.apply_push(confirm=True) if confirm else self.preview_push()
+        """The examples' last line. Without confirm it is the preview: the dry run plus the delta. Only `True` itself
+        pushes; any other value but `False` goes to `apply_push`, which refuses it (decision 50)."""
+        return self.preview_push() if confirm is False else self.apply_push(confirm)
 
 
 def run(run_id: str | None = None, data_dir: Path | None = None) -> Run:

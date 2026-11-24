@@ -129,6 +129,10 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
     together to 1.1.0 on 18 November 2026, after the wave-0 rows and the tests ran on it
     ([review](reviews/relate-1.1.0.md)). `tools/install_relate.py` holds the version, and a test keeps the three in
     step. 98 names the version each number was measured on.
+50. **The confirm is the JSON boolean `true` at every door.** The REST body, the `apply_push` tool and `run.push`
+    refuse a string, a number or null. Before, `"yes"` and `1` were read as true. The MCP SDK checks a call against a
+    model it builds from the tool's signature, so the signature carries each field's constraints: `StrictBool` on
+    `confirm`, and the range of `wait_seconds`.
 
 ## Open
 

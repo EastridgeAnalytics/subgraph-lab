@@ -147,6 +147,32 @@ def test_apply_push_is_refused_without_confirm_and_nothing_runs(served, data_dir
     assert RunManifest.load(run.paths.manifest).step("push").status is StepStatus.PENDING
 
 
+@pytest.mark.parametrize("confirm", ["yes", "true", "false", "1", "null", 1, 0, None])
+def test_apply_push_takes_only_the_json_boolean_and_nothing_else_writes(served, data_dir, relate, master, confirm):
+    """Decision 50: after a review, a string, a number or null is refused by the tool's own schema check. Before it, the
+    SDK read "yes" and 1 as true and pushed."""
+    run = staged(data_dir)
+    assert not call(served, "preview_push", run_id=run.id).is_error  # so a value read as true would push
+    before = run.paths.manifest.read_bytes()
+    result = call(served, "apply_push", run_id=run.id, confirm=confirm)
+    assert result.is_error, f"confirm={confirm!r} was taken: {text(result)}"
+    assert relate.real_pushes == [] and master.writes() == []
+    assert run.paths.manifest.read_bytes() == before
+    assert RunManifest.load(run.paths.manifest).step("push").status is StepStatus.PENDING
+
+
+def test_the_published_schemas_carry_the_strict_confirm_and_the_wait_limit(served):
+    async def go():
+        async with Client(served.url) as client:
+            return {t.name: t for t in (await client.list_tools()).tools}
+
+    tools = asyncio.run(go())
+    assert tools["apply_push"].input_schema["properties"]["confirm"] == {"default": False, "title": "Confirm",
+                                                                         "type": "boolean"}
+    wait = tools["run_status"].input_schema["properties"]["wait_seconds"]
+    assert (wait["type"], wait["minimum"], wait["maximum"]) == ("integer", 0, 240)
+
+
 def test_apply_push_with_confirm_pushes_and_answers_with_its_model(served, data_dir, relate, master):
     run = staged(data_dir)
     assert not call(served, "preview_push", run_id=run.id).is_error  # decision 37: the review comes first

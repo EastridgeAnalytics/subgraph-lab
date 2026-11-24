@@ -1,4 +1,4 @@
-"""The lab's eight MCP tools (page 06), on the same functions as the REST routes.
+"""The lab's nine MCP tools (page 06), on the same functions as the REST routes.
 
 `lab.contracts.tools.TOOLS` names them, with each one's input and output model. Each tool takes its input model's
 fields as its arguments (an agent sends `{"run_id": ..., "confirm": true}`, not a wrapper) and returns its output model,
@@ -6,12 +6,16 @@ so the schemas an agent reads are the contract's.
 
 `apply_push` refuses unless `confirm` is true (A5), before anything is opened. A failure an agent should read comes back as
 a tool error with one plain sentence; the same sentence a route would put in `{"detail": ...}`.
+
+A field's constraints go into the tool's signature with its type (decision 50). The SDK checks a call's arguments
+against a model of its own, built from that signature, before the contract's model sees them. With the type alone it
+would read `"yes"` or `1` as `confirm` true.
 """
 from __future__ import annotations
 
 import inspect
 from collections.abc import Callable
-from typing import Any
+from typing import Annotated, Any
 
 from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
@@ -24,8 +28,8 @@ from lab.contracts.tools import TOOLS
 INSTRUCTIONS = (
     "subgraph-lab: pull a slice of the master graph into a run store (egress, queued: poll run_status until "
     "first_pass is done), search it (search_slice), score it (score, queued: poll run_status until score is done), "
-    "read the dry-run plan (preview_push), and push (apply_push, which needs confirm=true and writes to the master "
-    "graph). Read the subgraph itself through Relate's own MCP server, read-only."
+    "read the dry-run plan (preview_push), and push (apply_push, which needs confirm set to the JSON boolean true and "
+    "writes to the master graph). Read the subgraph itself through Relate's own MCP server, read-only."
 )
 
 
@@ -57,7 +61,8 @@ def _tool(name: str, model_in: type[BaseModel], model_out: type[BaseModel], call
 
     params = [
         inspect.Parameter(
-            field, inspect.Parameter.KEYWORD_ONLY, annotation=info.annotation,
+            field, inspect.Parameter.KEYWORD_ONLY,
+            annotation=Annotated[(info.annotation, *info.metadata)] if info.metadata else info.annotation,
             default=inspect.Parameter.empty if info.is_required() else info.get_default(call_default_factory=True),
         )
         for field, info in model_in.model_fields.items()

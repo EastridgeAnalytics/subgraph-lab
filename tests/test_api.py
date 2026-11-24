@@ -557,6 +557,18 @@ def test_a_push_without_confirm_is_400_and_writes_nothing(client, scored_run, mo
     assert scored_run.paths.manifest.read_bytes() == before
 
 
+@pytest.mark.parametrize("confirm", ["yes", "true", "false", "1", 1, 0, None])
+def test_a_push_takes_only_the_json_boolean(client, scored_run, relate, master, confirm):
+    """Decision 50: after a review, a string, a number or null is a 422 that names the field, not the value."""
+    assert client.get(f"/api/runs/{scored_run.id}/review").status_code == 200  # so a value read as true would push
+    before = scored_run.paths.manifest.read_bytes()
+    r = client.post(f"/api/runs/{scored_run.id}/push", json={"confirm": confirm})
+    assert r.status_code == 422, r.text
+    assert r.json()["detail"] == [{"loc": ["body", "confirm"], "msg": "Input should be a valid boolean",
+                                   "type": "bool_type"}]
+    assert relate.real_pushes == [] and scored_run.paths.manifest.read_bytes() == before
+
+
 def test_a_confirmed_push_lands_every_entity_and_the_labrun(client, scored_run, relate, master):
     assert client.get(f"/api/runs/{scored_run.id}/review").status_code == 200  # decision 37: the review comes first
     r = client.post(f"/api/runs/{scored_run.id}/push", json={"confirm": True})

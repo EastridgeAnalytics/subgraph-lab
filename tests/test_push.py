@@ -98,6 +98,15 @@ def test_the_facade_refuses_without_confirm_even_with_nothing_staged(fixture_run
         fixture_run.apply_push(confirm=False)
 
 
+@pytest.mark.parametrize("confirm", ["yes", "true", 1, None])
+def test_run_push_reads_only_true_as_a_yes(fixture_run, monkeypatch, confirm):
+    """Decision 50: `run.push(confirm=...)` used to test truthiness, so "yes" pushed. Now only `True` pushes and only
+    `False` previews; anything else is refused before anything runs."""
+    monkeypatch.setattr("subprocess.run", lambda *a, **k: pytest.fail("ran relate"))
+    with pytest.raises(PushNotConfirmed):
+        fixture_run.push(confirm)
+
+
 def test_retract_without_confirm_raises_before_anything_runs(fixture_run, monkeypatch):
     monkeypatch.setattr("lab.roundtrip.retract.neo4j_session", lambda *a, **k: pytest.fail("opened Bolt"))
     for confirm in (False, None, 1, "yes"):
