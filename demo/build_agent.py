@@ -3,7 +3,7 @@
     uv run python demo/build_agent.py                               the page, from the log
     uv run --with pillow python demo/build_agent.py --shots DIR      also crop walk.py's `agent` screenshots
 
-The log is Claude Code's stream-json output from `sh demo/agent/run.sh`: the session's init line (model, tools,
+The log is Claude Code's stream-json output from `demo/agent/run.py`: the session's init line (model, tools,
 MCP servers), each assistant message (text and tool calls), each tool result, and the final result. Tool results
 are shown trimmed to what a reader needs, with the whole result folded underneath.
 """
@@ -34,12 +34,14 @@ This page is rendered from the session's log, [`agent/session.jsonl`](agent/sess
 
 None of these rely on the prompt. Each is a flag or a check in the lab's code.
 
-- **Two MCP servers, no other tools.** No shell, no files, no web. The flags in `run.sh` turn the rest off.
+- **Two MCP servers, no other tools.** No shell, no files, no web. The flags in `run.py` turn the rest off, and it
+  keeps a log only when the session had the two servers' tools and nothing else.
 - **Reads go through Relate's MCP server, read-only.** `relate serve --read-only=live` follows the lab's writes and
   refuses any write sent through it.
 - **Actions go through the lab's nine tools.** The long ones queue their work and answer at once. `run_status`
   waits for them.
-- **One write reaches the master graph: `apply_push` with `confirm=true`.** It fails without a `preview_push` newer
+- **One write reaches the master graph: `apply_push` with `confirm` set to the JSON boolean `true`.** A string or a
+  number is refused (decision 50). It fails without a `preview_push` newer
   than the last thing staged. That review is Relate's dry run plus the lab's own delta.
 - **The agent's summary gets the same checks as the API's.** Every number has to be in the evidence, every member it
   names has to be a member, and no verdict words. A summary that fails is replaced by the template, and the tool
@@ -48,10 +50,10 @@ None of these rely on the prompt. Each is a flag or a check in the lab's code.
 ## Run it yourself
 
 With the lab running (`docker compose --profile local up`, or `uv run python -m lab serve`) and Claude Code
-installed, from the repo root:
+installed, from the repo root, in any shell:
 
 ```
-sh demo/agent/run.sh                 # the prompt is demo/agent/prompt.md, the servers demo/agent/mcp.json
+uv run python demo/agent/run.py      # the prompt is demo/agent/prompt.md; the ports come from .env, as Compose's do
 uv run python demo/build_agent.py    # this page, from the new log
 ```
 """

@@ -133,6 +133,11 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
     refuse a string, a number or null. Before, `"yes"` and `1` were read as true. The MCP SDK checks a call against a
     model it builds from the tool's signature, so the signature carries each field's constraints: `StrictBool` on
     `confirm`, and the range of `wait_seconds`.
+51. **One agent runner for every shell.** `demo/agent/run.py` replaces the shell script, which needed `sh`. It
+    reads the two servers' ports from the lab's settings, the ones Compose publishes, so the agent's config follows
+    the running lab. The prompt goes in on stdin and the config in a file, so nothing depends on the shell's quoting.
+    It replaces the committed log only after a session that ends in a result with the two servers' tools and nothing
+    else. `run.sh` stays as a wrapper.
 
 ## Open
 
