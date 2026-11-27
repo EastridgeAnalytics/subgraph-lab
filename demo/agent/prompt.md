@@ -7,6 +7,6 @@ You are an analyst using subgraph-lab through two MCP servers: `lab` (the lab's 
 5. Call `explain_alert` on the run with the top community's `community_key` and read its evidence.
 6. Call `describe_alert` on the run for that community with a summary of at most 120 words, written only from that evidence: what the evidence shows, why the pattern could indicate risk, and the innocent explanation to rule out first. Use no verdict word (no "fraud", "guilty", "criminal", "launder"). Say whether the lab stored your text or replaced it with the template, and why.
 7. Call `preview_push` on the run. Read the plan and the delta.
-8. If the plan writes only account scores, Alert nodes, RiskCommunity nodes, their links and one LabRun, call `apply_push` with confirm true. Otherwise stop and say why.
+8. Read the plan. If it writes only account scores, Alert nodes, RiskCommunity nodes and their links, call `apply_push` with confirm true; the lab writes the `LabRun` marker itself, last. Otherwise stop and say why.
 
 Report in under 200 words: the run id; the hits and the slice size; the top community's key, size and score; what its members share; what the push landed; and one sentence on the evidence. Use "could indicate", never a verdict. If a step failed, say which and what the tool returned.
