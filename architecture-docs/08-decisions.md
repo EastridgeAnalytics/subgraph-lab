@@ -145,6 +145,11 @@ Decisions 44 and 45 come from measuring wave 5 on the seed ([wave-5](reviews/wav
     reads first and goes on only when the database is empty or holds this seed and nothing else. A label or type
     outside the seed's, or a node whose key is not one of its keys, is refused before anything is written. A test
     loads the seed both ways into a throwaway Neo4j and requires the same graph. A7 runs it on Aura.
+53. **The run command builds, and a second clone names itself.** `compose.yaml` keeps its fixed project name and
+    image tag, so every clone on a machine shares the bundled Neo4j, the runs and the image. The documented command
+    is `up --build`, so the image always comes from the code in the folder. A second clone sets
+    `COMPOSE_PROJECT_NAME` and its own ports in `.env`, which Compose reads before the file's name. Dropping the
+    fixed name would not help: a clone made by the README is a folder called `subgraph-lab` either way.
 
 ## Open
 

@@ -41,7 +41,7 @@ Volumes are named, not bind mounts. No Relate server image is published, so the 
 
 ```
 cp .env.example .env     # NEO4J_URI, NEO4J_USERNAME, NEO4J_PASSWORD, NEO4J_DATABASE
-docker compose up        # the main path: your Aura instance
+docker compose up --build   # the main path: your Aura instance
 ```
 
 An empty Aura instance gets the demo bank from `docker compose run --rm lab python -m generator.load`, after
@@ -49,8 +49,15 @@ An empty Aura instance gets the demo bank from `docker compose run --rm lab pyth
 merging on each key, and it refuses a database that holds anything but this seed (decision 52).
 
 ```
-docker compose --profile local up     # plus the bundled Neo4j and the seed
+docker compose --profile local up --build     # plus the bundled Neo4j and the seed
 ```
+
+`compose.yaml` fixes the project name, `subgraph-lab`, and the image tag, `subgraph-lab:dev`, so every clone on a
+machine shares them. Without `--build`, `up` runs whatever image has that tag, which may come from older code;
+with it, the image comes from the folder it runs in, and the layers it already has are reused. A second clone sets
+`COMPOSE_PROJECT_NAME` and its own ports in `.env`, which overrides the file's name and gives it its own Neo4j and
+runs. Or the first comes down with `docker compose --profile local down -v`, which deletes its graph and its runs.
+The A1 walk does the first with `-p` (decision 53).
 
 The image build downloads Relate's Linux binary from its GitHub release. Where the build cannot reach GitHub but
 the host can (some Docker Desktop networks and proxies), download the same file on the host and build from it.

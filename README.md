@@ -131,8 +131,11 @@ queries. To run the whole loop on your machine:
 git clone https://github.com/EastridgeAnalytics/subgraph-lab
 cd subgraph-lab
 cp .env.example .env                 # change the ports in it if another Neo4j already uses them
-docker compose --profile local up    # builds the image, makes the seed, starts Neo4j and the lab
+docker compose --profile local up --build   # the image from this code, the seed, Neo4j and the lab
 ```
+
+A second clone on the same machine shares this one's Compose project, so its Neo4j and runs. Give it its own
+`COMPOSE_PROJECT_NAME` and ports in `.env`, or take this one down first with `docker compose --profile local down -v`.
 
 Open `http://localhost:8000`, then Connect, Slice, Run, and Review and push. With Aura instead of the bundled Neo4j, set `NEO4J_URI`,
 `NEO4J_USERNAME`, `NEO4J_PASSWORD` and `NEO4J_DATABASE` in `.env`. A new instance is empty, so load the demo bank
