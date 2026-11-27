@@ -4,7 +4,7 @@ Gave Claude Code (Sonnet) two MCP servers, the lab's and Relate's, and nothing e
 the riskiest ring among accounts active since 20 October 2026 and explain it. It found R0006, the planted ring a
 person finds in [the walkthrough](README.md). On the way it pulled a slice, searched it, scored it, read the
 communities through Relate, wrote a summary the lab checked, read the dry run and pushed the results back with a
-confirm. 13 turns, 3.7 minutes.
+confirm. 13 turns, 2.8 minutes.
 
 This page is rendered from the session's log, [`agent/session.jsonl`](agent/session.jsonl), by
 [`build_agent.py`](build_agent.py). Nobody edits it by hand.
@@ -38,7 +38,7 @@ uv run python demo/build_agent.py    # this page, from the new log
 
 ## The session
 
-Model `claude-sonnet-5-5`. MCP servers: `lab` connected, `relate` connected. Tools the agent had: 11 from the two servers, and nothing else. 13 turns, 3.7 minutes.
+Model `claude-sonnet-5-5`. MCP servers: `lab` connected, `relate` connected. Tools the agent had: 11 from the two servers, and nothing else. 13 turns, 2.8 minutes.
 
 The run it made, from the lab's manifest ([`agent/manifest.json`](agent/manifest.json)): `run-20261116T152139Z-1923a8`, pulled by `relate` and pushed by `relate`.
 
@@ -64,25 +64,64 @@ The run it made, from the lab's manifest ([`agent/manifest.json`](agent/manifest
     "name": "agent-demo",
     "pull": {
       "mode": "schema",
-      "since": "2026-10-20T00:00:00Z"
+      "since": "2026-10-20T00:00:00Z",
+      "labels": [],
+      "types": [],
+      "params": {}
     },
     "models": [
       "node2vec",
       "communities",
       "velocity"
     ],
-    "summaries": true
+    "summaries": true,
+    "graph": {
+      "account_key": "account_id",
+      "account_label": "Account",
+      "account_opened": "opened",
+      "identifiers": [
+        {
+          "key": "device_id",
+          "kind": "device",
+          "label": "Device",
+          "rel_type": "USES_DEVICE"
+        },
+        {
+          "key": "email_id",
+          "kind": "email",
+          "label": "Email",
+          "rel_type": "HAS_EMAIL"
+        },
+        {
+          "key": "address_id",
+          "kind": "address",
+          "label": "Address",
+          "rel_type": "HAS_ADDRESS"
+        }
+      ],
+      "payment_amount": "amount",
+      "payment_key": "tx_id",
+      "payment_time": "ts",
+      "payment_type": "TX"
+    },
+    "write_back": {
+      "accounts": true,
+      "alerts": true,
+      "communities": true,
+      "dispositions": true,
+      "vectors": true
+    }
   }
 }
 ```
 
-`run_id`: run-20261116T152139Z-1923a8 · `status`: queued
+`run_id`: run-20261127T215354Z-594813 · `status`: queued
 
 <details><summary>The whole result</summary>
 
 ```
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "status": "queued",
   "nodes": null,
   "relationships": null,
@@ -96,7 +135,7 @@ The run it made, from the lab's manifest ([`agent/manifest.json`](agent/manifest
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "wait_seconds": 240
 }
 ```
@@ -121,9 +160,9 @@ Run `done`.
 
 ```
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "recipe_hash": "48044ee5511e0a38",
-  "created_at": "2026-11-16T15:21:39.152298Z",
+  "created_at": "2026-11-27T21:53:54.100590Z",
   "finished_at": null,
   "status": "done",
   "routes": {
@@ -134,20 +173,20 @@ Run `done`.
     {
       "name": "pull",
       "status": "done",
-      "started_at": "2026-11-16T15:21:39.201668Z",
-      "finished_at": "2026-11-16T15:22:07.336382Z",
+      "started_at": "2026-11-27T21:53:54.115297Z",
+      "finished_at": "2026-11-27T21:54:46.956840Z",
       "counts": {
         "nodes": 28677,
         "relationships": 30882,
         "constraints": 7
       },
-      "note": "route relate, 25.8s"
+      "note": "route relate, 52.0s"
     },
     {
       "name": "indexes",
       "status": "done",
-      "started_at": "2026-11-16T15:22:07.340703Z",
-      "finished_at": "2026-11-16T15:22:07.802097Z",
+      "started_at": "2026-11-27T21:54:46.957496Z",
+      "finished_at": "2026-11-27T21:54:47.198601Z",
       "counts": {
         "indexes": 4,
         "created": 4
@@ -157,8 +196,8 @@ Run `done`.
     {
       "name": "first_pass",
       "status": "done",
-      "started_at": "2026-11-16T15:22:28.091093Z",
-      "finished_at": "2026-11-16T15:24:12.539444Z",
+      "started_at": "2026-11-27T21:54:47.200094Z",
+      "finished_at": "2026-11-27T21:56:09.132322Z",
       "counts": {
         "accounts": 7254,
         "embeddings": 7254,
@@ -168,7 +207,7 @@ Run `done`.
         "embedding_dim": 64,
         "write_batches": 1
       },
-      "note": "104.4s"
+      "note": "81.9s"
     },
     {
       "name": "slice",
@@ -209,7 +248,7 @@ Run `done`.
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "search": {
     "text": "new accounts sharing one device and address",
     "k": 20,
@@ -218,7 +257,7 @@ Run `done`.
 }
 ```
 
-20 hits, 1 hop. The slice around them: 372 nodes, 434 relationships, 0.5 MB, under the cap of 200,000: True. Top five by fused rank: A0000897 (vector and fulltext), A0001287 (vector and fulltext), A0001723 (vector and fulltext), A0001818 (vector and fulltext), A0005373 (vector and fulltext).
+20 hits, 1 hop. The slice around them: 372 nodes, 431 relationships, 0.5 MB, under the cap of 200,000: True. Top five by fused rank: A0000897 (vector and fulltext), A0001287 (vector and fulltext), A0001723 (vector and fulltext), A0001818 (vector and fulltext), A0005373 (vector and fulltext).
 
 <details><summary>The whole result</summary>
 
@@ -274,15 +313,8 @@ Run `done`.
       ]
     },
     {
-      "key": "A0008824",
+      "key": "A0007108",
       "rrf": 0.015384615384615385,
-      "found_by": [
-        "vector"
-      ]
-    },
-    {
-      "key": "A0000953",
-      "rrf": 0.015151515151515152,
       "found_by": [
         "vector"
       ]
@@ -295,6 +327,13 @@ Run `done`.
       ]
     },
     {
+      "key": "A0006881",
+      "rrf": 0.015151515151515152,
+      "found_by": [
+        "vector"
+      ]
+    },
+    {
       "key": "A0000171",
       "rrf": 0.014925373134328358,
       "found_by": [
@@ -302,35 +341,37 @@ Run `done`.
       ]
     },
     {
-      "key": "A0005282",
+      "key": "A0003687",
 ... 77 more lines
 ```
 
 </details>
 
+> 20 hits; slice of 372 nodes and 431 relationships.
+
 **4. `score`** on `lab`
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8"
+  "run_id": "run-20261127T215354Z-594813"
 }
 ```
 
-`run_id`: run-20261116T152139Z-1923a8 · `status`: queued
+`run_id`: run-20261127T215354Z-594813 · `status`: queued
 
 <details><summary>The whole result</summary>
 
 ```
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "status": "queued",
   "accounts_scored": null,
   "alerts": null,
   "communities": null,
   "manifest": {
-    "run_id": "run-20261116T152139Z-1923a8",
+    "run_id": "run-20261127T215354Z-594813",
     "recipe_hash": "48044ee5511e0a38",
-    "created_at": "2026-11-16T15:21:39.152298Z",
+    "created_at": "2026-11-27T21:53:54.100590Z",
     "finished_at": null,
     "status": "running",
     "routes": {
@@ -341,20 +382,20 @@ Run `done`.
       {
         "name": "pull",
         "status": "done",
-        "started_at": "2026-11-16T15:21:39.201668Z",
-        "finished_at": "2026-11-16T15:22:07.336382Z",
+        "started_at": "2026-11-27T21:53:54.115297Z",
+        "finished_at": "2026-11-27T21:54:46.956840Z",
         "counts": {
           "nodes": 28677,
           "relationships": 30882,
           "constraints": 7
         },
-        "note": "route relate, 25.8s"
+        "note": "route relate, 52.0s"
       },
       {
         "name": "indexes",
         "status": "done",
-        "started_at": "2026-11-16T15:22:07.340703Z",
-        "finished_at": "2026-11-16T15:22:07.802097Z",
+        "started_at": "2026-11-27T21:54:46.957496Z",
+        "finished_at": "2026-11-27T21:54:47.198601Z",
         "counts": {
           "indexes": 4,
           "created": 4
@@ -364,8 +405,8 @@ Run `done`.
       {
         "name": "first_pass",
         "status": "done",
-        "started_at": "2026-11-16T15:22:28.091093Z",
-        "finished_at": "2026-11-16T15:24:12.539444Z",
+        "started_at": "2026-11-27T21:54:47.200094Z",
+        "finished_at": "2026-11-27T21:56:09.132322Z",
         "counts": {
           "accounts": 7254,
           "embeddings": 7254,
@@ -375,20 +416,20 @@ Run `done`.
           "embedding_dim": 64,
           "write_batches": 1
         },
-        "note": "104.4s"
+        "note": "81.9s"
       },
       {
         "name": "slice",
         "status": "done",
-        "started_at": "2026-11-16T15:24:15.360214Z",
-        "finished_at": "2026-11-16T15:24:16.564328Z",
+        "started_at": "2026-11-27T21:56:12.480891Z",
+        "finished_at": "2026-11-27T21:56:13.743892Z",
         "counts": {
           "hits": 20,
           "hops": 1,
           "accounts": 103,
           "nodes": 372,
-          "relationships": 434,
-          "memory_bytes": 557603
+          "relationships": 431,
+          "memory_bytes": 555736
         },
         "note": null
       },
@@ -410,7 +451,7 @@ Run `done`.
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "wait_seconds": 240
 }
 ```
@@ -425,9 +466,9 @@ Run `done`.
 | slice | done | hits 20, hops 1, accounts 103 |
 | models | skipped |  |
 | score | done | accounts 103, alerts 21, factors 7 |
-| communities | done | communities 11, community_members 45, largest 7 |
-| summaries | done | summaries 32, from_api 0, from_template 32 |
-| stage | done | accounts 103, communities 11, members 45 |
+| communities | done | communities 9, community_members 38, largest 7 |
+| summaries | done | summaries 30, from_api 0, from_template 30 |
+| stage | done | accounts 103, communities 9, members 38 |
 | review | pending |  |
 | push | pending |  |
 
@@ -435,9 +476,9 @@ Run `done`.
 
 ```
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "recipe_hash": "48044ee5511e0a38",
-  "created_at": "2026-11-16T15:21:39.152298Z",
+  "created_at": "2026-11-27T21:53:54.100590Z",
   "finished_at": null,
   "status": "done",
   "routes": {
@@ -448,20 +489,20 @@ Run `done`.
     {
       "name": "pull",
       "status": "done",
-      "started_at": "2026-11-16T15:21:39.201668Z",
-      "finished_at": "2026-11-16T15:22:07.336382Z",
+      "started_at": "2026-11-27T21:53:54.115297Z",
+      "finished_at": "2026-11-27T21:54:46.956840Z",
       "counts": {
         "nodes": 28677,
         "relationships": 30882,
         "constraints": 7
       },
-      "note": "route relate, 25.8s"
+      "note": "route relate, 52.0s"
     },
     {
       "name": "indexes",
       "status": "done",
-      "started_at": "2026-11-16T15:22:07.340703Z",
-      "finished_at": "2026-11-16T15:22:07.802097Z",
+      "started_at": "2026-11-27T21:54:46.957496Z",
+      "finished_at": "2026-11-27T21:54:47.198601Z",
       "counts": {
         "indexes": 4,
         "created": 4
@@ -471,8 +512,8 @@ Run `done`.
     {
       "name": "first_pass",
       "status": "done",
-      "started_at": "2026-11-16T15:22:28.091093Z",
-      "finished_at": "2026-11-16T15:24:12.539444Z",
+      "started_at": "2026-11-27T21:54:47.200094Z",
+      "finished_at": "2026-11-27T21:56:09.132322Z",
       "counts": {
         "accounts": 7254,
         "embeddings": 7254,
@@ -482,20 +523,20 @@ Run `done`.
         "embedding_dim": 64,
         "write_batches": 1
       },
-      "note": "104.4s"
+      "note": "81.9s"
     },
     {
       "name": "slice",
       "status": "done",
-      "started_at": "2026-11-16T15:24:15.360214Z",
-      "finished_at": "2026-11-16T15:24:16.564328Z",
+      "started_at": "2026-11-27T21:56:12.480891Z",
+      "finished_at": "2026-11-27T21:56:13.743892Z",
       "counts": {
         "hits": 20,
         "hops": 1,
         "accounts": 103,
         "nodes": 372,
-        "relationships": 434,
-        "memory_bytes": 557603
+        "relationships": 431,
+        "memory_bytes": 555736
       },
       "note": null
     },
@@ -510,8 +551,8 @@ Run `done`.
     {
       "name": "score",
       "status": "done",
-      "started_at": "2026-11-16T15:24:18.119604Z",
-      "finished_at": "2026-11-16T15:24:53.112829Z",
+      "started_at": "2026-11-27T21:56:15.113133Z",
+      "finished_at": "2026-11-27T21:56:18.665958Z",
       "counts": {
         "accounts": 103,
 ... 85 more lines
@@ -525,7 +566,7 @@ Run `done`.
 {}
 ```
 
-Labels with counts: Account 7,254, Address 7,133, Device 7,133, Email 7,157, RiskCommunity 11. Relationship types: HAS_ADDRESS, HAS_EMAIL, IN_RISK_COMMUNITY, TX, USES_DEVICE.
+Labels with counts: Account 7,254, Address 7,133, Device 7,133, Email 7,157, RiskCommunity 9. Relationship types: HAS_ADDRESS, HAS_EMAIL, IN_RISK_COMMUNITY, TX, USES_DEVICE.
 
 <details><summary>The whole result</summary>
 
@@ -623,11 +664,11 @@ MATCH (c:RiskCommunity) RETURN c.community_key AS community_key, c.size AS size,
 
 | community_key | score | size | summary |
 |---|---|---|---|
-| a4ac27963e4bb2e147708ba687df24cfc87b7462 | 0.8436 | 5 | This community has 5 accounts and scores 0.84, ranking 1 of 11 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 ... |
-| 572acc3a7d511f61e092d7ec0f24272ef78cdc30 | 0.7742 | 6 | This community has 6 accounts and scores 0.77, ranking 2 of 11 communities in the slice; its members share address AD0000171 (6 members) and device D0000171 ... |
-| 310dd25a57388649b5129e72bd5031df3dfc7729 | 0.7178 | 7 | This community has 7 accounts and scores 0.72, ranking 3 of 11 communities in the slice; its members share address AD0000350 (7 members) and device D0000350 ... |
-| 787e62949a7fcb3918af2f0444a1c89c89a8000f | 0.6785 | 3 | This community has 3 accounts and scores 0.68, ranking 4 of 11 communities in the slice; its members share address AD0000501 (3 members) and device D0000501 ... |
-| cef64fc9a4c6cb5524f88a923eee011118e7f4ea | 0.2755 | 4 | This community has 4 accounts and scores 0.28, ranking 5 of 11 communities in the slice; its members share address AD0003435 (4 members) and device D0003435 ... |
+| 81799b80c38ce1f8055c596433e980c55b78945c | 0.8436 | 5 | This community has 5 accounts and scores 0.84, ranking 1 of 9 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 (... |
+| 22f88d2b98a32105d9edb36c86945354e3742c06 | 0.7742 | 6 | This community has 6 accounts and scores 0.77, ranking 2 of 9 communities in the slice; its members share address AD0000171 (6 members) and device D0000171 (... |
+| d58834fca1b2241cbb47f0e15b47dee6e5e08217 | 0.7178 | 7 | This community has 7 accounts and scores 0.72, ranking 3 of 9 communities in the slice; its members share address AD0000350 (7 members) and device D0000350 (... |
+| 9299c945d22c943371f59dda6f8be0e3e873bcba | 0.6785 | 3 | This community has 3 accounts and scores 0.68, ranking 4 of 9 communities in the slice; its members share address AD0000501 (3 members) and device D0000501 (... |
+| b62b03e3af2082e1f5a02e1ee04ddd90592d333c | 0.2755 | 4 | This community has 4 accounts and scores 0.28, ranking 5 of 9 communities in the slice; its members share address AD0003435 (4 members) and device D0003435 (... |
 
 <details><summary>The whole result</summary>
 
@@ -645,13 +686,13 @@ MATCH (c:RiskCommunity) RETURN c.community_key AS community_key, c.size AS size,
     "score",
     "summary"
   ],
-  "elapsed_ms": 0.8272,
+  "elapsed_ms": 0.438617,
   "error": null,
-  "execute_ms": 0.6581,
-  "lex_parse_ms": 0.0281,
-  "lower_ms": 0.0374,
+  "execute_ms": 0.258421,
+  "lex_parse_ms": 0.02595,
+  "lower_ms": 0.04079,
   "notifications": [],
-  "parse_ms": 0.1046,
+  "parse_ms": 0.108244,
   "plan": {
     "profiled": false,
     "root": {
@@ -661,7 +702,7 @@ MATCH (c:RiskCommunity) RETURN c.community_key AS community_key, c.size AS size,
           "actual": null,
           "children": [],
           "details": "(c:RiskCommunity)",
-          "estimated_rows": 11,
+          "estimated_rows": 9,
           "identifiers": [],
           "operator": "NodeByLabelScan",
           "warnings": []
@@ -677,39 +718,39 @@ MATCH (c:RiskCommunity) RETURN c.community_key AS community_key, c.size AS size,
     "statement": "MATCH (c:RiskCommunity) RETURN c.community_key AS community_key, c.size AS size, c.score AS score, c.summary AS summary ORDER BY c.score DESC LIMIT 5"
   },
   "plan_cache": "miss",
-  "plan_ms": 0.045399999999999996,
-  "result_generation_ms": 0.0015999999999999999,
-  "rewrite_ms": 0.0026,
+  "plan_ms": 0.051817999999999996,
+  "result_generation_ms": 0.000625,
+  "rewrite_ms": 0.0032990000000000003,
   "rows": [
     {
-      "community_key": "a4ac27963e4bb2e147708ba687df24cfc87b7462",
+      "community_key": "81799b80c38ce1f8055c596433e980c55b78945c",
       "score": 0.8435942399999999,
       "size": 5,
-      "summary": "This community has 5 accounts and scores 0.84, ranking 1 of 11 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 (5 members); they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 between members; money went round 21 payment cycles among them; payments ran from 2026-10-20 to 2026-10-30; Money in and out of similar size within a day (5 accounts) and New accounts sharing an identifier (5 accounts) fired. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer."
+      "summary": "This community has 5 accounts and scores 0.84, ranking 1 of 9 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 (5 members); they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 between members; money went round 21 payment cycles among them; payments ran from 2026-10-20 to 2026-10-30; Money in and out of similar size within a day (5 accounts) and New accounts sharing an identifier (5 accounts) fired. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer."
     },
     {
-      "community_key": "572acc3a7d511f61e092d7ec0f24272ef78cdc30",
+      "community_key": "22f88d2b98a32105d9edb36c86945354e3742c06",
       "score": 0.774208,
       "size": 6,
-      "summary": "This community has 6 accounts and scores 0.77, ranking 2 of 11 communities in the slice; its members share address AD0000171 (6 members) and device D0000171 (6 members); they took in 80,037.65, paid out 511.29 and moved 42,937.03 between members; money went round 10 payment cycles among them; payments ran from 2026-10-20 to 2026-10-27; New accounts sharing an identifier (6 accounts) and Five or more accounts on one device (6 accounts) fired; the highest scores belong to A0000171, A0003223 and A0003974. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer."
+      "summary": "This community has 6 accounts and scores 0.77, ranking 2 of 9 communities in the slice; its members share address AD0000171 (6 members) and device D0000171 (6 members); they took in 80,037.65, paid out 511.29 and moved 42,937.03 between members; money went round 10 payment cycles among them; payments ran from 2026-10-20 to 2026-10-27; New accounts sharing an identifier (6 accounts) and Five or more accounts on one device (6 accounts) fired; the highest scores belong to A0000171, A0003223 and A0003974. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer."
     },
     {
-      "community_key": "310dd25a57388649b5129e72bd5031df3dfc7729",
+      "community_key": "d58834fca1b2241cbb47f0e15b47dee6e5e08217",
       "score": 0.71776,
       "size": 7,
-      "summary": "This community has 7 accounts and scores 0.72, ranking 3 of 11 communities in the slice; its members share address AD0000350 (7 members) and device D0000350 (7 members); they took in 64,899.53, paid out 420.92 and moved 30,060.39 between members; payments ran from 2026-10-20 to 2026-10-29; New accounts sharing an identifier (7 accounts) and Five or more accounts on one device (7 accounts) fired; the highest scores belong to A0000350, A0001346 and A0001825. A pattern like this could indicate accounts run together rather than by independent customers and a batch of newly opened accounts. An innocent explanation to rule out first is a household or a shared computer, or people who share a home or an office."
+      "summary": "This community has 7 accounts and scores 0.72, ranking 3 of 9 communities in the slice; its members share address AD0000350 (7 members) and device D0000350 (7 members); they took in 64,899.53, paid out 420.92 and moved 30,060.39 between members; payments ran from 2026-10-20 to 2026-10-29; New accounts sharing an identifier (7 accounts) and Five or more accounts on one device (7 accounts) fired; the highest scores belong to A0000350, A0001346 and A0001825. A pattern like this could indicate accounts run together rather than by independent customers and a batch of newly opened accounts. An innocent explanation to rule out first is a household or a shared computer, or people who share a home or an office."
     },
     {
-      "community_key": "787e62949a7fcb3918af2f0444a1c89c89a8000f",
+      "community_key": "9299c945d22c943371f59dda6f8be0e3e873bcba",
       "score": 0.6784666666666667,
       "size": 3,
-      "summary": "This community has 3 accounts and scores 0.68, ranking 4 of 11 communities in the slice; its members share address AD0000501 (3 members) and device D0000501 (3 members); they took in 70.16, paid out 532.19 and moved 0.00 between members; payments ran from 2026-10-20 to 2026-10-26; New accounts sharing an identifier (3 accounts) fired; the highest scores belong to A0001833, A0002239 and A0006090. A pattern like this could indicate accounts run together rather than by independent customers and members that already score high on their own. An innocent explanation to rule out first is a household or a shared computer, or people who share a home or an office."
+      "summary": "This community has 3 accounts and scores 0.68, ranking 4 of 9 communities in the slice; its members share address AD0000501 (3 members) and device D0000501 (3 members); they took in 70.16, paid out 532.19 and moved 0.00 between members; payments ran from 2026-10-20 to 2026-10-26; New accounts sharing an identifier (3 accounts) fired; the highest scores belong to A0001833, A0002239 and A0006090. A pattern like this could indicate accounts run together rather than by independent customers and members that already score high on their own. An innocent explanation to rule out first is a household or a shared computer, or people who share a home or an office."
     },
     {
-      "community_key": "cef64fc9a4c6cb5524f88a923eee011118e7f4ea",
+      "community_key": "b62b03e3af2082e1f5a02e1ee04ddd90592d333c",
       "score": 0.2755279788818902,
       "size": 4,
-      "summary": "This community has 4 accounts and scores 0.28, ranking 5 of 11 communities in the slice; its members share address AD0003435 (4 members) and device D0003435 (4 members); they took in 122.77, paid out 999.20 and moved 382.61 between members; money went round 1 payment cycle among them; payments ran from 2026-10-20 to 2026-10-31. A pattern like this could indicate accounts run together rather than by independent customers and a batch of newly opened accounts. An innocent explanation to rule out first is a household or a shared computer, or people who share a home or an office."
+      "summary": "This community has 4 accounts and scores 0.28, ranking 5 of 9 communities in the slice; its members share address AD0003435 (4 members) and device D0003435 (4 members); they took in 122.77, paid out 999.20 and moved 382.61 between members; money went round 1 payment cycle among them; payments ran from 2026-10-20 to 2026-10-31. A pattern like this could indicate accounts run together rather than by independent customers and a batch of newly opened accounts. An innocent explanation to rule out first is a household or a shared computer, or people who share a home or an office."
     }
   ],
 ... 14 more lines
@@ -720,16 +761,16 @@ MATCH (c:RiskCommunity) RETURN c.community_key AS community_key, c.size AS size,
 **8. `read_cypher`** on `relate`
 
 ```cypher
-MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity {community_key: $k}) OPTIONAL MATCH (a)-[:USES_DEVICE]->(d:Device) OPTIONAL MATCH (a)-[:HAS_ADDRESS]->(ad:Address) RETURN a.account_id AS account, a.risk_score AS score, d.device_id AS device, ad.address_id AS address ORDER BY score DESC
+MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity {community_key: $k}) OPTIONAL MATCH (a)-[:USES_DEVICE]->(d:Device) OPTIONAL MATCH (a)-[:HAS_ADDRESS]->(ad:Address) RETURN a.account_id AS account, a.risk_score AS risk_score, d.device_id AS device, ad.address_id AS address ORDER BY a.risk_score DESC
 ```
 
-| account | address | device | score |
+| account | address | device | risk_score |
 |---|---|---|---|
-| A0005373 | AD0000896 | D0000896 | null |
-| A0001818 | AD0000896 | D0000896 | null |
-| A0001723 | AD0000896 | D0000896 | null |
-| A0001287 | AD0000896 | D0000896 | null |
-| A0000897 | AD0000896 | D0000896 | null |
+| A0005373 | AD0000896 | D0000896 | 0.902 |
+| A0001818 | AD0000896 | D0000896 | 0.902 |
+| A0001723 | AD0000896 | D0000896 | 0.902 |
+| A0001287 | AD0000896 | D0000896 | 0.902 |
+| A0000897 | AD0000896 | D0000896 | 0.902 |
 
 <details><summary>The whole result</summary>
 
@@ -737,23 +778,23 @@ MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity {community_key: $k}) OP
 {
   "columnTypes": [
     "STRING",
-    "ANY",
+    "FLOAT",
     "STRING",
     "STRING"
   ],
   "columns": [
     "account",
-    "score",
+    "risk_score",
     "device",
     "address"
   ],
-  "elapsed_ms": 0.7538,
+  "elapsed_ms": 0.5281170000000001,
   "error": null,
-  "execute_ms": 0.5417,
-  "lex_parse_ms": 0.028,
-  "lower_ms": 0.0535,
+  "execute_ms": 0.33388500000000004,
+  "lex_parse_ms": 0.026698,
+  "lower_ms": 0.045518,
   "notifications": [],
-  "parse_ms": 0.1178,
+  "parse_ms": 0.10999300000000001,
   "plan": {
     "profiled": false,
     "root": {
@@ -796,24 +837,24 @@ MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity {community_key: $k}) OP
       "warnings": []
     },
     "schema": "relate.plan/v1",
-    "statement": "MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity {community_key: $k}) OPTIONAL MATCH (a)-[:USES_DEVICE]->(d:Device) OPTIONAL MATCH (a)-[:HAS_ADDRESS]->(ad:Address) RETURN a.account_id AS account, a.risk_score AS score, d.device_id AS device, ad.address_id AS address ORDER BY score DESC"
+    "statement": "MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity {community_key: $k}) OPTIONAL MATCH (a)-[:USES_DEVICE]->(d:Device) OPTIONAL MATCH (a)-[:HAS_ADDRESS]->(ad:Address) RETURN a.account_id AS account, a.risk_score AS risk_score, d.device_id AS device, ad.address_id AS address ORDER BY a.risk_score DESC"
   },
   "plan_cache": "miss",
-  "plan_ms": 0.0686,
-  "result_generation_ms": 0.0007999999999999999,
-  "rewrite_ms": 0.0028,
+  "plan_ms": 0.066601,
+  "result_generation_ms": 0.000556,
+  "rewrite_ms": 0.0029059999999999997,
   "rows": [
     {
       "account": "A0005373",
       "address": "AD0000896",
       "device": "D0000896",
-      "score": null
+      "risk_score": 0.902
     },
     {
       "account": "A0001818",
       "address": "AD0000896",
       "device": "D0000896",
-      "score": null
+      "risk_score": 0.902
 ... 34 more lines
 ```
 
@@ -823,12 +864,12 @@ MATCH (a:Account)-[:IN_RISK_COMMUNITY]->(c:RiskCommunity {community_key: $k}) OP
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8",
-  "key": "a4ac27963e4bb2e147708ba687df24cfc87b7462"
+  "run_id": "run-20261127T215354Z-594813",
+  "key": "81799b80c38ce1f8055c596433e980c55b78945c"
 }
 ```
 
-The evidence object for community `a4ac27963e4b…`: 5 members (A0000897, A0001287, A0001723, A0001818, A0005373), score 0.8436, rank 1 of 11.
+The evidence object for community `81799b80c38c…`: 5 members (A0000897, A0001287, A0001723, A0001818, A0005373), score 0.8436, rank 1 of 9.
 
 - Shared identifiers: address AD0000896 shared by 5; device D0000896 shared by 5
 - Money: in 82,073.13, out 27,959.08, between members 54,190.76, 21 cycles, 2026-10-20 to 2026-10-30
@@ -842,8 +883,8 @@ The evidence object for community `a4ac27963e4b…`: 5 members (A0000897, A00012
 {
   "evidence": {
     "subject": "community",
-    "key": "a4ac27963e4bb2e147708ba687df24cfc87b7462",
-    "run_id": "run-20261116T152139Z-1923a8",
+    "key": "81799b80c38ce1f8055c596433e980c55b78945c",
+    "run_id": "run-20261127T215354Z-594813",
     "member_count": 5,
     "member_keys": [
       "A0000897",
@@ -928,9 +969,9 @@ The evidence object for community `a4ac27963e4b…`: 5 members (A0000897, A00012
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8",
-  "key": "a4ac27963e4bb2e147708ba687df24cfc87b7462",
-  "text": "Five newly opened accounts (A0000897, A0001287, A0001723, A0001818, A0005373) all share one address (AD0000896) and one device (D0000896). Between 20 and 30 October 2026 they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 among themselves, across 21 payment cycles. Money in and out of similar size within a day fired for all five. The community scores 0.84, ranking first of 11. Shared identifiers on new accounts, plus money circling between them, could indicate accounts run together rather than by independent customers. The innocent explanation to rule out first is a household or shared computer, such as housemates or a shared office, who pay each other routinely."
+  "run_id": "run-20261127T215354Z-594813",
+  "key": "81799b80c38ce1f8055c596433e980c55b78945c",
+  "text": "Five newly opened accounts (A0000897, A0001287, A0001723, A0001818, A0005373) all share one device (D0000896) and one address (AD0000896). Between 20 and 30 October 2026 they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 among themselves, through 21 payment cycles. Money in and out of similar size within a day fired for all five. Each member scores 0.902; the community scores 0.84, ranking first of nine. Shared identifiers plus fast circular movement could indicate accounts run together rather than by independent customers. The innocent explanation to rule out first is a household or shared computer, such as housemates or a small office using one connection and one address."
 }
 ```
 
@@ -938,7 +979,7 @@ The evidence object for community `a4ac27963e4b…`: 5 members (A0000897, A00012
 
 The summary now on the community (source `template`):
 
-> This community has 5 accounts and scores 0.84, ranking 1 of 11 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 (5 members); they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 between members; money went round 21 payment cycles among them; payments ran from 2026-10-20 to 2026-10-30; Money in and out of similar size within a day (5 accounts) and New accounts sharing an identifier (5 accounts) fired. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer.
+> This community has 5 accounts and scores 0.84, ranking 1 of 9 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 (5 members); they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 between members; money went round 21 payment cycles among them; payments ran from 2026-10-20 to 2026-10-30; Money in and out of similar size within a day (5 accounts) and New accounts sharing an identifier (5 accounts) fired. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer.
 
 <details><summary>The whole result</summary>
 
@@ -946,11 +987,11 @@ The summary now on the community (source `template`):
 {
   "stored": false,
   "summary": {
-    "key": "a4ac27963e4bb2e147708ba687df24cfc87b7462",
-    "text": "This community has 5 accounts and scores 0.84, ranking 1 of 11 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 (5 members); they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 between members; money went round 21 payment cycles among them; payments ran from 2026-10-20 to 2026-10-30; Money in and out of similar size within a day (5 accounts) and New accounts sharing an identifier (5 accounts) fired. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer.",
+    "key": "81799b80c38ce1f8055c596433e980c55b78945c",
+    "text": "This community has 5 accounts and scores 0.84, ranking 1 of 9 communities in the slice; its members share address AD0000896 (5 members) and device D0000896 (5 members); they took in 82,073.13, paid out 27,959.08 and moved 54,190.76 between members; money went round 21 payment cycles among them; payments ran from 2026-10-20 to 2026-10-30; Money in and out of similar size within a day (5 accounts) and New accounts sharing an identifier (5 accounts) fired. A pattern like this could indicate accounts run together rather than by independent customers and money moving in a loop between linked accounts. An innocent explanation to rule out first is a household or a shared computer.",
     "source": "template",
     "model": null,
-    "evidence_hash": "9e4bad0106b3c6f55f4f823e94e50461977190ce8dda9f55c8c5c2e15c8ea24f",
+    "evidence_hash": "0715580891f046640a105effc3435b26f6f769a8c050933011566d279254db84",
     "checks": {
       "numbers": false,
       "members": true,
@@ -969,7 +1010,7 @@ The summary now on the community (source `template`):
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8"
+  "run_id": "run-20261127T215354Z-594813"
 }
 ```
 
@@ -979,17 +1020,17 @@ The plan, from Relate's dry run:
 |---|---|---|---|
 | Account | node | 0 | 103 |
 | Alert | node | 21 | 0 |
-| RiskCommunity | node | 11 | 0 |
+| RiskCommunity | node | 9 | 0 |
 | (Alert)-[:ALERT_ON]->(Account) | relationship | 21 | 0 |
-| (Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity) | relationship | 45 | 0 |
+| (Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity) | relationship | 38 | 0 |
 
-The lab's own delta against the master graph: 103 accounts scored, 21 new alerts, 11 new communities, 114 vectors, 0 reviewer decisions, about 275 KB.
+The lab's own delta against the master graph: 103 accounts scored, 21 new alerts, 9 new communities, 112 vectors, 0 reviewer decisions, about 269 KB.
 
 <details><summary>The whole result</summary>
 
 ```
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "plan": [
     {
       "entity": "Account",
@@ -1016,8 +1057,8 @@ The lab's own delta against the master graph: 103 accounts scored, 21 new alerts
     {
       "entity": "RiskCommunity",
       "kind": "node",
-      "total": 11,
-      "created": 11,
+      "total": 9,
+      "created": 9,
       "updated": 0,
       "skipped": 0,
       "batches": 1,
@@ -1038,8 +1079,8 @@ The lab's own delta against the master graph: 103 accounts scored, 21 new alerts
     {
       "entity": "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)",
       "kind": "relationship",
-      "total": 45,
-      "created": 45,
+      "total": 38,
+      "created": 38,
       "updated": 0,
       "skipped": 0,
       "batches": 1,
@@ -1047,54 +1088,56 @@ The lab's own delta against the master graph: 103 accounts scored, 21 new alerts
       "error": null
     }
   ],
-  "plan_text": "entity                                           total  created  updated  skipped  warn  merge key      policy  batches\nAccount                                            103      103        0        0     0  account_id     add           1\nAlert                                               21       21        0        0     0  alert_key      add           1\nRiskCommunity                                       11       11        0        0     0  community_key  add           1\n(Alert)-[:ALERT_ON]->(Account)                      21       21        0        0     0                 add           1\n(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)     45       45        0        0     0                 add           1\nAccount: UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\nAlert: UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\nRiskCommunity: UNWIND $rows AS row MERGE (n:`RiskCommunity` {`community_key`: row.key.`community_key`}) SET n += row.props\n(Alert)-[:ALERT_ON]->(Account): UNWIND $rows AS row MATCH (a:`Alert` {`alert_key`: row.start.`alert_key`}) MATCH (b:`Account` {`account_id`: row.end.`account_id`}) MERGE (a)-[r:`ALERT_ON`]->(b) SET r += row.props\n(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity): UNWIND $rows AS row MATCH (a:`Account` {`account_id`: row.start.`account_id`}) MATCH (b:`RiskCommunity` {`community_key`: row.end.`community_key`}) MERGE (a)-[r:`IN_RISK_COMMUNITY`]->(b) SET r += row.props\ndry run: 5 entities, 201 rows planned; nothing was sent\n\n-- added by the lab, not printed by relate --\nThe created and updated columns of relate's table above assume the master graph is empty: its dry run does not read it, so it prints every row as created. The plan the review lists uses the lab's own counts instead, read from the master graph over Bolt, read only: Alert and RiskCommunity created are the delta's new keys, Account created is the staged accounts the master graph lacks, and a link is created unless it is already there. Total, batches and skipped are relate's.\nBefore any row is sent, the lab will create these uniqueness constraints on the master graph, over Bolt, IF NOT EXISTS: Alert.alert_key, RiskCommunity.community_key, LabRun.run_id. They are on the lab's own labels only; no customer label gets a constraint.\n",
+  "plan_text": "entity                                           total  created  updated  skipped  warn  merge key      policy  batches\nAccount                                            103      103        0        0     0  account_id     add           1\nAlert                                               21       21        0        0     0  alert_key      add           1\nRiskCommunity                                        9        9        0        0     0  community_key  add           1\n(Alert)-[:ALERT_ON]->(Account)                      21       21        0        0     0                 add           1\n(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)     38       38        0        0     0                 add           1\nAccount: UNWIND $rows AS row MERGE (n:`Account` {`account_id`: row.key.`account_id`}) SET n += row.props\nAlert: UNWIND $rows AS row MERGE (n:`Alert` {`alert_key`: row.key.`alert_key`}) SET n += row.props\nRiskCommunity: UNWIND $rows AS row MERGE (n:`RiskCommunity` {`community_key`: row.key.`community_key`}) SET n += row.props\n(Alert)-[:ALERT_ON]->(Account): UNWIND $rows AS row MATCH (a:`Alert` {`alert_key`: row.start.`alert_key`}) MATCH (b:`Account` {`account_id`: row.end.`account_id`}) MERGE (a)-[r:`ALERT_ON`]->(b) SET r += row.props\n(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity): UNWIND $rows AS row MATCH (a:`Account` {`account_id`: row.start.`account_id`}) MATCH (b:`RiskCommunity` {`community_key`: row.end.`community_key`}) MERGE (a)-[r:`IN_RISK_COMMUNITY`]->(b) SET r += row.props\ndry run: 5 entities, 192 rows planned; nothing was sent\n\n-- added by the lab, not printed by relate --\nThe created and updated columns of relate's table above assume the master graph is empty: its dry run does not read it, so it prints every row as created. The plan the review lists uses the lab's own counts instead, read from the master graph over Bolt, read only: Alert and RiskCommunity created are the delta's new keys, Account created is the staged accounts the master graph lacks, and a link is created unless it is already there. Total, batches and skipped are relate's.\nBefore any row is sent, the lab will create these uniqueness constraints on the master graph, over Bolt, IF NOT EXISTS: Alert.alert_key, RiskCommunity.community_key, LabRun.run_id. They are on the lab's own labels only; no customer label gets a constraint.\n",
   "delta": {
     "new_alerts": 21,
-    "new_communities": 11,
+    "new_communities": 9,
     "accounts_scored": 103,
     "score_changes": {
-      "new": 103,
-      "0.0-0.1": 0,
+      "new": 0,
+      "0.0-0.1": 103,
       "0.1-0.2": 0,
       "0.2-0.5": 0,
       "0.5-1.0": 0
     },
     "missing_remote_keys": 0,
     "sampled": 103,
-    "vectors": 114,
+    "vectors": 112,
     "dispositions": 0,
-    "bytes_estimate": 282083
+    "bytes_estimate": 275027
   }
 }
 ```
 
 </details>
 
+> The plan writes only Account scores, Alert nodes, RiskCommunity nodes and their two link types. The lab adds uniqueness constraints on its own labels. That matches the criteria, so I'm pushing.
+
 **12. `apply_push`** on `lab`
 
 ```json
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "confirm": true
 }
 ```
 
-Pushed: True. Pushed: 202 rows in 6 entities by relate; LabRun run-20261116T152139Z-1923a8 written last.
+Pushed: True. Pushed: 193 rows in 6 entities by relate; LabRun run-20261127T215354Z-594813 written last.
 
 | entity | kind | created | updated | landed |
 |---|---|---|---|---|
 | Account | node | 0 | 103 | true |
 | Alert | node | 21 | 0 | true |
-| RiskCommunity | node | 11 | 0 | true |
+| RiskCommunity | node | 9 | 0 | true |
 | (Alert)-[:ALERT_ON]->(Account) | relationship | 21 | 0 | true |
-| (Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity) | relationship | 45 | 0 | true |
+| (Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity) | relationship | 38 | 0 | true |
 | LabRun | node | 1 | 0 | true |
 
 <details><summary>The whole result</summary>
 
 ```
 {
-  "run_id": "run-20261116T152139Z-1923a8",
+  "run_id": "run-20261127T215354Z-594813",
   "pushed": true,
   "entities": [
     {
@@ -1122,8 +1165,8 @@ Pushed: True. Pushed: 202 rows in 6 entities by relate; LabRun run-20261116T1521
     {
       "entity": "RiskCommunity",
       "kind": "node",
-      "total": 11,
-      "created": 11,
+      "total": 9,
+      "created": 9,
       "updated": 0,
       "skipped": 0,
       "batches": 1,
@@ -1144,8 +1187,8 @@ Pushed: True. Pushed: 202 rows in 6 entities by relate; LabRun run-20261116T1521
     {
       "entity": "(Account)-[:IN_RISK_COMMUNITY]->(RiskCommunity)",
       "kind": "relationship",
-      "total": 45,
-      "created": 45,
+      "total": 38,
+      "created": 38,
       "updated": 0,
       "skipped": 0,
       "batches": 1,
@@ -1165,7 +1208,7 @@ Pushed: True. Pushed: 202 rows in 6 entities by relate; LabRun run-20261116T1521
     }
   ],
   "resumed": false,
-  "message": "Pushed: 202 rows in 6 entities by relate; LabRun run-20261116T152139Z-1923a8 written last."
+  "message": "Pushed: 193 rows in 6 entities by relate; LabRun run-20261127T215354Z-594813 written last."
 }
 ```
 
@@ -1173,18 +1216,28 @@ Pushed: True. Pushed: 202 rows in 6 entities by relate; LabRun run-20261116T1521
 
 ## The agent's report
 
-> All eight steps ran and the push landed.
+> **Run:** `run-20261127T215354Z-594813`. Every step finished, and no tool call failed.
 >
-> - **Run id:** run-20261116T152139Z-1923a8.
-> - **Search:** 20 hits. The 1-hop slice around them has 372 nodes, 434 relationships and 103 accounts.
-> - **Top community:** key `a4ac27963e4bb2e147708ba687df24cfc87b7462`, size 5, score 0.84, ranked 1 of 11.
-> - **What its members share:** all five accounts use address AD0000896 and device D0000896. They are A0000897, A0001287, A0001723, A0001818 and A0005373.
-> - **Push:** 103 account updates, 21 Alert nodes, 11 RiskCommunity nodes, 21 ALERT_ON links, 45 IN_RISK_COMMUNITY links and one LabRun. The preview plan did not list the LabRun, but it is in the allowed set and landed. The 103 account updates also carry embedding vectors (114 in the delta), not only scores.
-> - **Evidence:** the five new accounts shared one device and address and moved 54,190.76 among themselves over 21 payment cycles, which could indicate coordinated accounts. A household or shared computer is the innocent explanation to rule out first.
-> - **`describe_alert`:** the lab did not store my text. It stored the template instead, because my text failed the numbers check: "20", "30" and "2026" are not in the evidence. The template was also what the run's summaries step produced, since no `ANTHROPIC_API_KEY` is set.
-> - **Other things you may want to know:**
->   - `tgn` was skipped because there was no model output, which is expected for this recipe.
->   - `risk_score` came back null on the five members in the run store (the Cypher query's `score` column), so the 0.84 is the community score.
+> **Search:** 20 hits. The 1-hop slice around them is 372 nodes and 431 relationships, covering 103 accounts.
+>
+> **Top community:** key `81799b80c38ce1f8055c596433e980c55b78945c`, size 5, score 0.84, ranked 1 of 9. Its members are A0000897, A0001287, A0001723, A0001818 and A0005373. Each scores 0.902.
+>
+> **What members share:** all five use device D0000896 and address AD0000896.
+>
+> **Evidence:**
+> - Between 20 and 30 October, 82,073.13 came in and 27,959.08 went out.
+> - 54,190.76 moved between members, across 21 payment cycles.
+> - Money in and out of similar size within a day fired for all five.
+>
+> **describe_alert:** The lab did not store my text. It kept its template summary (`source: template`). My text failed the numbers check, because "20", "30" and "2026" are not in the evidence. The members, verdict-word, length and parts checks passed. I did not retry.
+>
+> **Push:** landed.
+> - 103 Account scores updated.
+> - 21 Alert nodes and 9 RiskCommunity nodes created.
+> - 21 ALERT_ON links and 38 IN_RISK_COMMUNITY links created.
+> - The LabRun marker was written last.
+>
+> Shared new-account identifiers plus fast circular payments could indicate accounts run together. A household or shared computer is the first innocent explanation to rule out.
 
 ## The same run in the app
 

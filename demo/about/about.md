@@ -136,7 +136,7 @@ Every claim on this page, and where it comes from.
 | The demo bank, the answer key, 210 of 211 alerts | `README.md`, "What you will see" |
 | The loop, step by step | `README.md`, `architecture-docs/00-overview.md` |
 | 160 seconds from starting the lab to a reviewed push | `architecture-docs/98-measured.md` |
-| The agent: 13 turns, 3.7 minutes, three numbers refused | `demo/agent.md`, `demo/agent/session.jsonl` |
+| The agent: 13 turns, 2.8 minutes, three numbers refused | `demo/agent.md`, `demo/agent/session.jsonl` |
 | Read only, nine tools, one confirm | `lab/api/mcp_tools.py`, `lab/roundtrip/push.py` |
 | The four packs | `architecture-docs/99-build-status.md`, the 2.0 row |
 | The figures | `demo/about/figures.js`, built into this page by `demo/build_about.py` |

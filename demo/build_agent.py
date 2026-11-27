@@ -25,7 +25,7 @@ Gave Claude Code (Sonnet) two MCP servers, the lab's and Relate's, and nothing e
 the riskiest ring among accounts active since 20 October 2026 and explain it. It found R0006, the planted ring a
 person finds in [the walkthrough](README.md). On the way it pulled a slice, searched it, scored it, read the
 communities through Relate, wrote a summary the lab checked, read the dry run and pushed the results back with a
-confirm. 13 turns, 3.7 minutes.
+confirm. 13 turns, 2.8 minutes.
 
 This page is rendered from the session's log, [`agent/session.jsonl`](agent/session.jsonl), by
 [`build_agent.py`](build_agent.py). Nobody edits it by hand.
